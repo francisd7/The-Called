@@ -1,0 +1,21 @@
+services:
+  - type: web
+    name: the-called-automation-hub
+    env: node
+    plan: free
+    buildCommand: npm install
+    startCommand: npm start
+    healthCheckPath: /health
+    envVars:
+      - key: DISCORD_BOT_TOKEN
+        sync: false
+      - key: DISCORD_TEAM_CHANNEL_ID
+        sync: false
+      - key: AIRTABLE_PAT
+        sync: false
+      - key: AIRTABLE_EOD_BASE_ID
+        value: appO76t48mwkC3j80
+      - key: AIRTABLE_CLIENT_SUCCESS_BASE_ID
+        value: appkSTSqkeXGHt6pY
+      - key: POLL_INTERVAL_MS
+        value: "60000"
