@@ -6,7 +6,7 @@ Tracks progress against the build priority in `Automation_Hub_Blueprint.md`.
 |---|---|---|---|
 | 1 | Setter EOD → Discord | ✅ Live | Deployed to Railway, verified end-to-end: a real Setter EOD submission posted to `DISCORD_SETTER_EOD_CHANNEL_ID`. |
 | 2 | Weekly Check-in → Discord | ✅ Live | Deployed to Railway, verified end-to-end: a real Weekly Check-in submission posted to `DISCORD_WEEKLY_CHECKIN_CHANNEL_ID` (a separate channel/server from #1, at the user's request). |
-| 3 | Discord ID field + Friday reminder DMs | 🚧 In progress (dry-run only) | `Discord ID` field added to Clients. Reminder logic + a dry-run-only test script (`npm run weekly-reminder-dry-run`) built and tested — posts to a test channel, never DMs a real client. Still needed: Friday send time, backfilling Discord IDs for current clients, and wiring a real send path + schedule into `src/index.js`. |
+| 3 | Discord ID field + Friday reminder DMs | 🚧 In progress (dry-run only) | `Discord ID` field added to Clients. Reminder logic verified end-to-end in dry-run mode on 2026-09-09 — both the "would send" branch (tested against a real client record with a temporary Discord ID) and the "skip, no Discord ID" branch produced correct output in the test channel, no real DM sent. Still needed: Friday send time, backfilling Discord IDs for the (now 22, not 9) current active clients, and wiring a real send path + schedule into `src/index.js`. |
 | 4 | New-member onboarding flow | ⛔ Not started | Blocked on the onboarding message copy/sequence and a decision on who besides the client sees the private channel. |
 
 Deployed on Railway (Hobby plan — chosen over Render because this service runs
