@@ -6,15 +6,20 @@
 //
 // Names were chosen to describe the program rather than the price: a client
 // seeing "Foundations" reads it as where he's building from, where "Entry"
-// read as what he couldn't afford. `airtableValue` is what the
-// `Package / Tier` single-select holds after the rename from
-// Entry/Mid/High - Airtable record values follow a select rename, so no
-// backfill was needed.
+// read as what he couldn't afford.
+//
+// `airtableValue` must match the `Package / Tier` select option EXACTLY,
+// because that is what gets written back on a tier change and Airtable
+// rejects a value that isn't an existing option. The old name is kept in
+// parentheses there while the team gets used to the new ones. Reads go
+// through getTierByAirtableValue, which ignores that parenthetical - so
+// dropping it later only means updating these four strings, and nothing
+// breaks in the meantime.
 export const TIERS = [
   {
     key: 'the-called',
     name: 'The Called',
-    airtableValue: 'The Called',
+    airtableValue: 'The Called (Bible Study & Warrior Huddles)',
     roleName: 'Tier: The Called',
     // Bible study + Warrior Huddles only. No private channel, so no client
     // category and nobody to assign - the one tier that lives entirely in
@@ -26,7 +31,7 @@ export const TIERS = [
   {
     key: 'foundations',
     name: 'Foundations',
-    airtableValue: 'Foundations',
+    airtableValue: 'Foundations (Entry)',
     roleName: 'Tier: Foundations',
     hasPrivateChannel: true,
     categoryName: 'CLIENTS · FOUNDATIONS',
@@ -37,7 +42,7 @@ export const TIERS = [
   {
     key: 'momentum',
     name: 'Momentum',
-    airtableValue: 'Momentum',
+    airtableValue: 'Momentum (Mid)',
     roleName: 'Tier: Momentum',
     hasPrivateChannel: true,
     categoryName: 'CLIENTS · MOMENTUM',
@@ -46,7 +51,7 @@ export const TIERS = [
   {
     key: 'inner-circle',
     name: 'Inner Circle',
-    airtableValue: 'Inner Circle',
+    airtableValue: 'Inner Circle (High)',
     roleName: 'Tier: Inner Circle',
     hasPrivateChannel: true,
     categoryName: 'CLIENTS · INNER CIRCLE',
@@ -64,10 +69,19 @@ export function getTierByRoleName(roleName) {
   return TIERS.find((tier) => tier.roleName === roleName) ?? null;
 }
 
+// Matches on the tier name, ignoring any trailing parenthetical, so both
+// "Momentum (Mid)" and a future cleaned-up "Momentum" resolve to the same
+// tier. Without this, the day someone tidies the Airtable option names every
+// read would silently start returning null - which reads as "this client has
+// no tier" and would quietly stop flagging mismatches.
 export function getTierByAirtableValue(value) {
   if (!value) return null;
-  const normalized = String(value).trim().toLowerCase();
-  return TIERS.find((tier) => tier.airtableValue.toLowerCase() === normalized) ?? null;
+  const normalized = String(value)
+    .replace(/\s*\([^)]*\)\s*$/, '')
+    .trim()
+    .toLowerCase();
+  if (!normalized) return null;
+  return TIERS.find((tier) => tier.name.toLowerCase() === normalized) ?? null;
 }
 
 // Rank is the array index, so a higher number is a higher tier. Used to

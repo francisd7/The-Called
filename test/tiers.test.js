@@ -72,3 +72,37 @@ test('resolveTierFromRoleNames picks the highest when a member briefly holds two
   assert.equal(resolveTierFromRoleNames(['Called Coaches']), null);
   assert.equal(resolveTierFromRoleNames([]), null);
 });
+
+// The Airtable options keep the old name in a parenthetical while the team
+// gets used to the new ones. Reads must survive both that and a later
+// cleanup, or every lookup would silently start returning null — which reads
+// as "this client has no tier" rather than as an error.
+test('Airtable values resolve with or without the transitional parenthetical', () => {
+  assert.equal(getTierByAirtableValue('Momentum (Mid)').key, 'momentum');
+  assert.equal(getTierByAirtableValue('Momentum').key, 'momentum');
+  assert.equal(getTierByAirtableValue('Foundations (Entry)').key, 'foundations');
+  assert.equal(getTierByAirtableValue('Inner Circle (High)').key, 'inner-circle');
+  assert.equal(
+    getTierByAirtableValue('The Called (Bible Study & Warrior Huddles)').key,
+    'the-called'
+  );
+  assert.equal(getTierByAirtableValue('  inner circle (high)  ').key, 'inner-circle');
+});
+
+test('a value that is only a parenthetical resolves to nothing', () => {
+  assert.equal(getTierByAirtableValue('(Mid)'), null);
+  assert.equal(getTierByAirtableValue('Entry'), null);
+});
+
+// Writes go back as the exact select option name — Airtable rejects a value
+// that isn't already an option, so these four strings are coupled to the
+// base and a rename there means updating them here.
+test('every tier writes back a value that matches its own name', () => {
+  for (const tier of TIERS) {
+    assert.equal(
+      getTierByAirtableValue(tier.airtableValue).key,
+      tier.key,
+      `${tier.name} must round-trip`
+    );
+  }
+});

@@ -43,7 +43,23 @@ much of the team you get:
 
 Foundations deliberately excludes the CMO and Founder — they only service the
 top two tiers, and the tier categories are what make that legible at a glance
-instead of a mental note.
+instead of a mental note. SETTING and SALES open at Momentum, for both brands.
+
+**Veterans** are past clients with lifetime community access. `Veteran` is a
+role, not a tier — nobody is paying for it, so giving them a tier role would
+make tier sync write a package onto a Completed/Cancelled record. It grants
+THE CALLED and the 💪 section, and nothing else. Losing the paid areas is the
+point: seeing `#wins` without being able to reach what produced them is what
+brings someone back.
+
+Course content, recordings and links stay duplicated per brand on purpose. A
+client only ever sees their own brand's category, so nobody encounters two
+`#recordings` — and a coach wading through personal-brand call recordings is
+worse than a duplicated channel name.
+
+Pods are no longer used, so the config declares nothing about them. The apply
+script never deletes, so the existing pod channels stay untouched in Discord
+until someone archives them by hand.
 
 Two things worth knowing before touching permissions:
 
@@ -58,10 +74,17 @@ Two things worth knowing before touching permissions:
   it unless the overwrites are rewritten too. `tierSync` does both. **Never
   click "Sync Now" on a client channel** — it wipes the client's own access.
 
-`Package / Tier` in Airtable was renamed from Entry/Mid/High to these names
-(record values follow a select rename, so no backfill was needed). Price is
-recorded in `Contract Value`, never derived from it — payment plans and
-discounts mean price does not cleanly separate the tiers.
+`Package / Tier` in Airtable was renamed from Entry/Mid/High to these names,
+keeping the old label in a parenthetical while the team gets used to them —
+so the live options read `Momentum (Mid)`, `Foundations (Entry)`, and so on.
+Reads ignore that parenthetical, so dropping it later changes nothing;
+**writes use the exact option name**, so the four `airtableValue` strings in
+[`src/discord/tiers.js`](src/discord/tiers.js) are coupled to the base and
+need updating if those options are renamed again.
+
+Price is recorded in `Contract Value`, never derived from it — payment plans,
+discounts and clients grandfathered in from before a program change all mean
+price does not cleanly separate the tiers.
 
 ## Invite-link routing
 

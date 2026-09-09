@@ -9,6 +9,7 @@ import {
   findUnknownOverwriteRoles,
   allRoleNames,
 } from '../src/discord/serverStructure.js';
+import { TIER_ROLE_NAMES, resolveTierFromRoleNames } from '../src/discord/tiers.js';
 
 function categoryNamed(name) {
   return CATEGORIES.find((cat) => cat.name === name);
@@ -166,12 +167,47 @@ test('CLIENTS · FOUNDATIONS excludes the CMO and Founder', () => {
   assert.ok(grantFor(momentum, 'Founder'));
 });
 
-test('STAFF and PODS are staff-only', () => {
-  for (const name of ['STAFF', 'PODS']) {
-    const category = categoryNamed(name);
-    const granted = category.overwrites.filter((o) => o.allow).map((o) => o.role);
-    assert.deepEqual(granted.sort(), ['CMO', 'COO', 'CSM', 'Founder'], name);
+test('STAFF is staff-only', () => {
+  const granted = categoryNamed('STAFF')
+    .overwrites.filter((o) => o.allow)
+    .map((o) => o.role);
+  assert.deepEqual(granted.sort(), ['CMO', 'COO', 'CSM', 'Founder']);
+});
+
+// Pods are no longer used, so the config declares nothing about them and the
+// apply script (which never deletes) leaves the existing channels alone.
+test('pods are not managed by the config at all', () => {
+  assert.equal(categoryNamed('PODS'), undefined);
+  const podChannels = CATEGORIES.flatMap((cat) => cat.channels).filter((channel) =>
+    channel.name.startsWith('pod-')
+  );
+  assert.deepEqual(podChannels, []);
+});
+
+// Veterans keep lifetime community access and nothing else. Losing the paid
+// areas is deliberate — seeing #wins without being able to reach what
+// produced them is what brings someone back.
+test('a Veteran reaches the community section and the 💪 section, and nothing else', () => {
+  const reachable = CATEGORIES.filter((cat) => grantFor(cat, 'Veteran')).map((cat) => cat.name);
+  assert.deepEqual(reachable.sort(), ['THE CALLED', 'VETERANS · 💪']);
+
+  for (const name of ['THE FORGE', 'SETTING', 'SALES', 'CALLED COACHES', 'CALLED CREATORS']) {
+    assert.equal(grantFor(categoryNamed(name), 'Veteran'), undefined, name);
   }
+});
+
+test('a Veteran can read #wins but not post into it', () => {
+  const wins = categoryNamed('THE CALLED').channels.find((c) => c.name === 'wins');
+  const veteran = resolveChannelOverwrites(wins).find((o) => o.role === 'Veteran');
+  assert.deepEqual(veteran.allow, ['ViewChannel', 'ReadMessageHistory']);
+  assert.deepEqual(veteran.deny, ['SendMessages']);
+});
+
+// Veteran deliberately isn't a tier: nobody is paying for it, so tierSync
+// must never see it and write a package onto a Completed/Cancelled record.
+test('Veteran is not a tier role', () => {
+  assert.equal(TIER_ROLE_NAMES.includes('Veteran'), false);
+  assert.equal(resolveTierFromRoleNames(['Veteran']), null);
 });
 
 test('resolveChannelOverwrites expands the readOnlyFor shorthand', () => {

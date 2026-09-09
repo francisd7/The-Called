@@ -9,40 +9,56 @@ Tracks progress against the build priority in `Automation_Hub_Blueprint.md`.
 | 3 | Discord ID field + Friday reminder DMs | ✅ Live | `WEEKLY_REMINDER_ENABLED=true` set on Railway and confirmed on 2026-09-09; deployment stable. First real send: Friday 2026-09-11, 12:00 PM ET (`America/New_York`, DST-aware). 19 of 22 active clients backfilled with a Discord ID; Wylie Hawkins, Malachi Hardware, Patric Cocos have `Skip Weekly Reminder` checked (bible-study-only clients, no personal-branding access, confirmed with the user). Message: "Hey [First Name], time for your Weekly Check-in — [link]". Dry-run path (`npm run weekly-reminder-dry-run`) still available for testing future changes without risk. |
 | 4 | New-member onboarding flow | ✅ Live | Enabled on Railway and verified end-to-end on 2026-09-09 with a real test-account join: channel creation, permissions, welcome message (mentions rendering correctly), and the no-match path were confirmed working via a real join in the client server. Design went through two iterations after that first live test: (1) no-match originally just flagged staff and waited — the user pointed out a new signup's Airtable record essentially never exists yet at join time, so that path would have fired for almost every real new member; (2) briefly fixed with a retry-on-poll-cycle mechanism, then the user clarified they actually wanted the automation to create the starter Client record itself (Name, Email, Discord ID, Start Date, Status Active) rather than wait on staff — so it does that now, and the retry mechanism was removed as unnecessary. Flag channel is a dedicated channel (`DISCORD_ONBOARDING_FLAG_CHANNEL_ID`), not the Weekly Check-in channel, per the user's request after seeing the first test flag land there. Team "new member joined" notification explicitly dropped per the user — they want a separate Whop-based notification with purchase amount instead (not built). Status `Active` on the starter record was a deliberate choice, confirmed with the user, even though it makes the client immediately eligible for automation #3's Friday reminder before a CSM is assigned. |
 
-| 5 | Discord restructure: roles, tier categories, invite routing | 🔨 Built, not applied | Blueprint approved. `src/discord/serverStructure.js` defines 15 roles, 14 categories and 38 channels; `scripts/apply-discord-structure.js` reconciles them (dry-run by default, additive only, never deletes). Invite-link routing and tier sync are wired but `TIER_SYNC_ENABLED` is off. **Nothing has been applied to the live server yet** — the Phase 0 items below are blocking. |
+| 5 | Discord restructure: roles, tier categories, invite routing | 🔨 Built, not applied | Blueprint approved. `src/discord/serverStructure.js` defines 15 roles, 13 categories and 36 channels; `scripts/apply-discord-structure.js` reconciles them (dry-run by default, additive only, never deletes). Invite-link routing and tier sync are wired but `TIER_SYNC_ENABLED` is off. **Nothing has been applied to the live server yet.** The Whop blocker cleared on 2026-09-09; see the decisions and open items below. |
 
-### #5 — Phase 0, blocking before anything is applied
+### #5 — decisions settled with the user
 
-- **What does the Whop Bot actually do?** Still unknown (see the deferred
-  section below). If it auto-assigns roles on purchase it becomes a second
-  writer to the same tier roles, and must either be aligned to these role
-  names or turned off. Applying the restructure without knowing this risks
-  the two fighting over every new member's roles.
-- **Airtable rename** — `Package / Tier` options need renaming from
-  Entry/Mid/High to Foundations/Momentum/Inner Circle, and
-  "Bible Study & Warrior Huddles" to "The Called". Safe: record values follow
-  a select rename, and no code reads tier values.
+- **The Whop Bot does nothing.** Confirmed 2026-09-09. It is not a second
+  writer to the tier roles, so it no longer blocks the restructure. Whether
+  to wire it up for one-time purchase-scoped invites is still a genuine
+  follow-up, not scoped here.
+- **Airtable renamed**, keeping the old label in a parenthetical:
+  `The Called (Bible Study & Warrior Huddles)`, `Foundations (Entry)`,
+  `Momentum (Mid)`, `Inner Circle (High)`. `getTierByAirtableValue` strips a
+  trailing parenthetical, so reads survive a later cleanup; **writes use the
+  exact option name**, so the four `airtableValue` strings in
+  `src/discord/tiers.js` are coupled to the base and need updating if those
+  options are renamed again.
+- **The four off-price Momentum clients stay in Momentum.** Luke Buscher
+  ($100), Nick Martinez ($1,500), Alexandra Urbina ($1,500), Isaac Gonzalez
+  ($4,500) were part of Momentum before the program changed and keep that
+  access — a deliberate grandfathering decision, not stale data. Confirms
+  again that tier must never be derived from `Contract Value`.
+- **Pods are dead.** The config declares nothing about them; the apply script
+  never deletes, so the existing pod channels stay in Discord until someone
+  archives them by hand.
+- **The 💪 section is now `Veteran`** — past clients with lifetime community
+  access to THE CALLED plus the 💪 section, and nothing else. Named Veteran
+  rather than Alumni because a badge sitting next to paying clients in #wins
+  should read as "been through it", not "former customer". It is deliberately
+  *not* a tier role: nobody is paying for it, so a tier role would make tier
+  sync write a package onto a Completed/Cancelled record. `#wins` is
+  read-only for them, which is the whole re-enrolment mechanic — they see
+  what is happening and cannot reach what produced it.
+- **Brand duplication stays.** `course-content`, `recordings`, `links` and
+  `content-review` remain per brand: a client only ever sees their own
+  brand's category, so nobody encounters two `#recordings`.
+- **SETTING and SALES open at Momentum, for both brands** — not coaches-only.
+
+### #5 — still open
+
 - **Is `#eod-feed` in this server or the ops server?**
   `DISCORD_SETTER_EOD_CHANNEL_ID` may point at the other one; the structure
   config assumes this one.
-- **Four tier assignments to review.** Phase 2 seeds Discord roles *from*
-  Airtable, so a wrong tier there becomes a wrong entitlement in Discord.
-  Most price variance is payment timing, but these sit far off their tier's
-  price points: Luke Buscher (Momentum, **$100**), Nick Martinez (Momentum,
-  $1,500), Alexandra Urbina (Momentum, $1,500), Isaac Gonzalez (Momentum,
-  $4,500) — against $10k/$12k for that tier.
 - **Housekeeping** — Nick Martinez has `CSM = Unassigned`; Liam McCormack and
   Nathan Soriano have blank `Contract Value`; the `testing` record from the
   2026-09-09 onboarding test should be deleted.
-- **The 💪 section** (donreal-lunkin, robert-williams, jaden-garcia,
-  chase-marshall, anthony-rivera) exists in Discord only — no Airtable record
-  in any status. Needs a status before they get the `Alumni` role.
-- **Still unanswered by the user:** what "pods" are (`PODS` is staff-only
-  until we know, rather than left open); whether the duplicated
-  `content-review` / `recordings` / `course-content` / `links` channels hold
-  genuinely different content per brand; and whether SETTING and SALES should
-  open to Momentum/Inner Circle Creators or stay coaches-only (currently open
-  to both brands at those tiers).
+- **Veterans have no Airtable records.** The people in 💪 don't appear in the
+  Clients table in any status, so there is nothing to reconcile the `Veteran`
+  role against — it has to be assigned by hand for now.
+- **Nothing has been applied to the live server yet.** No Discord token was
+  available in the build environment, so the structure config is verified by
+  tests only. The first live run must be without `--apply`.
 
 ### Correction to #3's note
 

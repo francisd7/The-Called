@@ -41,7 +41,14 @@ export const ROLES = [
   { name: 'First Client Closed', color: '#22C55E', hoist: true, mentionable: false },
   { name: 'Offer Built', color: '#4ADE80', hoist: true, mentionable: false },
 
-  { name: 'Alumni', color: '#6B7280', hoist: true, mentionable: false },
+  // Past clients with lifetime community access. Named "Veteran" rather than
+  // "Alumni" deliberately - alumni reads as "former customer", veteran reads
+  // as "been through it", which is what a badge sitting next to paying
+  // clients in #wins should say. It is not a tier: a veteran isn't paying for
+  // anything, so giving them Tier: The Called would make tierSync write a
+  // package onto a Completed/Cancelled record. This role carries the
+  // community grant on its own.
+  { name: 'Veteran', color: '#A16207', hoist: true, mentionable: false },
 
   // Permission carriers only: no color, never hoisted, so they do all the
   // gating without ever showing a client what anyone paid. Flip `hoist` to
@@ -115,23 +122,39 @@ export const CATEGORIES = [
 
   category({
     name: 'THE CALLED',
-    grants: [...ALL_TIERS_READ_WRITE, ...ALL_STAFF_READ_WRITE],
+    // Veterans sit here alongside every paying tier - this section is the
+    // lifetime community access they keep, and the only part of the server
+    // they still reach. Everything they used to have is now behind a tier
+    // role, which is the point: seeing #wins without being able to reach
+    // what produced them is what brings someone back.
+    grants: [
+      ...ALL_TIERS_READ_WRITE,
+      { role: 'Veteran', allow: READ_WRITE },
+      ...ALL_STAFF_READ_WRITE,
+    ],
     channels: [
       { name: 'general-chat', type: 'text' },
       {
         name: 'wins',
         type: 'text',
         // One server-wide wins feed instead of a copy siloed inside each
-        // brand. This is the upsell surface: bible-study members can read it
-        // (and see what the paid tiers produce) but not post, and Coaches and
-        // Creators can see each other's, which is the point.
-        overwrites: [{ role: 'Tier: The Called', allow: READ, deny: ['SendMessages'] }],
+        // brand. This is the upsell surface: bible-study members and
+        // veterans can read it (and see what the paid tiers produce) but not
+        // post, and Coaches and Creators can see each other's, which is the
+        // point.
+        overwrites: [
+          { role: 'Tier: The Called', allow: READ, deny: ['SendMessages'] },
+          { role: 'Veteran', allow: READ, deny: ['SendMessages'] },
+        ],
       },
       { name: 'bible-study', type: 'text' },
       {
         name: 'recordings',
         type: 'text',
-        overwrites: allow(TIER_ROLE_NAMES, READ).map((o) => ({ ...o, deny: ['SendMessages'] })),
+        overwrites: allow([...TIER_ROLE_NAMES, 'Veteran'], READ).map((o) => ({
+          ...o,
+          deny: ['SendMessages'],
+        })),
       },
       { name: 'Warrior Huddle', type: 'voice' },
     ],
@@ -205,19 +228,14 @@ export const CATEGORIES = [
     })
   ),
 
-  category({
-    name: 'PODS',
-    note: 'Staff-only until we know what pods are - locked rather than left open.',
-    grants: ALL_STAFF_READ_WRITE,
-    channels: [
-      { name: 'pod-2-chat', type: 'text' },
-      { name: 'pod-5-chat', type: 'text' },
-    ],
-  }),
+  // Pods are no longer used, so they are deliberately absent here rather
+  // than declared and locked. The apply script never deletes, so the
+  // existing pod channels stay untouched in Discord - archive or delete
+  // them by hand whenever you get to it.
 
   category({
-    name: 'ALUMNI · 💪',
-    grants: [{ role: 'Alumni', allow: READ_WRITE }, ...ALL_STAFF_READ_WRITE],
+    name: 'VETERANS · 💪',
+    grants: [{ role: 'Veteran', allow: READ_WRITE }, ...ALL_STAFF_READ_WRITE],
     channels: [{ name: '💪-chat', type: 'text' }],
   }),
 
