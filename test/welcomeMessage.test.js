@@ -25,6 +25,16 @@ test('does not mention a walkthrough video (not made yet)', () => {
   assert.doesNotMatch(message, /walkthrough video/i);
 });
 
+test('includes the mandatory intake form, above the checklist', () => {
+  const message = formatWelcomeMessage({ memberMention: '<@999>', notionDashboardUrl: '' });
+  assert.match(message, /https:\/\/tally\.so\/r\/KYEgkX/);
+  const intakeIndex = message.indexOf('intake form');
+  const checklistIndex = message.indexOf('Complete "THE LEADER WITHIN"');
+  assert.ok(intakeIndex > -1 && checklistIndex > -1 && intakeIndex < checklistIndex);
+  assert.match(message, /Get through all three before you hop on your 1:1/);
+  assert.match(message, /make sure all three are complete/);
+});
+
 test('uses the real link once configured', () => {
   const message = formatWelcomeMessage({
     memberMention: '<@999>',
