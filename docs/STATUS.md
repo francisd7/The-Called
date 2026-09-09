@@ -4,8 +4,8 @@ Tracks progress against the build priority in `Automation_Hub_Blueprint.md`.
 
 | # | Automation | Status | Notes |
 |---|---|---|---|
-| 1 | Setter EOD → Discord | ✅ Built | Polls `Setter EOD` (EOD Reports base) on `POLL_INTERVAL_MS`, posts to `DISCORD_TEAM_CHANNEL_ID`. |
-| 2 | Weekly Check-in → Discord | ✅ Built | Polls `Weekly Check-ins` (Client Success base) the same way. |
+| 1 | Setter EOD → Discord | ✅ Built | Polls `Setter EOD` (EOD Reports base) on `POLL_INTERVAL_MS`, posts to `DISCORD_SETTER_EOD_CHANNEL_ID`. |
+| 2 | Weekly Check-in → Discord | ✅ Built | Polls `Weekly Check-ins` (Client Success base) the same way, posts to `DISCORD_WEEKLY_CHECKIN_CHANNEL_ID` (a separate channel/server from #1, at the user's request). |
 | 3 | Discord ID field + Friday reminder DMs | ⛔ Not started | Needs the Friday send time decided, plus a manual backfill of Discord ID for the 9 current clients before it can go live. |
 | 4 | New-member onboarding flow | ⛔ Not started | Blocked on the onboarding message copy/sequence and a decision on who besides the client sees the private channel. |
 

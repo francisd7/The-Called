@@ -9,7 +9,9 @@ services:
     envVars:
       - key: DISCORD_BOT_TOKEN
         sync: false
-      - key: DISCORD_TEAM_CHANNEL_ID
+      - key: DISCORD_SETTER_EOD_CHANNEL_ID
+        sync: false
+      - key: DISCORD_WEEKLY_CHECKIN_CHANNEL_ID
         sync: false
       - key: AIRTABLE_PAT
         sync: false

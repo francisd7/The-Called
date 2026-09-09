@@ -11,8 +11,12 @@ build status: [`docs/STATUS.md`](docs/STATUS.md).
 
 | Automation | Trigger | Action |
 |---|---|---|
-| Setter EOD → Discord | New record in **Setter EOD** (`EOD Reports` base) | Posts "📋 **[Setter Name]** submitted their EOD report — [Date]" to the team channel |
-| Weekly Check-in → Discord | New record in **Weekly Check-ins** (`Client Success` base) | Posts "✅ **[Client Name]** submitted their Weekly Check-in — Momentum: [X]/10" to the team channel |
+| Setter EOD → Discord | New record in **Setter EOD** (`EOD Reports` base) | Posts "📋 **[Setter Name]** submitted their EOD report — [Date]" to the `DISCORD_SETTER_EOD_CHANNEL_ID` channel |
+| Weekly Check-in → Discord | New record in **Weekly Check-ins** (`Client Success` base) | Posts "✅ **[Client Name]** submitted their Weekly Check-in — Momentum: [X]/10" to the `DISCORD_WEEKLY_CHECKIN_CHANNEL_ID` channel |
+
+The two notifications go to separate Discord channels (and can be in separate
+servers) — the bot just needs to be a member of whichever server each channel
+lives in.
 
 Both are pure notifications: no branching, no new Airtable fields, nothing to
 match. Not built yet: the Friday reminder DMs and the new-member onboarding flow
@@ -35,9 +39,9 @@ Discord-side config beyond inviting the bot.
 
 1. Go to the [Discord Developer Portal](https://discord.com/developers/applications) → **New Application**.
 2. **Bot** tab → **Reset Token** → copy it (this is `DISCORD_BOT_TOKEN`). Keep "Public Bot" off unless you want it installable elsewhere.
-3. Under **Bot Permissions**, the bot only needs **View Channel** and **Send Messages** in the team channel.
-4. **OAuth2 → URL Generator**: scope `bot`, permissions `View Channel` + `Send Messages`. Open the generated URL and add the bot to your server.
-5. In Discord, enable Developer Mode (User Settings → Advanced), then right-click the team channel → **Copy Channel ID**. This is `DISCORD_TEAM_CHANNEL_ID`.
+3. Under **Bot Permissions**, the bot only needs **View Channel** and **Send Messages** in each channel it posts to.
+4. **OAuth2 → URL Generator**: scope `bot`, permissions `View Channel` + `Send Messages`. Open the generated URL once per server the bot needs to be in (e.g. once for the ops server, again for the client-facing server if the two notification channels live in different servers).
+5. In Discord, enable Developer Mode (User Settings → Advanced), then right-click each channel → **Copy Channel ID**. These are `DISCORD_SETTER_EOD_CHANNEL_ID` and `DISCORD_WEEKLY_CHECKIN_CHANNEL_ID`.
 
 ### 2. Create the Airtable Personal Access Token
 
@@ -63,7 +67,8 @@ the full list with comments):
 | Variable | Required | Notes |
 |---|---|---|
 | `DISCORD_BOT_TOKEN` | Yes | From step 1 |
-| `DISCORD_TEAM_CHANNEL_ID` | Yes | From step 1 |
+| `DISCORD_SETTER_EOD_CHANNEL_ID` | Yes | From step 1 |
+| `DISCORD_WEEKLY_CHECKIN_CHANNEL_ID` | Yes | From step 1 |
 | `AIRTABLE_PAT` | Yes | From step 2 |
 | `AIRTABLE_EOD_BASE_ID` | No | Defaults to `appO76t48mwkC3j80` |
 | `AIRTABLE_CLIENT_SUCCESS_BASE_ID` | No | Defaults to `appkSTSqkeXGHt6pY` |

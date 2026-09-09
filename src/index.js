@@ -24,14 +24,14 @@ async function main() {
       baseId: config.eodReportsBaseId,
       tableId: setterEod.tableId,
       formatMessage: setterEod.formatMessage,
-      discordChannelId: config.discordTeamChannelId,
+      discordChannelId: config.discordSetterEodChannelId,
     },
     {
       key: weeklyCheckin.key,
       baseId: config.clientSuccessBaseId,
       tableId: weeklyCheckin.tableId,
       formatMessage: weeklyCheckin.formatMessage,
-      discordChannelId: config.discordTeamChannelId,
+      discordChannelId: config.discordWeeklyCheckinChannelId,
     },
   ];
 
