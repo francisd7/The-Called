@@ -90,11 +90,14 @@ into the server doesn't automatically grant it access to those. Two ways to fix:
   allow **View Channel** + **Send Messages**.
 - **All channels at once:** run `npm run grant-bot-channel-access` (see
   `scripts/grant-bot-channel-access.js`) — a one-time script that grants the bot
-  access to every existing channel in every server it's in. It needs the bot's
-  role to temporarily have **Manage Channels** in that server (Server Settings →
-  Roles → the bot's role) — safe to remove again once the script finishes, since
-  the access it grants is a standing per-channel setting, not tied to that
-  permission staying on.
+  access to every existing channel in every server it's in. On a server that
+  locks down permissions per-category, this needs the bot's role to temporarily
+  have **Administrator** (Server Settings → Roles → the bot's role) — plain
+  "Manage Roles" isn't enough if Manage Roles is itself denied at the
+  category/channel level, which is common on locked-down servers. Safe to
+  remove Administrator again once the script finishes: it creates an explicit
+  per-channel overwrite for the bot, so the access it grants doesn't depend on
+  Administrator staying on.
 
 Either way, nothing needs to be redone in Airtable — the poller doesn't advance
 its watermark past a record it failed to post, so the next successful poll picks

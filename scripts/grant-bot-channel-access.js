@@ -4,12 +4,15 @@
 // category in every server it's a member of, so private/locked-down channels
 // don't need to be fixed one by one.
 //
-// Requires the bot's role to temporarily have "Manage Channels" (Server
-// Settings -> Roles -> the bot's role -> General Permissions) in each server
-// this is run against — that permission is what lets it edit permissions on
-// channels it can't otherwise see. Safe to remove that permission again once
-// this has run successfully, since the per-channel grants it makes are
-// independent, standing overwrites.
+// Requires the bot's role to temporarily have "Administrator" (Server Settings
+// -> Roles -> the bot's role -> General Permissions) in each server this is run
+// against. Plain "Manage Roles" is not enough on a server that also denies
+// Manage Roles at the category/channel level for non-staff roles (a common
+// lockdown pattern) — Administrator is the only permission that bypasses
+// per-channel overwrite checks entirely. Safe to remove again once this has
+// run successfully: it checks for and creates an *explicit* per-channel
+// overwrite for the bot (not just "does it currently have access"), so the
+// access this grants doesn't depend on Administrator staying on.
 //
 // Usage: DISCORD_BOT_TOKEN=... node scripts/grant-bot-channel-access.js
 import 'dotenv/config';
@@ -37,8 +40,12 @@ client.once('clientReady', async () => {
     for (const channel of channels.values()) {
       if (!channel?.permissionOverwrites) continue;
 
-      const current = channel.permissionsFor(client.user);
-      if (current?.has('ViewChannel') && current?.has('SendMessages')) {
+      // Check for an explicit overwrite on this channel, not computed effective
+      // permissions — the latter would report "already has access" everywhere
+      // while Administrator is temporarily on, masking channels that still need
+      // a real overwrite once Administrator comes back off.
+      const existingOverwrite = channel.permissionOverwrites.cache.get(client.user.id);
+      if (existingOverwrite?.allow.has('ViewChannel') && existingOverwrite?.allow.has('SendMessages')) {
         alreadyOk += 1;
         continue;
       }
@@ -60,8 +67,7 @@ client.once('clientReady', async () => {
   console.log(`\nDone. Granted: ${granted}, already had access: ${alreadyOk}, failed: ${failed}.`);
   if (failed > 0) {
     console.log(
-      'A failure usually means the bot\'s role is missing "Manage Channels" in that ' +
-        'server, or the bot is explicitly denied on that one channel.'
+      'A failure usually means the bot\'s role is missing "Administrator" in that server.'
     );
   }
 
