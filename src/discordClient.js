@@ -8,7 +8,7 @@ export function createDiscordClient(botToken) {
   const client = new Client({ intents: [GatewayIntentBits.Guilds] });
 
   const ready = new Promise((resolve, reject) => {
-    client.once('ready', () => resolve());
+    client.once('clientReady', () => resolve());
     client.once('error', reject);
   });
 

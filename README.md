@@ -79,6 +79,27 @@ the full list with comments):
 Once deployed, `GET /health` returns `{"status":"ok"}` — point the host's health
 check at that path (already set in `render.yaml`).
 
+### If Discord posts fail with "Missing Access"
+
+`DiscordAPIError[50001]: Missing Access` in the logs means the bot can't see that
+channel — usually because it's a private/locked-down channel and inviting the bot
+into the server doesn't automatically grant it access to those. Two ways to fix:
+
+- **Per channel/category:** open the channel or its parent category → Edit →
+  Permissions → add the bot (or a role it already has that can see the channel) →
+  allow **View Channel** + **Send Messages**.
+- **All channels at once:** run `npm run grant-bot-channel-access` (see
+  `scripts/grant-bot-channel-access.js`) — a one-time script that grants the bot
+  access to every existing channel in every server it's in. It needs the bot's
+  role to temporarily have **Manage Channels** in that server (Server Settings →
+  Roles → the bot's role) — safe to remove again once the script finishes, since
+  the access it grants is a standing per-channel setting, not tied to that
+  permission staying on.
+
+Either way, nothing needs to be redone in Airtable — the poller doesn't advance
+its watermark past a record it failed to post, so the next successful poll picks
+up any backlogged notifications automatically.
+
 ## State persistence caveat
 
 The server needs to remember, per automation, the timestamp of the last record it
