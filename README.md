@@ -13,20 +13,15 @@ build status: [`docs/STATUS.md`](docs/STATUS.md).
 |---|---|---|
 | Setter EOD → Discord | New record in **Setter EOD** (`EOD Reports` base) | Posts "📋 **[Setter Name]** submitted their EOD report — [Date]" to the `DISCORD_SETTER_EOD_CHANNEL_ID` channel |
 | Weekly Check-in → Discord | New record in **Weekly Check-ins** (`Client Success` base) | Posts "✅ **[Client Name]** submitted their Weekly Check-in — Momentum: [X]/10" to the `DISCORD_WEEKLY_CHECKIN_CHANNEL_ID` channel |
+| Weekly Check-in reminder DMs | Every Friday, `WEEKLY_REMINDER_HOUR_ET`:`WEEKLY_REMINDER_MINUTE_ET` ET (default noon) | DMs every `Status = Active` Client with a Discord ID and no opt-out: "Hey [First Name], time for your Weekly Check-in — [prefilled link]". Posts a send/skip summary to `DISCORD_WEEKLY_CHECKIN_CHANNEL_ID` right after. |
 
-The two notifications go to separate Discord channels (and can be in separate
-servers) — the bot just needs to be a member of whichever server each channel
-lives in.
+The first two notifications go to separate Discord channels (and can be in
+separate servers) — the bot just needs to be a member of whichever server
+each channel lives in. All three are live as of 2026-09-09.
 
-Both are pure notifications: no branching, no new Airtable fields, nothing to
-match.
+## Weekly Check-in reminder DMs — how skipping works
 
-## Weekly Check-in reminder DMs (#3) — built, gated off by default
-
-Every Friday at a configurable time (default noon ET), DMs every `Status =
-Active` client with a Discord ID on file: "Hey [First Name], time for your
-Weekly Check-in — [prefilled link]". Two independent skip conditions, both
-logged in a run summary posted to `DISCORD_WEEKLY_CHECKIN_CHANNEL_ID`, not
+Two independent skip conditions, both logged in the run summary rather than
 failed silently:
 
 - **`Discord ID`** blank on the Clients table (`The Called — Client Success`
@@ -36,27 +31,26 @@ failed silently:
   onboarding automation starts auto-populating Discord ID for other
   reasons) — this always wins over having a Discord ID.
 
-**This does not send real DMs until you explicitly turn it on.** Set these
-env vars on the host to go live:
+This is gated by `WEEKLY_REMINDER_ENABLED` on the host (currently `true` on
+Railway — **live**). To pause it without losing the backfilled Discord IDs or
+opt-outs, set it back to anything other than `true` (or delete the variable)
+and redeploy; flip it back to `true` to resume. `WEEKLY_REMINDER_HOUR_ET` /
+`WEEKLY_REMINDER_MINUTE_ET` (defaults `12` / `0`, 24-hour, America/New_York —
+handles the EST/EDT switch automatically) change the send time if needed.
 
-| Variable | Required to go live | Notes |
-|---|---|---|
-| `WEEKLY_REMINDER_ENABLED` | Yes | Must be exactly `true` (string). This is the on/off switch — everything else about #3 already exists in code either way. |
-| `WEEKLY_REMINDER_HOUR_ET` | No | Defaults to `12` (noon). 24-hour, America/New_York (handles EST/EDT automatically). |
-| `WEEKLY_REMINDER_MINUTE_ET` | No | Defaults to `0`. |
-
-Before flipping that switch, you can still dry-run it as many times as you
-want with `scripts/run-weekly-checkin-reminder-dry-run.js` — it has no code
-path that can send a real DM, and posts to a test channel instead:
+To test a change (new message wording, etc.) without risk, use the
+dry-run-only script — it has no code path that can send a real DM, and posts
+to a test channel instead:
 ```
 npm run weekly-reminder-dry-run
 ```
 (needs `DISCORD_BOT_TOKEN`, `AIRTABLE_PAT`, and `DISCORD_TEST_CHANNEL_ID` set,
 e.g. in a local `.env`)
 
-Not built yet at all: the new-member onboarding flow (#4 in the blueprint) —
-blocked on onboarding message copy from a human. See `docs/STATUS.md` for
-full status.
+## Not built yet
+
+The new-member onboarding flow (#4 in the blueprint) — blocked on onboarding
+message copy from a human. See `docs/STATUS.md` for full status.
 
 ## How it works
 
