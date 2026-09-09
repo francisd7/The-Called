@@ -4,8 +4,7 @@ import EventEmitter from 'node:events';
 import {
   buildChannelOverwrites,
   findClientByEmail,
-  buildPendingEmailMatchFormula,
-  retryPendingEmailLinks,
+  buildNewClientFields,
   registerNewMemberOnboarding,
 } from '../src/onboarding/newMemberOnboarding.js';
 
@@ -46,77 +45,22 @@ test('findClientByEmail returns null when nothing matches', async () => {
   assert.equal(result, null);
 });
 
-test('buildPendingEmailMatchFormula combines multiple emails with OR', () => {
-  assert.equal(
-    buildPendingEmailMatchFormula(['a@example.com', 'B@Example.com']),
-    "OR(LOWER(TRIM({Email})) = 'a@example.com', LOWER(TRIM({Email})) = 'b@example.com')"
+test('buildNewClientFields builds a starter record with Status Active', () => {
+  assert.deepEqual(
+    buildNewClientFields({
+      displayName: 'Jack Garcia',
+      email: 'jack@example.com',
+      discordUserId: 'member1',
+      joinDate: '2026-09-09',
+    }),
+    {
+      'Client Name': 'Jack Garcia',
+      Email: 'jack@example.com',
+      'Discord ID': 'member1',
+      'Start Date': '2026-09-09',
+      Status: 'Active',
+    }
   );
-});
-
-test('buildPendingEmailMatchFormula handles zero and one email', () => {
-  assert.equal(buildPendingEmailMatchFormula([]), null);
-  assert.equal(
-    buildPendingEmailMatchFormula(['a@example.com']),
-    "LOWER(TRIM({Email})) = 'a@example.com'"
-  );
-});
-
-test('retryPendingEmailLinks resolves matches, notifies, and keeps unresolved ones pending', async () => {
-  const state = {
-    newMemberOnboardingPendingLinks: [
-      { discordUserId: 'member1', email: 'found@example.com', channelId: 'chan1' },
-      { discordUserId: 'member2', email: 'stillmissing@example.com', channelId: 'chan2' },
-    ],
-  };
-  const updates = [];
-  const sentMessages = [];
-  const saved = [];
-
-  await retryPendingEmailLinks({
-    airtableClient: {
-      listRecords: async () => [
-        { id: 'recFound', fields: { Email: 'found@example.com' } },
-      ],
-      updateRecord: async (baseId, tableId, recordId, fields) => updates.push({ recordId, fields }),
-    },
-    discord: {
-      sendToChannel: async (channelId, message) => sentMessages.push({ channelId, message }),
-    },
-    clientSuccessBaseId: 'appXXX',
-    state,
-    saveState: async (s) => saved.push(JSON.parse(JSON.stringify(s))),
-    log: { info: () => {}, error: () => {} },
-  });
-
-  assert.deepEqual(updates, [{ recordId: 'recFound', fields: { 'Discord ID': 'member1' } }]);
-  assert.equal(sentMessages.length, 1);
-  assert.equal(sentMessages[0].channelId, 'chan1');
-  assert.match(sentMessages[0].message, /linked up/);
-
-  assert.deepEqual(state.newMemberOnboardingPendingLinks, [
-    { discordUserId: 'member2', email: 'stillmissing@example.com', channelId: 'chan2' },
-  ]);
-});
-
-test('retryPendingEmailLinks is a no-op when nothing is pending', async () => {
-  const state = {};
-  let called = false;
-  await retryPendingEmailLinks({
-    airtableClient: {
-      listRecords: async () => {
-        called = true;
-        return [];
-      },
-    },
-    discord: { sendToChannel: async () => {} },
-    clientSuccessBaseId: 'appXXX',
-    state,
-    saveState: async () => {
-      called = true;
-    },
-    log: { info: () => {}, error: () => {} },
-  });
-  assert.equal(called, false);
 });
 
 function makeDiscordStub() {
@@ -143,12 +87,17 @@ function makeChannelStub(id) {
 
 test('messageCreate: matches a pending member\'s email, writes Discord ID, confirms', async () => {
   const discord = makeDiscordStub();
-  const state = { newMemberOnboardingPending: { chan1: { discordUserId: 'member1' } } };
+  const state = {
+    newMemberOnboardingPending: { chan1: { discordUserId: 'member1', displayName: 'Jane Doe' } },
+  };
   const saved = [];
   const updates = [];
   const airtableClient = {
     listRecords: async () => [{ id: 'recABC' }],
     updateRecord: async (baseId, tableId, recordId, fields) => updates.push({ recordId, fields }),
+    createRecord: async () => {
+      throw new Error('should not create when a match was found');
+    },
   };
 
   registerNewMemberOnboarding({
@@ -179,13 +128,20 @@ test('messageCreate: matches a pending member\'s email, writes Discord ID, confi
   assert.equal(state.newMemberOnboardingPending.chan1, undefined);
 });
 
-test('messageCreate: no match flags the team channel, tells the client, and queues for retry', async () => {
+test('messageCreate: no match creates a starter Client record and flags staff to fill it in', async () => {
   const discord = makeDiscordStub();
-  const state = { newMemberOnboardingPending: { chan1: { discordUserId: 'member1' } } };
+  const state = {
+    newMemberOnboardingPending: { chan1: { discordUserId: 'member1', displayName: 'Jane Doe' } },
+  };
+  const created = [];
   const airtableClient = {
     listRecords: async () => [],
     updateRecord: async () => {
-      throw new Error('should not write when nothing matched');
+      throw new Error('should not update when nothing matched');
+    },
+    createRecord: async (baseId, tableId, fields) => {
+      created.push({ baseId, tableId, fields });
+      return { id: 'recNEW' };
     },
   };
 
@@ -210,20 +166,29 @@ test('messageCreate: no match flags the team channel, tells the client, and queu
   });
   await new Promise((resolve) => setImmediate(resolve));
 
+  assert.equal(created.length, 1);
+  assert.equal(created[0].fields['Client Name'], 'Jane Doe');
+  assert.equal(created[0].fields.Email, 'nobody@example.com');
+  assert.equal(created[0].fields['Discord ID'], 'member1');
+  assert.equal(created[0].fields.Status, 'Active');
+  assert.match(created[0].fields['Start Date'], /^\d{4}-\d{2}-\d{2}$/);
+
   assert.equal(channel._sent.length, 1);
-  assert.match(channel._sent[0], /linked automatically once it's in/);
+  assert.match(channel._sent[0], /You're all set/);
+
   assert.equal(discord._sentChannelMessages.length, 1);
   assert.equal(discord._sentChannelMessages[0].channelId, 'flagChan');
   assert.match(discord._sentChannelMessages[0].message, /nobody@example\.com/);
+  assert.match(discord._sentChannelMessages[0].message, /starter record/);
 
-  assert.deepEqual(state.newMemberOnboardingPendingLinks, [
-    { discordUserId: 'member1', email: 'nobody@example.com', channelId: 'chan1' },
-  ]);
+  assert.equal(state.newMemberOnboardingPending.chan1, undefined);
 });
 
 test('messageCreate: non-email text prompts a retry without querying Airtable', async () => {
   const discord = makeDiscordStub();
-  const state = { newMemberOnboardingPending: { chan1: { discordUserId: 'member1' } } };
+  const state = {
+    newMemberOnboardingPending: { chan1: { discordUserId: 'member1', displayName: 'Jane Doe' } },
+  };
   const airtableClient = {
     listRecords: async () => {
       throw new Error('should not query for non-email text');
@@ -254,12 +219,17 @@ test('messageCreate: non-email text prompts a retry without querying Airtable', 
   assert.equal(channel._sent.length, 1);
   assert.match(channel._sent[0], /doesn't look like an email/);
   // still pending - not cleared
-  assert.deepEqual(state.newMemberOnboardingPending.chan1, { discordUserId: 'member1' });
+  assert.deepEqual(state.newMemberOnboardingPending.chan1, {
+    discordUserId: 'member1',
+    displayName: 'Jane Doe',
+  });
 });
 
 test('messageCreate: ignores messages from someone other than the pending member', async () => {
   const discord = makeDiscordStub();
-  const state = { newMemberOnboardingPending: { chan1: { discordUserId: 'member1' } } };
+  const state = {
+    newMemberOnboardingPending: { chan1: { discordUserId: 'member1', displayName: 'Jane Doe' } },
+  };
   const airtableClient = {
     listRecords: async () => {
       throw new Error('should not be called for a different author');

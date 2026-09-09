@@ -14,7 +14,7 @@ build status: [`docs/STATUS.md`](docs/STATUS.md).
 | Setter EOD → Discord | New record in **Setter EOD** (`EOD Reports` base) | Posts "📋 **[Setter Name]** submitted their EOD report — [Date]" to the `DISCORD_SETTER_EOD_CHANNEL_ID` channel |
 | Weekly Check-in → Discord | New record in **Weekly Check-ins** (`Client Success` base) | Posts "✅ **[Client Name]** submitted their Weekly Check-in — Momentum: [X]/10" to the `DISCORD_WEEKLY_CHECKIN_CHANNEL_ID` channel |
 | Weekly Check-in reminder DMs | Every Friday, `WEEKLY_REMINDER_HOUR_ET`:`WEEKLY_REMINDER_MINUTE_ET` ET (default noon) | DMs every `Status = Active` Client with a Discord ID and no opt-out: "Hey [First Name], time for your Weekly Check-in — [prefilled link]". Posts a send/skip summary to `DISCORD_WEEKLY_CHECKIN_CHANNEL_ID` right after. |
-| New-member onboarding | Someone joins the client-facing Discord server (`DISCORD_CLIENT_GUILD_ID`) | Creates a private `firstname-lastname` channel (visible to them, the bot, and the CSM role), posts the welcome message, then waits for their reply. A reply that looks like an email is matched against the Clients table's `Email` field — matched → writes their Discord ID back immediately; no match → flags it in `DISCORD_ONBOARDING_FLAG_CHANNEL_ID` and keeps retrying on the regular poll cycle, so the link completes automatically once staff creates that client's record (a brand-new signup usually has no Airtable record yet at join time — the retry is what makes this actually work for new members, not just backfilled ones). |
+| New-member onboarding | Someone joins the client-facing Discord server (`DISCORD_CLIENT_GUILD_ID`) | Creates a private `firstname-lastname` channel (visible to them, the bot, and the CSM role), posts the welcome message, then waits for their reply. A reply that looks like an email is matched against the Clients table's `Email` field — matched → writes their Discord ID back to that record; no match (the common case for a genuinely new signup) → creates a starter Client record (Name, Email, Discord ID, Start Date, Status Active) and flags `DISCORD_ONBOARDING_FLAG_CHANNEL_ID` so staff fills in Package/CSM/Contract Value. |
 
 The first two notifications go to separate Discord channels (and can be in
 separate servers) — the bot just needs to be a member of whichever server
@@ -60,7 +60,7 @@ enabled:
 | `NEW_MEMBER_ONBOARDING_ENABLED` | Yes | Must be exactly `true` (string). |
 | `DISCORD_CLIENT_GUILD_ID` | Yes | The client-facing server's ID — right-click the server icon (Developer Mode on) → **Copy Server ID**. Only joins in this server trigger it. |
 | `DISCORD_CSM_ROLE_ID` | Yes | The CSM role that can see every onboarding channel, alongside the new member and the bot itself. |
-| `DISCORD_ONBOARDING_FLAG_CHANNEL_ID` | No | Where an unmatched email gets flagged. Defaults to `DISCORD_WEEKLY_CHECKIN_CHANNEL_ID`. |
+| `DISCORD_ONBOARDING_FLAG_CHANNEL_ID` | No | Where a newly auto-created starter Client record gets flagged for staff to finish filling in. Defaults to `DISCORD_WEEKLY_CHECKIN_CHANNEL_ID`. |
 | `NOTION_DASHBOARD_URL` | No | Defaults to a literal `[Insert Link]` placeholder in the welcome message until set. |
 
 Two **Privileged Gateway Intents** must be turned on in the Discord Developer
@@ -77,8 +77,9 @@ one-time `grant-bot-channel-access` script; here it needs to stay on.
 
 **The Airtable token needs write access now.** #1–#3 only ever read, so
 `AIRTABLE_PAT` was scoped to `data.records:read` only. Writing the matched
-client's Discord ID back requires `data.records:write` too — add that scope
-to the existing token (or issue a new one) before enabling this.
+client's Discord ID back, and creating starter records for unmatched
+clients, both require `data.records:write` too — add that scope to the
+existing token (or issue a new one) before enabling this.
 
 Design notes:
 - Channel name is the member's Discord display name, slugified
@@ -90,14 +91,18 @@ Design notes:
   Discord-to-Airtable matching without it.
 - Whop integration for auto-capturing email at purchase (instead of asking in
   Discord) was considered and deliberately deferred — see `docs/STATUS.md`.
-- An unmatched email doesn't dead-end: it's queued in `data/state.json` and
-  re-checked on every poll cycle (`retryPendingEmailLinks` in
-  `newMemberOnboarding.js`) until a matching Client record shows up, at which
-  point the Discord ID gets linked automatically and the client gets notified
-  in their onboarding channel. This exists because a brand-new signup's
-  Airtable record usually doesn't exist yet at the moment they join Discord —
-  staff logs the sale by hand, often afterward — so a same-message match is
-  the exception, not the rule, for genuinely new clients.
+- An unmatched email doesn't dead-end waiting on staff: it creates a starter
+  Client record immediately (`buildNewClientFields` in
+  `newMemberOnboarding.js`) with Status `Active`, so the client is in the
+  system from day one and staff only has to fill in the rest (Package, CSM,
+  Contract Value, ...) rather than create the record from scratch. This
+  exists because a brand-new signup's Airtable record usually doesn't exist
+  yet at the moment they join Discord — staff logs the sale by hand, often
+  afterward — so a same-message email match is the exception, not the rule,
+  for genuinely new clients. Worth knowing: Status `Active` + a Discord ID
+  means this client is immediately eligible for the Friday Weekly Check-in
+  reminder DM (automation #3), even before a CSM is assigned — a deliberate
+  choice, not an oversight.
 
 ## How it works
 

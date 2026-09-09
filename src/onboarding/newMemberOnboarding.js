@@ -4,7 +4,6 @@ import { looksLikeEmail, normalizeEmail } from './email.js';
 import { formatWelcomeMessage } from './welcomeMessage.js';
 
 const PENDING_STATE_KEY = 'newMemberOnboardingPending';
-const PENDING_LINK_STATE_KEY = 'newMemberOnboardingPendingLinks';
 
 // @everyone's role ID is always the guild ID. Deny it, then explicitly allow
 // the new member, the bot itself (by user ID, not role - simpler and doesn't
@@ -28,66 +27,24 @@ export async function findClientByEmail(airtableClient, baseId, email) {
   return records[0] ?? null;
 }
 
-// A client record usually doesn't exist in Airtable yet the moment someone
-// joins Discord - staff logs the sale by hand, often after the join. So a
-// no-match on first reply isn't necessarily wrong data, just early timing.
-// Combines every still-pending email into one OR() formula rather than one
-// query per pending link.
-export function buildPendingEmailMatchFormula(emails) {
-  const clauses = emails.map((email) => {
-    const normalized = normalizeEmail(email).replace(/'/g, "\\'");
-    return `LOWER(TRIM({Email})) = '${normalized}'`;
-  });
-  if (clauses.length === 0) return null;
-  if (clauses.length === 1) return clauses[0];
-  return `OR(${clauses.join(', ')})`;
+// A brand-new signup almost never has an Airtable Client record yet at the
+// moment they join Discord - staff logs the sale by hand, often afterward.
+// So instead of waiting on that, a no-match creates a starter record right
+// away (Name/Email/Discord ID/Start Date, Status Active) that staff then
+// fills in the rest of (Package, CSM, Contract Value, ...) - the record
+// always exists from day one, nothing needs manual linking later.
+export function buildNewClientFields({ displayName, email, discordUserId, joinDate }) {
+  return {
+    'Client Name': displayName,
+    Email: email,
+    'Discord ID': discordUserId,
+    'Start Date': joinDate,
+    Status: 'Active',
+  };
 }
 
-// Re-checks every queued "no match yet" email against Airtable, and finishes
-// the link for any that now have a matching Client record - so staff only
-// ever has to create the record; linking the Discord ID happens on its own
-// once that record exists, instead of needing a second manual step.
-export async function retryPendingEmailLinks({
-  airtableClient,
-  discord,
-  clientSuccessBaseId,
-  state,
-  saveState,
-  log = console,
-}) {
-  const pending = state[PENDING_LINK_STATE_KEY] ?? [];
-  if (pending.length === 0) return;
-
-  const formula = buildPendingEmailMatchFormula(pending.map((entry) => entry.email));
-  const records = await airtableClient.listRecords(clientSuccessBaseId, CLIENTS_TABLE_ID, {
-    filterByFormula: formula,
-  });
-
-  const stillPending = [];
-  for (const entry of pending) {
-    const match = records.find((r) => normalizeEmail(r.fields?.Email) === entry.email);
-    if (!match) {
-      stillPending.push(entry);
-      continue;
-    }
-
-    await airtableClient.updateRecord(clientSuccessBaseId, CLIENTS_TABLE_ID, match.id, {
-      'Discord ID': entry.discordUserId,
-    });
-    log.info(`[newMemberOnboarding] resolved pending link for ${entry.discordUserId} -> client ${match.id}`);
-
-    try {
-      await discord.sendToChannel(
-        entry.channelId,
-        `<@${entry.discordUserId}> good news — we found your account and got you linked up! ✅`
-      );
-    } catch (err) {
-      log.error('[newMemberOnboarding] failed to notify a resolved pending link:', err);
-    }
-  }
-
-  state[PENDING_LINK_STATE_KEY] = stillPending;
-  await saveState(state);
+function todayDateString() {
+  return new Date().toISOString().slice(0, 10);
 }
 
 // Wires the two Discord event listeners this automation needs. Kept as thin
@@ -111,7 +68,8 @@ export function registerNewMemberOnboarding({
     try {
       if (member.guild.id !== clientGuildId) return;
 
-      const channelName = slugifyChannelName(member.displayName ?? member.user.username);
+      const displayName = member.displayName ?? member.user.username;
+      const channelName = slugifyChannelName(displayName);
       const overwrites = buildChannelOverwrites({
         guildId: member.guild.id,
         memberId: member.id,
@@ -131,7 +89,7 @@ export function registerNewMemberOnboarding({
       await channel.send(message);
 
       state[PENDING_STATE_KEY] = state[PENDING_STATE_KEY] ?? {};
-      state[PENDING_STATE_KEY][channel.id] = { discordUserId: member.id };
+      state[PENDING_STATE_KEY][channel.id] = { discordUserId: member.id, displayName };
       await saveState(state);
 
       log.info(`[newMemberOnboarding] created #${channelName} for ${member.id}`);
@@ -154,11 +112,8 @@ export function registerNewMemberOnboarding({
         return;
       }
 
-      const client = await findClientByEmail(
-        airtableClient,
-        clientSuccessBaseId,
-        message.content
-      );
+      const normalizedEmail = normalizeEmail(message.content);
+      const client = await findClientByEmail(airtableClient, clientSuccessBaseId, message.content);
 
       if (client) {
         await airtableClient.updateRecord(clientSuccessBaseId, CLIENTS_TABLE_ID, client.id, {
@@ -167,22 +122,22 @@ export function registerNewMemberOnboarding({
         await message.channel.send("You're all set! ✅ Welcome aboard.");
         log.info(`[newMemberOnboarding] matched ${message.author.id} to client ${client.id}`);
       } else {
-        await message.channel.send(
-          "I couldn't find that email in our system yet — no worries, a team member will get your account set up and you'll be linked automatically once it's in."
+        const newClient = await airtableClient.createRecord(
+          clientSuccessBaseId,
+          CLIENTS_TABLE_ID,
+          buildNewClientFields({
+            displayName: pending.displayName,
+            email: normalizedEmail,
+            discordUserId: message.author.id,
+            joinDate: todayDateString(),
+          })
         );
+        await message.channel.send("You're all set! ✅ Welcome aboard.");
         await discord.sendToChannel(
           flagChannelId,
-          `⚠️ New member <@${message.author.id}> replied with an email that didn't match any Client record: \`${normalizeEmail(message.content)}\`. Channel: <#${message.channel.id}>. Once their record is created with this email, they'll be linked automatically — no need to also set their Discord ID by hand.`
+          `🆕 Created a new Client record for <@${message.author.id}> (\`${normalizedEmail}\`) — no existing match, so this is a starter record. Please review and fill in Package/CSM/Contract details. Channel: <#${message.channel.id}>`
         );
-
-        state[PENDING_LINK_STATE_KEY] = state[PENDING_LINK_STATE_KEY] ?? [];
-        state[PENDING_LINK_STATE_KEY].push({
-          discordUserId: message.author.id,
-          email: normalizeEmail(message.content),
-          channelId: message.channel.id,
-        });
-
-        log.info(`[newMemberOnboarding] no match yet for ${message.author.id}, queued for retry`);
+        log.info(`[newMemberOnboarding] created client ${newClient.id} for ${message.author.id}`);
       }
 
       delete state[PENDING_STATE_KEY][message.channel.id];

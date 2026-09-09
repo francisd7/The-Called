@@ -62,5 +62,24 @@ export function createAirtableClient(personalAccessToken) {
     return response.json();
   }
 
-  return { listRecords, listRecordsCreatedAfter, updateRecord };
+  async function createRecord(baseId, tableId, fields) {
+    const url = `${AIRTABLE_API_BASE}/${baseId}/${tableId}`;
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${personalAccessToken}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ fields }),
+    });
+
+    if (!response.ok) {
+      const body = await response.text();
+      throw new Error(`Airtable create record failed (${response.status}): ${body}`);
+    }
+
+    return response.json();
+  }
+
+  return { listRecords, listRecordsCreatedAfter, updateRecord, createRecord };
 }
