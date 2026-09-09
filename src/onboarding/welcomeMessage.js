@@ -27,7 +27,7 @@ Let's get to work 📈
 
 ---
 ${dashboardLine}
-The intake form is part of onboarding — it goes in before we get on the call. Four questions. Without it the first call gets spent on discovery instead of on you, and I'd rather walk in already knowing what you came here for.
+The intake form is part of onboarding too — complete it before your call with Noah. Four quick questions, so he walks in already knowing what you came here for instead of spending the call on discovery.
 https://tally.so/r/KYEgkX
 
 * Complete "THE LEADER WITHIN" protocol — lays the foundation before we build anything
