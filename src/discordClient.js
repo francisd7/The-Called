@@ -22,5 +22,10 @@ export function createDiscordClient(botToken) {
     await channel.send(message);
   }
 
-  return { client, ready, sendToChannel };
+  async function sendDM(userId, message) {
+    const user = await client.users.fetch(userId);
+    await user.send(message);
+  }
+
+  return { client, ready, sendToChannel, sendDM };
 }

@@ -21,35 +21,38 @@ lives in.
 Both are pure notifications: no branching, no new Airtable fields, nothing to
 match.
 
-## In progress: Weekly Check-in reminder DMs (#3)
+## Weekly Check-in reminder DMs (#3) — built, gated off by default
 
-Not live yet — no code path sends a real DM to a client. What's built so far:
+Every Friday at a configurable time (default noon ET), DMs every `Status =
+Active` client with a Discord ID on file: "Hey [First Name], time for your
+Weekly Check-in — [prefilled link]". Two independent skip conditions, both
+logged in a run summary posted to `DISCORD_WEEKLY_CHECKIN_CHANNEL_ID`, not
+failed silently:
 
-- A **Discord ID** field on the Clients table (`The Called — Client Success`
-  base), for matching a client to their Discord account. Blank = permanently
-  skipped, no reminder ever, until it's filled in.
-- A **Skip Weekly Reminder** checkbox on the same table, for explicitly
-  opting a client out even once they have a Discord ID on file (e.g. once the
-  future new-member onboarding automation starts auto-populating it for
-  other reasons). This always wins over having a Discord ID.
-- `src/reminders/weeklyCheckinReminder.js`: figures out, for every client with
-  `Status = Active`, whether they'd get a reminder DM, or get skipped and
-  logged — with the specific reason (opted out vs. no Discord ID) — the exact
-  branch the blueprint calls for.
-- `scripts/run-weekly-checkin-reminder-dry-run.js`: a **dry-run-only** script —
-  it has no code path that sends a real DM — that posts what *would* happen to
-  a test channel you control, so this can be tested safely before anything
-  goes near real clients. Run it with:
-  ```
-  npm run weekly-reminder-dry-run
-  ```
-  (needs `DISCORD_BOT_TOKEN`, `AIRTABLE_PAT`, and `DISCORD_TEST_CHANNEL_ID` set,
-  e.g. in a local `.env`)
+- **`Discord ID`** blank on the Clients table (`The Called — Client Success`
+  base) → skipped until it's filled in.
+- **`Skip Weekly Reminder`** checked on the same table → permanently
+  skipped even once a Discord ID exists (e.g. once the future new-member
+  onboarding automation starts auto-populating Discord ID for other
+  reasons) — this always wins over having a Discord ID.
 
-Still needed before this can go live: the Friday send time, backfilling
-Discord IDs for current clients, and wiring an actual send path + schedule
-into the always-on server (`src/index.js`) — none of that exists yet on
-purpose, until dry runs look right.
+**This does not send real DMs until you explicitly turn it on.** Set these
+env vars on the host to go live:
+
+| Variable | Required to go live | Notes |
+|---|---|---|
+| `WEEKLY_REMINDER_ENABLED` | Yes | Must be exactly `true` (string). This is the on/off switch — everything else about #3 already exists in code either way. |
+| `WEEKLY_REMINDER_HOUR_ET` | No | Defaults to `12` (noon). 24-hour, America/New_York (handles EST/EDT automatically). |
+| `WEEKLY_REMINDER_MINUTE_ET` | No | Defaults to `0`. |
+
+Before flipping that switch, you can still dry-run it as many times as you
+want with `scripts/run-weekly-checkin-reminder-dry-run.js` — it has no code
+path that can send a real DM, and posts to a test channel instead:
+```
+npm run weekly-reminder-dry-run
+```
+(needs `DISCORD_BOT_TOKEN`, `AIRTABLE_PAT`, and `DISCORD_TEST_CHANNEL_ID` set,
+e.g. in a local `.env`)
 
 Not built yet at all: the new-member onboarding flow (#4 in the blueprint) —
 blocked on onboarding message copy from a human. See `docs/STATUS.md` for

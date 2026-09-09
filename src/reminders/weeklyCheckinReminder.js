@@ -2,10 +2,16 @@
 export const CLIENTS_TABLE_ID = 'tblrIOcPpSfDQaHfj';
 export const ACTIVE_CLIENTS_FORMULA = "{Status} = 'Active'";
 
+export function firstNameOf(fullName) {
+  const trimmed = (fullName ?? '').trim();
+  if (!trimmed) return 'there';
+  return trimmed.split(/\s+/)[0];
+}
+
 export function formatReminderMessage(fields) {
-  const clientName = fields['Client Name'] ?? 'there';
+  const firstName = firstNameOf(fields['Client Name']);
   const link = fields['Weekly Check-in Link'] ?? '';
-  return `Hey ${clientName}, time for your Weekly Check-in — ${link}`;
+  return `Hey ${firstName}, time for your Weekly Check-in — ${link}`;
 }
 
 // Splits active clients into who'd get a DM and who'd be skipped - matches
