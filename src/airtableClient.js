@@ -41,5 +41,26 @@ export function createAirtableClient(personalAccessToken) {
     });
   }
 
-  return { listRecords, listRecordsCreatedAfter };
+  // First write path this hub has needed - #1/#2/#3 only ever read. The
+  // AIRTABLE_PAT must include the data.records:write scope for this to work.
+  async function updateRecord(baseId, tableId, recordId, fields) {
+    const url = `${AIRTABLE_API_BASE}/${baseId}/${tableId}/${recordId}`;
+    const response = await fetch(url, {
+      method: 'PATCH',
+      headers: {
+        Authorization: `Bearer ${personalAccessToken}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ fields }),
+    });
+
+    if (!response.ok) {
+      const body = await response.text();
+      throw new Error(`Airtable update record failed (${response.status}): ${body}`);
+    }
+
+    return response.json();
+  }
+
+  return { listRecords, listRecordsCreatedAfter, updateRecord };
 }

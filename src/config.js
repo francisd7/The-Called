@@ -20,6 +20,15 @@ export const config = {
   weeklyReminderEnabled: process.env.WEEKLY_REMINDER_ENABLED === 'true',
   weeklyReminderHourEt: numberOrDefault(process.env.WEEKLY_REMINDER_HOUR_ET, 12),
   weeklyReminderMinuteEt: numberOrDefault(process.env.WEEKLY_REMINDER_MINUTE_ET, 0),
+  // Same off-by-default gate as weeklyReminderEnabled - this is the switch
+  // between "code exists" and "real Discord channels get created for real
+  // new members." Must be explicitly set to the string "true".
+  newMemberOnboardingEnabled: process.env.NEW_MEMBER_ONBOARDING_ENABLED === 'true',
+  clientGuildId: process.env.DISCORD_CLIENT_GUILD_ID,
+  onboardingCsmRoleId: process.env.DISCORD_CSM_ROLE_ID,
+  onboardingFlagChannelId:
+    process.env.DISCORD_ONBOARDING_FLAG_CHANNEL_ID || process.env.DISCORD_WEEKLY_CHECKIN_CHANNEL_ID,
+  notionDashboardUrl: process.env.NOTION_DASHBOARD_URL || '',
 };
 
 export function assertRequiredConfig() {

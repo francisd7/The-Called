@@ -14,10 +14,12 @@ build status: [`docs/STATUS.md`](docs/STATUS.md).
 | Setter EOD → Discord | New record in **Setter EOD** (`EOD Reports` base) | Posts "📋 **[Setter Name]** submitted their EOD report — [Date]" to the `DISCORD_SETTER_EOD_CHANNEL_ID` channel |
 | Weekly Check-in → Discord | New record in **Weekly Check-ins** (`Client Success` base) | Posts "✅ **[Client Name]** submitted their Weekly Check-in — Momentum: [X]/10" to the `DISCORD_WEEKLY_CHECKIN_CHANNEL_ID` channel |
 | Weekly Check-in reminder DMs | Every Friday, `WEEKLY_REMINDER_HOUR_ET`:`WEEKLY_REMINDER_MINUTE_ET` ET (default noon) | DMs every `Status = Active` Client with a Discord ID and no opt-out: "Hey [First Name], time for your Weekly Check-in — [prefilled link]". Posts a send/skip summary to `DISCORD_WEEKLY_CHECKIN_CHANNEL_ID` right after. |
+| New-member onboarding | Someone joins the client-facing Discord server (`DISCORD_CLIENT_GUILD_ID`) | Creates a private `firstname-lastname` channel (visible to them, the bot, and the CSM role), posts the welcome message, then waits for their reply. A reply that looks like an email is matched against the Clients table's `Email` field — matched → writes their Discord ID back to that record; no match → tells them a team member will follow up, and flags it in `DISCORD_ONBOARDING_FLAG_CHANNEL_ID`. |
 
 The first two notifications go to separate Discord channels (and can be in
 separate servers) — the bot just needs to be a member of whichever server
-each channel lives in. All three are live as of 2026-09-09.
+each channel lives in. First three automations are live as of 2026-09-09;
+new-member onboarding is built but gated off by default (see below).
 
 ## Weekly Check-in reminder DMs — how skipping works
 
@@ -47,10 +49,47 @@ npm run weekly-reminder-dry-run
 (needs `DISCORD_BOT_TOKEN`, `AIRTABLE_PAT`, and `DISCORD_TEST_CHANNEL_ID` set,
 e.g. in a local `.env`)
 
-## Not built yet
+## New-member onboarding — built, gated off by default
 
-The new-member onboarding flow (#4 in the blueprint) — blocked on onboarding
-message copy from a human. See `docs/STATUS.md` for full status.
+Gated by `NEW_MEMBER_ONBOARDING_ENABLED` (unset/false by default — no channel
+gets created, no message gets sent, until this is explicitly `true`). Once
+enabled:
+
+| Variable | Required to go live | Notes |
+|---|---|---|
+| `NEW_MEMBER_ONBOARDING_ENABLED` | Yes | Must be exactly `true` (string). |
+| `DISCORD_CLIENT_GUILD_ID` | Yes | The client-facing server's ID — right-click the server icon (Developer Mode on) → **Copy Server ID**. Only joins in this server trigger it. |
+| `DISCORD_CSM_ROLE_ID` | Yes | The CSM role that can see every onboarding channel, alongside the new member and the bot itself. |
+| `DISCORD_ONBOARDING_FLAG_CHANNEL_ID` | No | Where an unmatched email gets flagged. Defaults to `DISCORD_WEEKLY_CHECKIN_CHANNEL_ID`. |
+| `NOTION_DASHBOARD_URL` | No | Defaults to a literal `[Insert Link]` placeholder in the welcome message until set. |
+
+Two **Privileged Gateway Intents** must be turned on in the Discord Developer
+Portal (Bot tab) before this works — **Server Members Intent** (to detect a
+join) and **Message Content Intent** (to read their reply). The server only
+requests these intents at all once `NEW_MEMBER_ONBOARDING_ENABLED=true`, so
+forgetting this step doesn't break the other three (already-live) automations
+— it just makes this one fail to log in until both are on.
+
+The bot also needs standing **Manage Channels** in the client server (Server
+Settings → Roles → the bot's role) to create channels on an ongoing basis —
+this is different from the temporary Administrator trick used for the
+one-time `grant-bot-channel-access` script; here it needs to stay on.
+
+**The Airtable token needs write access now.** #1–#3 only ever read, so
+`AIRTABLE_PAT` was scoped to `data.records:read` only. Writing the matched
+client's Discord ID back requires `data.records:write` too — add that scope
+to the existing token (or issue a new one) before enabling this.
+
+Design notes:
+- Channel name is the member's Discord display name, slugified
+  (`Jack Garcia` → `jack-garcia`), with no parent category — avoids the
+  per-category permission lockouts hit earlier in this project.
+- The exact welcome message copy is in `src/onboarding/welcomeMessage.js`,
+  with one addition beyond what was provided: an appended line asking for the
+  email they purchased with, since nothing else in the flow can do the
+  Discord-to-Airtable matching without it.
+- Whop integration for auto-capturing email at purchase (instead of asking in
+  Discord) was considered and deliberately deferred — see `docs/STATUS.md`.
 
 ## How it works
 
@@ -75,7 +114,9 @@ Discord-side config beyond inviting the bot.
 ### 2. Create the Airtable Personal Access Token
 
 1. [airtable.com/create/tokens](https://airtable.com/create/tokens) → **Create token**.
-2. Scope: `data.records:read` only — this server never writes to Airtable.
+2. Scope: `data.records:read`, and `data.records:write` too if you're enabling
+   new-member onboarding (it writes the matched client's Discord ID back —
+   #1-#3 never write, so read-only is fine if that's all you're running).
 3. Access: add both the **EOD Reports** base and **The Called — Client Success** base.
 4. Copy the token — this is `AIRTABLE_PAT`.
 
@@ -162,13 +203,22 @@ npm test                 # unit tests — no live credentials needed
 ```
 src/
   config.js            env var loading + validation
-  airtableClient.js    Airtable REST API (list records created after a timestamp)
-  discordClient.js     Discord bot login + "send message to channel"
+  airtableClient.js    Airtable REST API (list + update records)
+  discordClient.js     Discord bot login + send-to-channel / DM / create-channel
   state.js             read/write the JSON watermark file
   poller.js            generic "poll -> notify -> advance watermark" loop
   automations/
     setterEod.js        Setter EOD -> Discord message
     weeklyCheckin.js     Weekly Check-in -> Discord message
+  reminders/
+    weeklyCheckinReminder.js       who gets a reminder DM, and the message
+    schedule.js                     DST-aware "is it Friday at HH:MM ET" helpers
+    sendWeeklyCheckinReminders.js   the real send path
+  onboarding/
+    channelName.js       display name -> Discord-safe channel name
+    email.js              email-shaped-text detection + normalization
+    welcomeMessage.js     the welcome message template
+    newMemberOnboarding.js  wires the Discord join/reply event listeners
   index.js              wires it all together, starts the poller + express server
 test/                  unit tests (node:test, no network calls)
 docs/

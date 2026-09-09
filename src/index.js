@@ -1,3 +1,4 @@
+import { GatewayIntentBits } from 'discord.js';
 import express from 'express';
 import { config, assertRequiredConfig } from './config.js';
 import { createAirtableClient } from './airtableClient.js';
@@ -8,6 +9,7 @@ import * as setterEod from './automations/setterEod.js';
 import * as weeklyCheckin from './automations/weeklyCheckin.js';
 import { isTargetMinute, getLocalDateString } from './reminders/schedule.js';
 import { sendWeeklyCheckinReminders } from './reminders/sendWeeklyCheckinReminders.js';
+import { registerNewMemberOnboarding } from './onboarding/newMemberOnboarding.js';
 
 const WEEKLY_REMINDER_TIMEZONE = 'America/New_York';
 const WEEKLY_REMINDER_WEEKDAY = 'Fri';
@@ -16,8 +18,20 @@ const WEEKLY_REMINDER_STATE_KEY = 'weeklyCheckinReminderLastRunDate';
 async function main() {
   assertRequiredConfig();
 
+  if (config.newMemberOnboardingEnabled && (!config.clientGuildId || !config.onboardingCsmRoleId)) {
+    throw new Error(
+      'NEW_MEMBER_ONBOARDING_ENABLED is true but DISCORD_CLIENT_GUILD_ID or DISCORD_CSM_ROLE_ID is missing'
+    );
+  }
+
   const airtableClient = createAirtableClient(config.airtablePat);
-  const discord = createDiscordClient(config.discordBotToken);
+  // GuildMembers/MessageContent are privileged intents - only request them
+  // once onboarding is actually enabled, so this never breaks login for the
+  // rest of the hub before those portal toggles are turned on.
+  const extraIntents = config.newMemberOnboardingEnabled
+    ? [GatewayIntentBits.GuildMembers, GatewayIntentBits.GuildMessages, GatewayIntentBits.MessageContent]
+    : [];
+  const discord = createDiscordClient(config.discordBotToken, { extraIntents });
 
   const state = await loadState(config.stateFilePath);
   const saveState = (s) => persistState(config.stateFilePath, s);
@@ -94,6 +108,21 @@ async function main() {
     }
   }
   setInterval(runWeeklyReminderCheckCycle, 60_000);
+
+  if (config.newMemberOnboardingEnabled) {
+    registerNewMemberOnboarding({
+      discord,
+      airtableClient,
+      clientGuildId: config.clientGuildId,
+      clientSuccessBaseId: config.clientSuccessBaseId,
+      csmRoleId: config.onboardingCsmRoleId,
+      flagChannelId: config.onboardingFlagChannelId,
+      notionDashboardUrl: config.notionDashboardUrl,
+      state,
+      saveState,
+    });
+    console.log('New-member onboarding automation registered.');
+  }
 
   const app = express();
   app.get('/', (req, res) => res.send('The Called — Automation Hub is running.'));
