@@ -26,10 +26,16 @@ match.
 Not live yet — no code path sends a real DM to a client. What's built so far:
 
 - A **Discord ID** field on the Clients table (`The Called — Client Success`
-  base), for matching a client to their Discord account.
+  base), for matching a client to their Discord account. Blank = permanently
+  skipped, no reminder ever, until it's filled in.
+- A **Skip Weekly Reminder** checkbox on the same table, for explicitly
+  opting a client out even once they have a Discord ID on file (e.g. once the
+  future new-member onboarding automation starts auto-populating it for
+  other reasons). This always wins over having a Discord ID.
 - `src/reminders/weeklyCheckinReminder.js`: figures out, for every client with
-  `Status = Active`, whether they'd get a reminder DM (has a Discord ID) or get
-  skipped and logged (doesn't) — the exact branch the blueprint calls for.
+  `Status = Active`, whether they'd get a reminder DM, or get skipped and
+  logged — with the specific reason (opted out vs. no Discord ID) — the exact
+  branch the blueprint calls for.
 - `scripts/run-weekly-checkin-reminder-dry-run.js`: a **dry-run-only** script —
   it has no code path that sends a real DM — that posts what *would* happen to
   a test channel you control, so this can be tested safely before anything

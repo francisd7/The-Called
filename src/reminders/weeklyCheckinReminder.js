@@ -8,9 +8,12 @@ export function formatReminderMessage(fields) {
   return `Hey ${clientName}, time for your Weekly Check-in — ${link}`;
 }
 
-// Splits active clients into who'd get a DM and who'd be skipped (no Discord
-// ID on file yet) - matches the blueprint's "skip and log it, don't fail
-// silently" branch for automation #3.
+// Splits active clients into who'd get a DM and who'd be skipped - matches
+// the blueprint's "skip and log it, don't fail silently" branch. A client is
+// skipped for one of two independent reasons: "Skip Weekly Reminder" is
+// checked (an explicit, permanent opt-out that wins even if a Discord ID is
+// on file - e.g. once auto-populated by the future new-member onboarding
+// automation), or there's simply no Discord ID on file yet.
 export function buildReminderPlan(records) {
   const toSend = [];
   const skipped = [];
@@ -18,8 +21,13 @@ export function buildReminderPlan(records) {
   for (const record of records) {
     const fields = record.fields ?? {};
     const clientName = fields['Client Name'] ?? record.id;
-    const discordId = typeof fields['Discord ID'] === 'string' ? fields['Discord ID'].trim() : '';
 
+    if (fields['Skip Weekly Reminder'] === true) {
+      skipped.push({ clientName, reason: 'opted out' });
+      continue;
+    }
+
+    const discordId = typeof fields['Discord ID'] === 'string' ? fields['Discord ID'].trim() : '';
     if (!discordId) {
       skipped.push({ clientName, reason: 'no Discord ID on file' });
       continue;
@@ -29,6 +37,18 @@ export function buildReminderPlan(records) {
   }
 
   return { toSend, skipped };
+}
+
+function formatGroup(label, items) {
+  const lines = [`${label} (${items.length}):`];
+  if (items.length === 0) {
+    lines.push('  (none)');
+  } else {
+    for (const item of items) {
+      lines.push(`• ${item.clientName}`);
+    }
+  }
+  return lines;
 }
 
 export function formatDryRunSummary(plan) {
@@ -43,14 +63,11 @@ export function formatDryRunSummary(plan) {
     }
   }
 
-  lines.push('', `Skipped, no Discord ID on file (${plan.skipped.length}):`);
-  if (plan.skipped.length === 0) {
-    lines.push('  (none)');
-  } else {
-    for (const item of plan.skipped) {
-      lines.push(`• ${item.clientName}`);
-    }
-  }
+  const noDiscordId = plan.skipped.filter((item) => item.reason === 'no Discord ID on file');
+  const optedOut = plan.skipped.filter((item) => item.reason === 'opted out');
+
+  lines.push('', ...formatGroup('Skipped, no Discord ID on file', noDiscordId));
+  lines.push('', ...formatGroup('Skipped, opted out (Skip Weekly Reminder checked)', optedOut));
 
   return lines.join('\n');
 }

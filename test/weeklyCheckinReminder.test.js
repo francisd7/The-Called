@@ -45,14 +45,36 @@ test('buildReminderPlan splits clients with and without a Discord ID', () => {
   assert.match(plan.toSend[0].message, /^Hey Has ID, time for your Weekly Check-in/);
 
   assert.deepEqual(
-    plan.skipped.map((s) => s.clientName),
-    ['No ID', 'Blank ID']
+    plan.skipped.map((s) => ({ clientName: s.clientName, reason: s.reason })),
+    [
+      { clientName: 'No ID', reason: 'no Discord ID on file' },
+      { clientName: 'Blank ID', reason: 'no Discord ID on file' },
+    ]
   );
 });
 
-test('formatDryRunSummary lists both groups, with a "(none)" fallback', () => {
+test('buildReminderPlan: "Skip Weekly Reminder" wins even when a Discord ID is on file', () => {
+  const records = [
+    {
+      id: 'rec1',
+      fields: {
+        'Client Name': 'Opted Out',
+        'Discord ID': '123456789012345678',
+        'Skip Weekly Reminder': true,
+      },
+    },
+  ];
+
+  const plan = buildReminderPlan(records);
+
+  assert.equal(plan.toSend.length, 0);
+  assert.deepEqual(plan.skipped, [{ clientName: 'Opted Out', reason: 'opted out' }]);
+});
+
+test('formatDryRunSummary lists all three groups, with a "(none)" fallback', () => {
   const summary = formatDryRunSummary({ toSend: [], skipped: [] });
   assert.match(summary, /DRY RUN/);
   assert.match(summary, /Would send \(0\):\n {2}\(none\)/);
   assert.match(summary, /no Discord ID on file \(0\):\n {2}\(none\)/);
+  assert.match(summary, /opted out \(Skip Weekly Reminder checked\) \(0\):\n {2}\(none\)/);
 });
