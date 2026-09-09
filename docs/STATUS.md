@@ -4,15 +4,22 @@ Tracks progress against the build priority in `Automation_Hub_Blueprint.md`.
 
 | # | Automation | Status | Notes |
 |---|---|---|---|
-| 1 | Setter EOD → Discord | ✅ Built | Polls `Setter EOD` (EOD Reports base) on `POLL_INTERVAL_MS`, posts to `DISCORD_SETTER_EOD_CHANNEL_ID`. |
-| 2 | Weekly Check-in → Discord | ✅ Built | Polls `Weekly Check-ins` (Client Success base) the same way, posts to `DISCORD_WEEKLY_CHECKIN_CHANNEL_ID` (a separate channel/server from #1, at the user's request). |
+| 1 | Setter EOD → Discord | ✅ Live | Deployed to Railway, verified end-to-end: a real Setter EOD submission posted to `DISCORD_SETTER_EOD_CHANNEL_ID`. |
+| 2 | Weekly Check-in → Discord | ✅ Live | Deployed to Railway, verified end-to-end: a real Weekly Check-in submission posted to `DISCORD_WEEKLY_CHECKIN_CHANNEL_ID` (a separate channel/server from #1, at the user's request). |
 | 3 | Discord ID field + Friday reminder DMs | ⛔ Not started | Needs the Friday send time decided, plus a manual backfill of Discord ID for the 9 current clients before it can go live. |
 | 4 | New-member onboarding flow | ⛔ Not started | Blocked on the onboarding message copy/sequence and a decision on who besides the client sees the private channel. |
 
-Deployment (Railway/Render account + env vars) is a manual, one-time step outside
-Claude Code — see `README.md`. Nothing in this repo has been deployed yet; #1 and
-#2 are code-complete and unit-tested but not running against live Discord/Airtable
-credentials.
+Deployed on Railway (Hobby plan — chosen over Render because this service runs
+continuously in the background and Render's free tier spins down idle services,
+which would have silently killed the poller/bot connection). Both automations
+were confirmed live on 2026-09-09 by creating a real record in each Airtable
+table and watching the Discord message arrive.
+
+One setup wrinkle worth knowing for #3/#4: both Discord servers lock channels
+down per-category, so inviting the bot didn't grant it visibility into private
+channels (`DiscordAPIError[50001]: Missing Access`). Fixed once with
+`scripts/grant-bot-channel-access.js` — see the README section on it. Any
+*new* category created later will need the same one-time grant repeated.
 
 ## How #1 and #2 work
 
