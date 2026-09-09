@@ -2,16 +2,17 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { formatWelcomeMessage } from '../src/onboarding/welcomeMessage.js';
 
-test('includes the member mention and both team mentions', () => {
+test('includes the member mention and all three team mentions', () => {
   const message = formatWelcomeMessage({ memberMention: '<@999>', notionDashboardUrl: '' });
   assert.match(message, /^<@999> — welcome to The Called/);
   assert.match(message, /<@414934911724552202>/); // Noah
   assert.match(message, /<@491021691367981056>/); // Andrew
+  assert.match(message, /<@584241323981406221>/); // Francis
 });
 
 test('appends the email ask', () => {
   const message = formatWelcomeMessage({ memberMention: '<@999>', notionDashboardUrl: '' });
-  assert.match(message, /reply here with the \*\*email address you purchased with\*\*/);
+  assert.match(message, /reply here with your \*\*email address\*\*/);
 });
 
 test('uses a placeholder when no Notion link is configured', () => {
