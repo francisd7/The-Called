@@ -14,7 +14,7 @@ build status: [`docs/STATUS.md`](docs/STATUS.md).
 | Setter EOD → Discord | New record in **Setter EOD** (`EOD Reports` base) | Posts "📋 **[Setter Name]** submitted their EOD report — [Date]" to the `DISCORD_SETTER_EOD_CHANNEL_ID` channel |
 | Weekly Check-in → Discord | New record in **Weekly Check-ins** (`Client Success` base) | Posts "✅ **[Client Name]** submitted their Weekly Check-in — Momentum: [X]/10" to the `DISCORD_WEEKLY_CHECKIN_CHANNEL_ID` channel |
 | Weekly Check-in reminder DMs | Every Friday, `WEEKLY_REMINDER_HOUR_ET`:`WEEKLY_REMINDER_MINUTE_ET` ET (default noon) | DMs every `Status = Active` Client with a Discord ID and no opt-out: "Hey [First Name], time for your Weekly Check-in — [prefilled link]". Posts a send/skip summary to `DISCORD_WEEKLY_CHECKIN_CHANNEL_ID` right after. |
-| New-member onboarding | Someone joins the client-facing Discord server (`DISCORD_CLIENT_GUILD_ID`) | Creates a private `firstname-lastname` channel (visible to them, the bot, and the CSM role), posts the welcome message, then waits for their reply. A reply that looks like an email is matched against the Clients table's `Email` field — matched → writes their Discord ID back to that record; no match → tells them a team member will follow up, and flags it in `DISCORD_ONBOARDING_FLAG_CHANNEL_ID`. |
+| New-member onboarding | Someone joins the client-facing Discord server (`DISCORD_CLIENT_GUILD_ID`) | Creates a private `firstname-lastname` channel (visible to them, the bot, and the CSM role), posts the welcome message, then waits for their reply. A reply that looks like an email is matched against the Clients table's `Email` field — matched → writes their Discord ID back immediately; no match → flags it in `DISCORD_ONBOARDING_FLAG_CHANNEL_ID` and keeps retrying on the regular poll cycle, so the link completes automatically once staff creates that client's record (a brand-new signup usually has no Airtable record yet at join time — the retry is what makes this actually work for new members, not just backfilled ones). |
 
 The first two notifications go to separate Discord channels (and can be in
 separate servers) — the bot just needs to be a member of whichever server
@@ -90,6 +90,14 @@ Design notes:
   Discord-to-Airtable matching without it.
 - Whop integration for auto-capturing email at purchase (instead of asking in
   Discord) was considered and deliberately deferred — see `docs/STATUS.md`.
+- An unmatched email doesn't dead-end: it's queued in `data/state.json` and
+  re-checked on every poll cycle (`retryPendingEmailLinks` in
+  `newMemberOnboarding.js`) until a matching Client record shows up, at which
+  point the Discord ID gets linked automatically and the client gets notified
+  in their onboarding channel. This exists because a brand-new signup's
+  Airtable record usually doesn't exist yet at the moment they join Discord —
+  staff logs the sale by hand, often afterward — so a same-message match is
+  the exception, not the rule, for genuinely new clients.
 
 ## How it works
 

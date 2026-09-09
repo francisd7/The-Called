@@ -9,7 +9,7 @@ import * as setterEod from './automations/setterEod.js';
 import * as weeklyCheckin from './automations/weeklyCheckin.js';
 import { isTargetMinute, getLocalDateString } from './reminders/schedule.js';
 import { sendWeeklyCheckinReminders } from './reminders/sendWeeklyCheckinReminders.js';
-import { registerNewMemberOnboarding } from './onboarding/newMemberOnboarding.js';
+import { registerNewMemberOnboarding, retryPendingEmailLinks } from './onboarding/newMemberOnboarding.js';
 
 const WEEKLY_REMINDER_TIMEZONE = 'America/New_York';
 const WEEKLY_REMINDER_WEEKDAY = 'Fri';
@@ -122,6 +122,26 @@ async function main() {
       saveState,
     });
     console.log('New-member onboarding automation registered.');
+
+    let isRetryingPendingLinks = false;
+    async function runPendingEmailLinkRetryCycle() {
+      if (isRetryingPendingLinks) return;
+      isRetryingPendingLinks = true;
+      try {
+        await retryPendingEmailLinks({
+          airtableClient,
+          discord,
+          clientSuccessBaseId: config.clientSuccessBaseId,
+          state,
+          saveState,
+        });
+      } catch (err) {
+        console.error('Pending email link retry failed:', err);
+      } finally {
+        isRetryingPendingLinks = false;
+      }
+    }
+    setInterval(runPendingEmailLinkRetryCycle, config.pollIntervalMs);
   }
 
   const app = express();
