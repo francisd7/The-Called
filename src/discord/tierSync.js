@@ -108,9 +108,16 @@ export function registerTierSync({
         newMember.id
       );
 
-      if (client) {
+      if (client && change.direction === REMOVED) {
+        // Losing the tier role means losing access, not un-buying the
+        // program - someone finishing and becoming a Veteran is the normal
+        // path here. Blanking Package / Tier would destroy the record of
+        // what they actually paid for, so the tier stays and only Status
+        // (which this never touches) should change.
+        warning = 'Tier role removed — Package / Tier left as-is in Airtable to preserve history.';
+      } else if (client) {
         await airtableClient.updateRecord(clientSuccessBaseId, CLIENTS_TABLE_ID, client.id, {
-          'Package / Tier': change.to?.airtableValue ?? '',
+          'Package / Tier': change.to.airtableValue,
         });
       } else {
         // Not a blocker: the role change still stands and access is already

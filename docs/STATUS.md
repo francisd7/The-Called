@@ -44,20 +44,34 @@ Tracks progress against the build priority in `Automation_Hub_Blueprint.md`.
   brand's category, so nobody encounters two `#recordings`.
 - **SETTING and SALES open at Momentum, for both brands** — not coaches-only.
 
+- **Bot output lives in the ops server.** The EOD feed is already there, and
+  onboarding flags plus the tier-change audit log now go to
+  `DISCORD_OPS_NOTIFICATIONS_CHANNEL_ID` (defaults to `1547339220840882306`)
+  rather than the client server. The client server's `STAFF` category is
+  therefore just `#staff-general`. **The bot must be a member of the ops
+  server** for any of this to send.
+- **Veterans are assigned by hand and stay out of Airtable**, per the user:
+  creating Client records for people the CSMs have never spoken to would
+  just confuse them. Nothing reconciles the `Veteran` role against Airtable,
+  by design.
+
 ### #5 — still open
 
-- **Is `#eod-feed` in this server or the ops server?**
-  `DISCORD_SETTER_EOD_CHANNEL_ID` may point at the other one; the structure
-  config assumes this one.
 - **Housekeeping** — Nick Martinez has `CSM = Unassigned`; Liam McCormack and
   Nathan Soriano have blank `Contract Value`; the `testing` record from the
   2026-09-09 onboarding test should be deleted.
-- **Veterans have no Airtable records.** The people in 💪 don't appear in the
-  Clients table in any status, so there is nothing to reconcile the `Veteran`
-  role against — it has to be assigned by hand for now.
 - **Nothing has been applied to the live server yet.** No Discord token was
   available in the build environment, so the structure config is verified by
   tests only. The first live run must be without `--apply`.
+
+### A bug caught while wiring Veterans
+
+`tierSync` originally wrote an empty `Package / Tier` whenever a tier role
+was removed. That is the exact path a client takes when they finish and
+become a Veteran — so it would have quietly destroyed the record of what
+every graduating client had paid for. Removal now leaves the tier alone and
+logs that it did; `Status` is the field that should change, and tier sync
+never touches it.
 
 ### Correction to #3's note
 

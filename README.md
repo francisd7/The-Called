@@ -61,6 +61,30 @@ Pods are no longer used, so the config declares nothing about them. The apply
 script never deletes, so the existing pod channels stay untouched in Discord
 until someone archives them by hand.
 
+### Where the bot's output goes
+
+Everything the bot needs a human to look at — onboarding flags it couldn't
+resolve, and the tier-change audit log — posts to
+`DISCORD_OPS_NOTIFICATIONS_CHANNEL_ID` in the **ops server**, not the client
+server. Staff work there, clients are here, and splitting bot output across
+both would mean watching two places. The EOD feed already lives there too.
+
+**The bot has to be a member of the ops server** for any of this to send.
+`DISCORD_ONBOARDING_FLAG_CHANNEL_ID` and `DISCORD_TIER_CHANGES_CHANNEL_ID`
+both default to that channel and can be split out later if the audit log
+wants its own.
+
+The client server's `STAFF` category therefore holds only `#staff-general`.
+
+### One thing tier sync deliberately will not do
+
+Removing someone's tier role — the normal path when a client finishes and
+becomes a Veteran — **does not blank their `Package / Tier` in Airtable.**
+Losing Discord access doesn't un-buy the program, and blanking it would
+destroy the record of what they actually paid for. The change is logged with
+a note saying the tier was left alone; `Status` is what should change, and
+tier sync never touches that.
+
 Two things worth knowing before touching permissions:
 
 - **`@everyone` has View Channel off at the server level.** Access is opt-in

@@ -1,11 +1,13 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import EventEmitter from 'node:events';
 import {
   hasTierRoleChange,
   detectTierChange,
   formatTierChangeMessage,
   findClientByDiscordId,
   pickClientChannel,
+  registerTierSync,
   UPSELL,
   DOWNGRADE,
   ASSIGNED,
@@ -17,7 +19,7 @@ test('a change to non-tier roles is not a tier change', () => {
     hasTierRoleChange(['Tier: Momentum'], ['Tier: Momentum', 'First Client Closed']),
     false
   );
-  assert.equal(detectTierChange(['Tier: Momentum'], ['Tier: Momentum', 'Alumni']), null);
+  assert.equal(detectTierChange(['Tier: Momentum'], ['Tier: Momentum', 'Veteran']), null);
 });
 
 test('moving up the ladder reads as an upsell', () => {
@@ -128,4 +130,104 @@ test('an overwrite on a shared channel is not mistaken for a private one', () =>
 test('pickClientChannel copes with channels that have no overwrites', () => {
   const channels = [{ id: 'c1', parentId: 'catFoundations' }];
   assert.equal(pickClientChannel(channels, 'member1', ['catFoundations']), null);
+});
+
+function makeMember(roleNames, { id = 'member1', displayName = 'Karan Shah' } = {}) {
+  return {
+    id,
+    displayName,
+    user: { username: displayName },
+    roles: { cache: new Map(roleNames.map((name, i) => [String(i), { name }])) },
+    guild: {
+      id: 'guild1',
+      client: { user: { id: 'bot1' } },
+      channels: { cache: new Map() },
+      roles: { cache: { find: () => undefined } },
+    },
+  };
+}
+
+function makeHarness({ clientRecord = { id: 'recABC', fields: {} } } = {}) {
+  const client = new EventEmitter();
+  const sent = [];
+  const updates = [];
+  const discord = {
+    client,
+    sendToChannel: async (channelId, message) => sent.push({ channelId, message }),
+  };
+  const airtableClient = {
+    listRecords: async () => (clientRecord ? [clientRecord] : []),
+    updateRecord: async (baseId, tableId, recordId, fields) => updates.push({ recordId, fields }),
+  };
+  registerTierSync({
+    discord,
+    airtableClient,
+    clientGuildId: 'guild1',
+    clientSuccessBaseId: 'appXXX',
+    tierChangesChannelId: 'opsChan',
+    log: { info: () => {}, error: () => {} },
+  });
+  return { client, sent, updates };
+}
+
+const settle = () => new Promise((resolve) => setImmediate(resolve));
+
+test('an upsell writes the exact Airtable option name', async () => {
+  const h = makeHarness();
+  h.client.emit('guildMemberUpdate', makeMember(['Tier: Foundations']), makeMember(['Tier: Momentum']));
+  await settle();
+
+  assert.equal(h.updates.length, 1);
+  // Must be the literal select option, parenthetical included — Airtable
+  // rejects a value that isn't already an option.
+  assert.deepEqual(h.updates[0].fields, { 'Package / Tier': 'Momentum (Mid)' });
+  assert.equal(h.sent[0].channelId, 'opsChan');
+  assert.match(h.sent[0].message, /Foundations → Momentum/);
+});
+
+// Someone finishing the program and becoming a Veteran loses their tier
+// role. Blanking Package / Tier there would destroy the record of what they
+// actually paid for — the tier is history, not current access.
+test('removing a tier role never blanks the package in Airtable', async () => {
+  const h = makeHarness();
+  h.client.emit('guildMemberUpdate', makeMember(['Tier: Momentum']), makeMember(['Veteran']));
+  await settle();
+
+  assert.deepEqual(h.updates, [], 'nothing should be written on a removal');
+  assert.equal(h.sent.length, 1);
+  assert.match(h.sent[0].message, /Momentum → no tier/);
+  assert.match(h.sent[0].message, /left as-is in Airtable to preserve history/);
+});
+
+test('gaining the Veteran role on its own changes nothing at all', async () => {
+  const h = makeHarness();
+  h.client.emit(
+    'guildMemberUpdate',
+    makeMember(['Tier: Momentum']),
+    makeMember(['Tier: Momentum', 'Veteran'])
+  );
+  await settle();
+
+  assert.deepEqual(h.updates, []);
+  assert.deepEqual(h.sent, []);
+});
+
+test('a tier change for someone with no Airtable record is flagged, not silently dropped', async () => {
+  const h = makeHarness({ clientRecord: null });
+  h.client.emit('guildMemberUpdate', makeMember([]), makeMember(['Tier: Foundations']));
+  await settle();
+
+  assert.deepEqual(h.updates, []);
+  assert.match(h.sent[0].message, /No Airtable Client record matched/);
+});
+
+test('a change in another guild is ignored', async () => {
+  const h = makeHarness();
+  const other = makeMember(['Tier: Momentum']);
+  other.guild.id = 'someOtherGuild';
+  h.client.emit('guildMemberUpdate', makeMember(['Tier: Foundations']), other);
+  await settle();
+
+  assert.deepEqual(h.updates, []);
+  assert.deepEqual(h.sent, []);
 });

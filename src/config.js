@@ -26,8 +26,13 @@ export const config = {
   newMemberOnboardingEnabled: process.env.NEW_MEMBER_ONBOARDING_ENABLED === 'true',
   clientGuildId: process.env.DISCORD_CLIENT_GUILD_ID,
   onboardingCsmRoleId: process.env.DISCORD_CSM_ROLE_ID,
-  onboardingFlagChannelId:
-    process.env.DISCORD_ONBOARDING_FLAG_CHANNEL_ID || process.env.DISCORD_WEEKLY_CHECKIN_CHANNEL_ID,
+  // Where everything the bot needs a human to look at goes: onboarding flags
+  // it couldn't resolve, and the tier-change audit log. This lives in the
+  // ops server, not the client server - staff work there, clients are here,
+  // and splitting bot output across both would mean watching two places.
+  // The bot has to be a member of the ops server for these to send.
+  opsNotificationsChannelId:
+    process.env.DISCORD_OPS_NOTIFICATIONS_CHANNEL_ID || '1547339220840882306',
   notionDashboardUrl: process.env.NOTION_DASHBOARD_URL || '',
   // Maps each package's invite link to the roles it grants, as
   // `code=slotKey,code=slotKey`. Lives in an env var rather than
@@ -40,10 +45,17 @@ export const config = {
   // role change in Discord rewrites Package / Tier in Airtable - so this
   // stays off until the roles themselves are correct.
   tierSyncEnabled: process.env.TIER_SYNC_ENABLED === 'true',
-  // The audit log for those writes. Without it a mis-clicked role silently
-  // rewrites a billing record, so tier sync refuses to start without one.
-  tierChangesChannelId: process.env.DISCORD_TIER_CHANGES_CHANNEL_ID,
 };
+
+// Both of these default to the ops notifications channel. Overridable if the
+// audit log ever wants separating from the onboarding flags, but one channel
+// is the right default - it is where staff already look.
+config.onboardingFlagChannelId =
+  process.env.DISCORD_ONBOARDING_FLAG_CHANNEL_ID || config.opsNotificationsChannelId;
+// The audit trail for tier writes. Without it a mis-clicked role silently
+// rewrites a billing record, so tier sync refuses to start without one.
+config.tierChangesChannelId =
+  process.env.DISCORD_TIER_CHANGES_CHANNEL_ID || config.opsNotificationsChannelId;
 
 export function assertRequiredConfig() {
   const missing = [

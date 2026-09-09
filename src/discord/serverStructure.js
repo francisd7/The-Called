@@ -239,16 +239,15 @@ export const CATEGORIES = [
     channels: [{ name: '💪-chat', type: 'text' }],
   }),
 
+  // Bot output - tier-change audit lines, onboarding flags, the EOD and
+  // check-in feeds - all lives in the ops server, not here. Staff work there
+  // and clients are here, so declaring those channels in this server would
+  // just create empty duplicates and split staff attention across two
+  // places. See DISCORD_OPS_NOTIFICATIONS_CHANNEL_ID.
   category({
     name: 'STAFF',
     grants: ALL_STAFF_READ_WRITE,
-    channels: [
-      { name: 'staff-general', type: 'text' },
-      { name: 'tier-changes', type: 'text' },
-      { name: 'onboarding-flags', type: 'text' },
-      { name: 'checkin-feed', type: 'text' },
-      { name: 'eod-feed', type: 'text' },
-    ],
+    channels: [{ name: 'staff-general', type: 'text' }],
   }),
 ];
 
