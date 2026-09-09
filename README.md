@@ -19,9 +19,35 @@ servers) — the bot just needs to be a member of whichever server each channel
 lives in.
 
 Both are pure notifications: no branching, no new Airtable fields, nothing to
-match. Not built yet: the Friday reminder DMs and the new-member onboarding flow
-(#3 and #4 in the blueprint) — both are blocked on decisions only a human can make
-(see `docs/STATUS.md`).
+match.
+
+## In progress: Weekly Check-in reminder DMs (#3)
+
+Not live yet — no code path sends a real DM to a client. What's built so far:
+
+- A **Discord ID** field on the Clients table (`The Called — Client Success`
+  base), for matching a client to their Discord account.
+- `src/reminders/weeklyCheckinReminder.js`: figures out, for every client with
+  `Status = Active`, whether they'd get a reminder DM (has a Discord ID) or get
+  skipped and logged (doesn't) — the exact branch the blueprint calls for.
+- `scripts/run-weekly-checkin-reminder-dry-run.js`: a **dry-run-only** script —
+  it has no code path that sends a real DM — that posts what *would* happen to
+  a test channel you control, so this can be tested safely before anything
+  goes near real clients. Run it with:
+  ```
+  npm run weekly-reminder-dry-run
+  ```
+  (needs `DISCORD_BOT_TOKEN`, `AIRTABLE_PAT`, and `DISCORD_TEST_CHANNEL_ID` set,
+  e.g. in a local `.env`)
+
+Still needed before this can go live: the Friday send time, backfilling
+Discord IDs for current clients, and wiring an actual send path + schedule
+into the always-on server (`src/index.js`) — none of that exists yet on
+purpose, until dry runs look right.
+
+Not built yet at all: the new-member onboarding flow (#4 in the blueprint) —
+blocked on onboarding message copy from a human. See `docs/STATUS.md` for
+full status.
 
 ## How it works
 

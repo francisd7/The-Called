@@ -10,7 +10,8 @@
   "scripts": {
     "start": "node src/index.js",
     "test": "node --test",
-    "grant-bot-channel-access": "node scripts/grant-bot-channel-access.js"
+    "grant-bot-channel-access": "node scripts/grant-bot-channel-access.js",
+    "weekly-reminder-dry-run": "node scripts/run-weekly-checkin-reminder-dry-run.js"
   },
   "dependencies": {
     "discord.js": "^14.16.3",
