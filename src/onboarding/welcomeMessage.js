@@ -7,7 +7,10 @@ const ANDREW_CMO_MENTION = '<@491021691367981056>';
 const FRANCIS_COO_MENTION = '<@584241323981406221>';
 
 export function formatWelcomeMessage({ memberMention, notionDashboardUrl }) {
-  const dashboardLink = notionDashboardUrl?.trim() ? notionDashboardUrl.trim() : '[Insert Link]';
+  const trimmedUrl = notionDashboardUrl?.trim();
+  const dashboardLine = trimmedUrl
+    ? `Here is your Notion Dashboard: ${trimmedUrl}`
+    : 'You will get your Notion Dashboard shortly.';
 
   return `${memberMention} — welcome to The Called 🔥
 
@@ -18,12 +21,12 @@ ${NOAH_CSM_MENTION} is your CSM (Client Success Manager) — With an incredible 
 ${ANDREW_CMO_MENTION} is our CMO, he's behind the marketing and systems that power everything you'll be using here.
 I'm ${FRANCIS_COO_MENTION}, COO, I run the operations on the backend so your experience here runs the way it's supposed to. I also help with the DM Setting side of the business.
 
-Below are you first tasks and a short walkthrough video so you know exactly what to knock out. Get through both before you hop on your 1:1 onboarding call with Noah.
+Below are you first tasks so you know exactly what to knock out. Get through both before you hop on your 1:1 onboarding call with Noah.
 
 Let's get to work 📈
 
 ---
-Here is your Notion Dashboard: ${dashboardLink}
+${dashboardLine}
 * Complete "THE LEADER WITHIN" protocol — lays the foundation before we build anything
 * Complete "ONBOARDING SPRINT" — gets your first moves in motion
 

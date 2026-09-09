@@ -15,9 +15,14 @@ test('appends the email ask', () => {
   assert.match(message, /reply here with your \*\*email address\*\*/);
 });
 
-test('uses a placeholder when no Notion link is configured', () => {
+test('uses a "coming shortly" line when no Notion link is configured', () => {
   const message = formatWelcomeMessage({ memberMention: '<@999>', notionDashboardUrl: '' });
-  assert.match(message, /Here is your Notion Dashboard: \[Insert Link\]/);
+  assert.match(message, /You will get your Notion Dashboard shortly\./);
+});
+
+test('does not mention a walkthrough video (not made yet)', () => {
+  const message = formatWelcomeMessage({ memberMention: '<@999>', notionDashboardUrl: '' });
+  assert.doesNotMatch(message, /walkthrough video/i);
 });
 
 test('uses the real link once configured', () => {
