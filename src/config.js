@@ -29,6 +29,20 @@ export const config = {
   onboardingFlagChannelId:
     process.env.DISCORD_ONBOARDING_FLAG_CHANNEL_ID || process.env.DISCORD_WEEKLY_CHECKIN_CHANNEL_ID,
   notionDashboardUrl: process.env.NOTION_DASHBOARD_URL || '',
+  // Maps each package's invite link to the roles it grants, as
+  // `code=slotKey,code=slotKey`. Lives in an env var rather than
+  // data/state.json on purpose: state.json resets on hosts without a
+  // persistent disk, and losing this map would quietly drop every new
+  // joiner to no tier at all. `npm run discord-structure` prints the line
+  // to paste here after it creates the invites.
+  inviteRoleMap: process.env.DISCORD_INVITE_ROLE_MAP || '',
+  // Same off-by-default gate as the other two automations. Once true, a tier
+  // role change in Discord rewrites Package / Tier in Airtable - so this
+  // stays off until the roles themselves are correct.
+  tierSyncEnabled: process.env.TIER_SYNC_ENABLED === 'true',
+  // The audit log for those writes. Without it a mis-clicked role silently
+  // rewrites a billing record, so tier sync refuses to start without one.
+  tierChangesChannelId: process.env.DISCORD_TIER_CHANGES_CHANNEL_ID,
 };
 
 export function assertRequiredConfig() {

@@ -9,6 +9,52 @@ Tracks progress against the build priority in `Automation_Hub_Blueprint.md`.
 | 3 | Discord ID field + Friday reminder DMs | ✅ Live | `WEEKLY_REMINDER_ENABLED=true` set on Railway and confirmed on 2026-09-09; deployment stable. First real send: Friday 2026-09-11, 12:00 PM ET (`America/New_York`, DST-aware). 19 of 22 active clients backfilled with a Discord ID; Wylie Hawkins, Malachi Hardware, Patric Cocos have `Skip Weekly Reminder` checked (bible-study-only clients, no personal-branding access, confirmed with the user). Message: "Hey [First Name], time for your Weekly Check-in — [link]". Dry-run path (`npm run weekly-reminder-dry-run`) still available for testing future changes without risk. |
 | 4 | New-member onboarding flow | ✅ Live | Enabled on Railway and verified end-to-end on 2026-09-09 with a real test-account join: channel creation, permissions, welcome message (mentions rendering correctly), and the no-match path were confirmed working via a real join in the client server. Design went through two iterations after that first live test: (1) no-match originally just flagged staff and waited — the user pointed out a new signup's Airtable record essentially never exists yet at join time, so that path would have fired for almost every real new member; (2) briefly fixed with a retry-on-poll-cycle mechanism, then the user clarified they actually wanted the automation to create the starter Client record itself (Name, Email, Discord ID, Start Date, Status Active) rather than wait on staff — so it does that now, and the retry mechanism was removed as unnecessary. Flag channel is a dedicated channel (`DISCORD_ONBOARDING_FLAG_CHANNEL_ID`), not the Weekly Check-in channel, per the user's request after seeing the first test flag land there. Team "new member joined" notification explicitly dropped per the user — they want a separate Whop-based notification with purchase amount instead (not built). Status `Active` on the starter record was a deliberate choice, confirmed with the user, even though it makes the client immediately eligible for automation #3's Friday reminder before a CSM is assigned. |
 
+| 5 | Discord restructure: roles, tier categories, invite routing | 🔨 Built, not applied | Blueprint approved. `src/discord/serverStructure.js` defines 15 roles, 14 categories and 38 channels; `scripts/apply-discord-structure.js` reconciles them (dry-run by default, additive only, never deletes). Invite-link routing and tier sync are wired but `TIER_SYNC_ENABLED` is off. **Nothing has been applied to the live server yet** — the Phase 0 items below are blocking. |
+
+### #5 — Phase 0, blocking before anything is applied
+
+- **What does the Whop Bot actually do?** Still unknown (see the deferred
+  section below). If it auto-assigns roles on purchase it becomes a second
+  writer to the same tier roles, and must either be aligned to these role
+  names or turned off. Applying the restructure without knowing this risks
+  the two fighting over every new member's roles.
+- **Airtable rename** — `Package / Tier` options need renaming from
+  Entry/Mid/High to Foundations/Momentum/Inner Circle, and
+  "Bible Study & Warrior Huddles" to "The Called". Safe: record values follow
+  a select rename, and no code reads tier values.
+- **Is `#eod-feed` in this server or the ops server?**
+  `DISCORD_SETTER_EOD_CHANNEL_ID` may point at the other one; the structure
+  config assumes this one.
+- **Four tier assignments to review.** Phase 2 seeds Discord roles *from*
+  Airtable, so a wrong tier there becomes a wrong entitlement in Discord.
+  Most price variance is payment timing, but these sit far off their tier's
+  price points: Luke Buscher (Momentum, **$100**), Nick Martinez (Momentum,
+  $1,500), Alexandra Urbina (Momentum, $1,500), Isaac Gonzalez (Momentum,
+  $4,500) — against $10k/$12k for that tier.
+- **Housekeeping** — Nick Martinez has `CSM = Unassigned`; Liam McCormack and
+  Nathan Soriano have blank `Contract Value`; the `testing` record from the
+  2026-09-09 onboarding test should be deleted.
+- **The 💪 section** (donreal-lunkin, robert-williams, jaden-garcia,
+  chase-marshall, anthony-rivera) exists in Discord only — no Airtable record
+  in any status. Needs a status before they get the `Alumni` role.
+- **Still unanswered by the user:** what "pods" are (`PODS` is staff-only
+  until we know, rather than left open); whether the duplicated
+  `content-review` / `recordings` / `course-content` / `links` channels hold
+  genuinely different content per brand; and whether SETTING and SALES should
+  open to Momentum/Inner Circle Creators or stay coaches-only (currently open
+  to both brands at those tiers).
+
+### Correction to #3's note
+
+The note below originally recorded **Wylie Hawkins** as a "bible-study-only
+client". That was wrong: his live Airtable record is Called Creators / Inner
+Circle, $20,000 contract fully collected. He is genuinely out of scope for
+Discord — the $20k buys 6 months of 1:1 calls with Nigel, serviced outside
+the server — which is why he has no Discord ID and no private channel, and why
+`Skip Weekly Reminder` is correctly checked. The third bible-study skip is
+**Brian Pascal**. His record should carry a note marking him 1:1-only so he
+isn't later mistaken for a missing Inner Circle member.
+
 ### #4 — waiting on the user
 
 - **Notion Dashboard link** — message currently says "You will get your Notion Dashboard shortly." instead of a real link. Once provided, set `NOTION_DASHBOARD_URL` on Railway and the message switches to the real link automatically — no code change needed.

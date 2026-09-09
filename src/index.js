@@ -10,6 +10,9 @@ import * as weeklyCheckin from './automations/weeklyCheckin.js';
 import { isTargetMinute, getLocalDateString } from './reminders/schedule.js';
 import { sendWeeklyCheckinReminders } from './reminders/sendWeeklyCheckinReminders.js';
 import { registerNewMemberOnboarding } from './onboarding/newMemberOnboarding.js';
+import { createInviteTracker } from './discord/inviteTracker.js';
+import { parseInviteRoleMap, findUnmappedSlots, getInviteSlot } from './discord/inviteRoles.js';
+import { registerTierSync } from './discord/tierSync.js';
 
 const WEEKLY_REMINDER_TIMEZONE = 'America/New_York';
 const WEEKLY_REMINDER_WEEKDAY = 'Fri';
@@ -24,12 +27,28 @@ async function main() {
     );
   }
 
+  // Tier sync rewrites a billing field in Airtable off a Discord role click,
+  // so it refuses to start without somewhere to log those writes - an
+  // unlogged mis-click is exactly the failure this design has to avoid.
+  if (config.tierSyncEnabled && (!config.clientGuildId || !config.tierChangesChannelId)) {
+    throw new Error(
+      'TIER_SYNC_ENABLED is true but DISCORD_CLIENT_GUILD_ID or DISCORD_TIER_CHANGES_CHANNEL_ID is missing'
+    );
+  }
+
   const airtableClient = createAirtableClient(config.airtablePat);
   // GuildMembers/MessageContent are privileged intents - only request them
-  // once onboarding is actually enabled, so this never breaks login for the
-  // rest of the hub before those portal toggles are turned on.
-  const extraIntents = config.newMemberOnboardingEnabled
-    ? [GatewayIntentBits.GuildMembers, GatewayIntentBits.GuildMessages, GatewayIntentBits.MessageContent]
+  // once a feature that needs them is enabled, so this never breaks login
+  // for the rest of the hub before those portal toggles are turned on.
+  // GuildInvites is not privileged, but it's only useful alongside them.
+  const needsMemberEvents = config.newMemberOnboardingEnabled || config.tierSyncEnabled;
+  const extraIntents = needsMemberEvents
+    ? [
+        GatewayIntentBits.GuildMembers,
+        GatewayIntentBits.GuildMessages,
+        GatewayIntentBits.MessageContent,
+        GatewayIntentBits.GuildInvites,
+      ]
     : [];
   const discord = createDiscordClient(config.discordBotToken, { extraIntents });
 
@@ -110,6 +129,31 @@ async function main() {
   setInterval(runWeeklyReminderCheckCycle, 60_000);
 
   if (config.newMemberOnboardingEnabled) {
+    const { map: inviteRoleMap, unknownSlots } = parseInviteRoleMap(config.inviteRoleMap);
+    if (unknownSlots.length > 0) {
+      console.warn(
+        `DISCORD_INVITE_ROLE_MAP has entries that don't parse: ${unknownSlots.join(', ')}`
+      );
+    }
+    // A package with no mapped invite silently lands every buyer of it with
+    // no tier at all, so say so at boot rather than let a client find out.
+    const unmapped = findUnmappedSlots(inviteRoleMap);
+    if (unmapped.length > 0) {
+      console.warn(
+        `No invite link mapped for: ${unmapped.map((key) => getInviteSlot(key).label).join(', ')}. ` +
+          'Joins on those packages will be flagged for manual role assignment.'
+      );
+    } else {
+      console.log(`Invite role map loaded for all ${inviteRoleMap.size} package links.`);
+    }
+
+    const inviteTracker = createInviteTracker({
+      fetchInvites: () => discord.fetchGuildInvites(config.clientGuildId),
+    });
+    // Primed before any join can be handled: without a baseline every join
+    // resolves to "couldn't tell" and gets flagged.
+    await inviteTracker.prime();
+
     registerNewMemberOnboarding({
       discord,
       airtableClient,
@@ -120,8 +164,27 @@ async function main() {
       notionDashboardUrl: config.notionDashboardUrl,
       state,
       saveState,
+      inviteTracker,
+      inviteRoleMap,
     });
+
+    // Discord creates and deletes invites out from under the cache, so keep
+    // it fresh rather than only refreshing on a join.
+    discord.client.on('inviteCreate', () => inviteTracker.refresh().catch(() => {}));
+    discord.client.on('inviteDelete', () => inviteTracker.refresh().catch(() => {}));
+
     console.log('New-member onboarding automation registered.');
+  }
+
+  if (config.tierSyncEnabled) {
+    registerTierSync({
+      discord,
+      airtableClient,
+      clientGuildId: config.clientGuildId,
+      clientSuccessBaseId: config.clientSuccessBaseId,
+      tierChangesChannelId: config.tierChangesChannelId,
+    });
+    console.log('Tier sync registered (Discord role -> Airtable Package / Tier).');
   }
 
   const app = express();

@@ -5,8 +5,13 @@ import {
   buildChannelOverwrites,
   findClientByEmail,
   buildNewClientFields,
+  buildJoinPlan,
+  detectTierMismatch,
   registerNewMemberOnboarding,
 } from '../src/onboarding/newMemberOnboarding.js';
+import { parseInviteRoleMap } from '../src/discord/inviteRoles.js';
+import { getTierByKey } from '../src/discord/tiers.js';
+import { RESOLVED, NO_CHANGE, AMBIGUOUS } from '../src/discord/inviteTracker.js';
 
 test('buildChannelOverwrites denies @everyone and allows member/bot/CSM', () => {
   const overwrites = buildChannelOverwrites({
@@ -258,4 +263,139 @@ test('messageCreate: ignores messages from someone other than the pending member
   await new Promise((resolve) => setImmediate(resolve));
 
   assert.equal(channel._sent.length, 0);
+});
+
+const INVITE_MAP = parseInviteRoleMap(
+  'coachMid=coaches:momentum,creatorLow=creators:foundations,bible=the-called:the-called'
+).map;
+
+test('a resolved invite decides the brand, the tier, and the roles to grant', () => {
+  const plan = buildJoinPlan({
+    resolution: { code: 'coachMid', reason: RESOLVED },
+    inviteRoleMap: INVITE_MAP,
+  });
+  assert.deepEqual(plan.roleNames, ['Called Coaches', 'Tier: Momentum']);
+  assert.equal(plan.tier.key, 'momentum');
+  assert.equal(plan.brand.name, 'Called Coaches');
+  assert.equal(plan.flagReason, null);
+});
+
+// The safety property that matters most: when the bot cannot tell which link
+// was used, it must grant nothing rather than guess a tier.
+test('an unidentifiable invite grants no roles and says why', () => {
+  const plan = buildJoinPlan({
+    resolution: { code: null, reason: NO_CHANGE },
+    inviteRoleMap: INVITE_MAP,
+  });
+  assert.deepEqual(plan.roleNames, []);
+  assert.equal(plan.tier, null);
+  assert.match(plan.flagReason, /Could not tell which invite link was used/);
+});
+
+test('simultaneous joins are flagged as ambiguous, not resolved to one of them', () => {
+  const plan = buildJoinPlan({
+    resolution: { code: null, reason: AMBIGUOUS },
+    inviteRoleMap: INVITE_MAP,
+  });
+  assert.deepEqual(plan.roleNames, []);
+  assert.match(plan.flagReason, /Two people joined at once/);
+});
+
+test('an unmapped invite code is flagged by code so it can be added to the map', () => {
+  const plan = buildJoinPlan({
+    resolution: { code: 'mysteryLink', reason: RESOLVED },
+    inviteRoleMap: INVITE_MAP,
+  });
+  assert.deepEqual(plan.roleNames, []);
+  assert.match(plan.flagReason, /mysteryLink/);
+  assert.match(plan.flagReason, /DISCORD_INVITE_ROLE_MAP/);
+});
+
+test('no invite tracker at all still yields a safe, role-free plan', () => {
+  const plan = buildJoinPlan({ resolution: null, inviteRoleMap: INVITE_MAP });
+  assert.deepEqual(plan.roleNames, []);
+  assert.ok(plan.flagReason);
+});
+
+test('the bible-study link grants its roles but maps to no private channel', () => {
+  const plan = buildJoinPlan({
+    resolution: { code: 'bible', reason: RESOLVED },
+    inviteRoleMap: INVITE_MAP,
+  });
+  assert.deepEqual(plan.roleNames, ['The Called', 'Tier: The Called']);
+  assert.equal(plan.tier.hasPrivateChannel, false);
+});
+
+// The forwarded-link backstop.
+test('a joiner whose record shows a different package is flagged', () => {
+  const mismatch = detectTierMismatch({
+    inviteTier: getTierByKey('momentum'),
+    clientRecord: { fields: { 'Package / Tier': 'Foundations' } },
+  });
+  assert.match(mismatch, /Momentum/);
+  assert.match(mismatch, /Foundations/);
+  assert.match(mismatch, /shared link/);
+});
+
+test('a matching package is not flagged', () => {
+  assert.equal(
+    detectTierMismatch({
+      inviteTier: getTierByKey('momentum'),
+      clientRecord: { fields: { 'Package / Tier': 'Momentum' } },
+    }),
+    null
+  );
+});
+
+test('tier mismatch copes with Airtable returning a select as an object', () => {
+  const mismatch = detectTierMismatch({
+    inviteTier: getTierByKey('inner-circle'),
+    clientRecord: { fields: { 'Package / Tier': { id: 'sel1', name: 'Foundations' } } },
+  });
+  assert.match(mismatch, /Foundations/);
+});
+
+test('nothing to compare against is not a mismatch', () => {
+  assert.equal(detectTierMismatch({ inviteTier: null, clientRecord: { fields: {} } }), null);
+  assert.equal(detectTierMismatch({ inviteTier: getTierByKey('momentum'), clientRecord: null }), null);
+  assert.equal(
+    detectTierMismatch({ inviteTier: getTierByKey('momentum'), clientRecord: { fields: {} } }),
+    null,
+    'a record with no package recorded yet is the normal new-signup case'
+  );
+});
+
+test('a starter record carries the brand and tier the invite established', () => {
+  assert.deepEqual(
+    buildNewClientFields({
+      displayName: 'Jack Garcia',
+      email: 'jack@example.com',
+      discordUserId: 'member1',
+      joinDate: '2026-09-09',
+      brandValue: 'Called Coaches',
+      tierValue: 'Momentum',
+    }),
+    {
+      'Client Name': 'Jack Garcia',
+      Email: 'jack@example.com',
+      'Discord ID': 'member1',
+      'Start Date': '2026-09-09',
+      Status: 'Active',
+      Brand: 'Called Coaches',
+      'Package / Tier': 'Momentum',
+    }
+  );
+});
+
+test('an unresolved invite leaves brand and tier off the record rather than guessing', () => {
+  const fields = buildNewClientFields({
+    displayName: 'Jack Garcia',
+    email: 'jack@example.com',
+    discordUserId: 'member1',
+    joinDate: '2026-09-09',
+    brandValue: null,
+    tierValue: null,
+  });
+  assert.equal('Brand' in fields, false);
+  assert.equal('Package / Tier' in fields, false);
 });

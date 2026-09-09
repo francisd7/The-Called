@@ -33,14 +33,25 @@ export function createDiscordClient(botToken, { extraIntents = [] } = {}) {
     await user.send(message);
   }
 
-  async function createPrivateChannel(guildId, { name, overwrites }) {
+  // `parent` files the channel under a tier category. The overwrites are
+  // still passed in full rather than synced from that category - a client
+  // channel always carries one overwrite the category can't (the client's
+  // own access), so it is unsynced by definition and inherits nothing.
+  async function createPrivateChannel(guildId, { name, overwrites, parent }) {
     const guild = await client.guilds.fetch(guildId);
     return guild.channels.create({
       name,
       type: ChannelType.GuildText,
+      ...(parent ? { parent } : {}),
       permissionOverwrites: overwrites,
     });
   }
 
-  return { client, ready, sendToChannel, sendDM, createPrivateChannel };
+  async function fetchGuildInvites(guildId) {
+    const guild = await client.guilds.fetch(guildId);
+    const invites = await guild.invites.fetch();
+    return [...invites.values()].map((invite) => ({ code: invite.code, uses: invite.uses ?? 0 }));
+  }
+
+  return { client, ready, sendToChannel, sendDM, createPrivateChannel, fetchGuildInvites };
 }

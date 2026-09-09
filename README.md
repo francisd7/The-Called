@@ -14,12 +14,86 @@ build status: [`docs/STATUS.md`](docs/STATUS.md).
 | Setter EOD → Discord | New record in **Setter EOD** (`EOD Reports` base) | Posts "📋 **[Setter Name]** submitted their EOD report — [Date]" to the `DISCORD_SETTER_EOD_CHANNEL_ID` channel |
 | Weekly Check-in → Discord | New record in **Weekly Check-ins** (`Client Success` base) | Posts "✅ **[Client Name]** submitted their Weekly Check-in — Momentum: [X]/10" to the `DISCORD_WEEKLY_CHECKIN_CHANNEL_ID` channel |
 | Weekly Check-in reminder DMs | Every Friday, `WEEKLY_REMINDER_HOUR_ET`:`WEEKLY_REMINDER_MINUTE_ET` ET (default noon) | DMs every `Status = Active` Client with a Discord ID and no opt-out: "Hey [First Name], time for your Weekly Check-in — [prefilled link]". Posts a send/skip summary to `DISCORD_WEEKLY_CHECKIN_CHANNEL_ID` right after. |
-| New-member onboarding | Someone joins the client-facing Discord server (`DISCORD_CLIENT_GUILD_ID`) | Creates a private `firstname-lastname` channel (visible to them, the bot, and the CSM role), posts the welcome message, then waits for their reply. A reply that looks like an email is matched against the Clients table's `Email` field — matched → writes their Discord ID back to that record; no match (the common case for a genuinely new signup) → creates a starter Client record (Name, Email, Discord ID, Start Date, Status Active) and flags `DISCORD_ONBOARDING_FLAG_CHANNEL_ID` so staff fills in Package/CSM/Contract Value. |
+| New-member onboarding | Someone joins the client-facing Discord server (`DISCORD_CLIENT_GUILD_ID`) | Works out which package invite they used, assigns the matching brand + tier roles, creates a private `firstname-lastname` channel under that tier's category (visible to them, the bot, and the staff that tier is entitled to), posts the welcome message, then waits for their reply. A reply that looks like an email is matched against the Clients table's `Email` field — matched → writes their Discord ID back to that record; no match (the common case for a genuinely new signup) → creates a starter Client record (Name, Email, Discord ID, Start Date, Status Active, plus Brand and Package/Tier from the invite) and flags `DISCORD_ONBOARDING_FLAG_CHANNEL_ID` so staff fills in CSM and Contract Value. |
+| Tier sync | A tier role is added or removed on a member in the client server | Writes the new `Package / Tier` to the matching Client record, moves their private channel to the new tier's category (rewriting its permission overwrites so the new tier's staff actually gain access), and posts the change to `DISCORD_TIER_CHANGES_CHANNEL_ID` as an audit trail. |
 
 The first two notifications go to separate Discord channels (and can be in
 separate servers) — the bot just needs to be a member of whichever server
-each channel lives in. First three automations are live as of 2026-09-09;
-new-member onboarding is built but gated off by default (see below).
+each channel lives in. First four automations are live as of 2026-09-09;
+tier sync is built but gated off by default (see below).
+
+## Discord server structure
+
+The client server's roles, categories, channels and permissions are defined
+as data in [`src/discord/serverStructure.js`](src/discord/serverStructure.js),
+and reconciled onto Discord by `npm run discord-structure`. **Edit that file,
+never the server by hand** — otherwise the two drift and the next run fights
+you.
+
+Two axes, deliberately separate. **Brand** decides which course content you
+see (`Called Coaches`, `Called Creators`, `The Called`). **Tier** decides how
+much of the team you get:
+
+| Tier | Price | Private channel | Who else is in it |
+|---|---|---|---|
+| The Called | $1,000 | none — the shared THE CALLED section is everything | — |
+| Foundations | $3k/3mo or $5k/6mo | ✓ | CSM, COO |
+| Momentum | $10k one-time or $12k split | ✓ | CSM, CMO, Founder, COO |
+| Inner Circle | $20k | ✓ | CSM, CMO, Founder, COO |
+
+Foundations deliberately excludes the CMO and Founder — they only service the
+top two tiers, and the tier categories are what make that legible at a glance
+instead of a mental note.
+
+Two things worth knowing before touching permissions:
+
+- **`@everyone` has View Channel off at the server level.** Access is opt-in
+  per category, so a channel added later is invisible until something grants
+  it. That is the fix for clients seeing areas they never bought.
+- **A client's private channel is never synced to its category.** It carries
+  one overwrite the category can't (the client's own access), which desyncs it
+  by definition — and Discord does not consult a category's overwrites for an
+  unsynced channel. So the overwrite list has to be self-contained, and
+  moving a channel between tier categories changes nothing about who can see
+  it unless the overwrites are rewritten too. `tierSync` does both. **Never
+  click "Sync Now" on a client channel** — it wipes the client's own access.
+
+`Package / Tier` in Airtable was renamed from Entry/Mid/High to these names
+(record values follow a select rename, so no backfill was needed). Price is
+recorded in `Contract Value`, never derived from it — payment plans and
+discounts mean price does not cleanly separate the tiers.
+
+## Invite-link routing
+
+Discord has no native "this invite grants this role" feature, so the bot
+infers it: it keeps every invite's use count, and when someone joins it
+re-fetches and finds the one that went up. One permanent invite per package,
+seven in total (bible study, plus each paid tier × each brand). Send the buyer
+the link for what they bought and they land with the right roles, the right
+channel, in the right category, with no manual sorting.
+
+Generate the invites and the env var line in one step:
+
+```
+node scripts/apply-discord-structure.js --apply --invites
+```
+
+It prints a `DISCORD_INVITE_ROLE_MAP` value to paste onto the host. That map
+lives in an env var rather than `data/state.json` on purpose — state.json
+resets on hosts without a persistent disk, and losing the map would quietly
+drop every new joiner to no tier at all.
+
+Because it is inference, it can be wrong, so every uncertain case grants
+nothing and flags `DISCORD_ONBOARDING_FLAG_CHANNEL_ID` rather than guessing a
+tier upward:
+
+| Case | What happens |
+|---|---|
+| Bot was down during the join | No baseline to diff. Channel and welcome still happen, no tier role, flagged. |
+| Two people join at once | Ambiguous. No tier role, flagged. |
+| Vanity URL or server widget | No invite diff at all. No tier role, flagged. |
+| An invite that isn't in the map | Flagged by code, so it can be added. |
+| A forwarded link | The email-reply step cross-checks the invite's tier against the matched Client record and flags a mismatch. Tightening this further means one-time invites generated per purchase from a Whop webhook — deferred, see `docs/STATUS.md`. |
 
 ## Weekly Check-in reminder DMs — how skipping works
 
