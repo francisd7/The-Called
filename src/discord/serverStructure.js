@@ -42,9 +42,11 @@ export const ROLES = [
   { name: 'CMO', color: '#8B5CF6', hoist: true, mentionable: true },
   { name: 'CSM', color: '#14B8A6', hoist: true, mentionable: true },
   // Was the `Eddie` role - renamed to the function so it survives him, and
-  // so a second one doesn't need inventing. ManageEvents lets him schedule
-  // the weekly call he runs. He separately holds Tier: Inner Circle as a
-  // client; the two compose rather than needing a special case.
+  // so a second one doesn't need inventing. It absorbed `Ops Team` too: both
+  // wanted the same thing, which is everything staff see minus the private
+  // client channels. ManageEvents lets the holder schedule the weekly call.
+  // Whoever holds it can separately hold a Tier: role as a client; the two
+  // compose rather than needing a special case.
   { name: 'Coach', color: '#0EA5E9', hoist: true, mentionable: true, permissions: ['ManageEvents'] },
 
   { name: 'Called Coaches', color: '#3B82F6', hoist: true, mentionable: true },
@@ -213,14 +215,14 @@ export const CATEGORIES = [
     channels: [
       { name: 'sales-general', type: 'text' },
       { name: 'setting-general', type: 'text' },
-      { name: 'setting-faq', type: 'text', readOnlyFor: SELLING_TIERS },
-      { name: 'tips', type: 'text' },
       // Reviews stay split because the work is different - a DM thread and a
       // closing call don't get critiqued the same way - but one recordings
-      // channel holds both, since a recording is a recording.
+      // channel holds both, since a recording is a recording. Named for the
+      // two disciplines rather than "call-recordings" so it can't be mistaken
+      // for the coaching or bible-study ones.
       { name: 'convo-reviews', type: 'text' },
       { name: 'call-reviews', type: 'text' },
-      { name: 'call-recordings', type: 'text', readOnlyFor: SELLING_TIERS },
+      { name: 'sales-and-setting-recordings', type: 'text', readOnlyFor: SELLING_TIERS },
     ],
   }),
 

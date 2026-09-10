@@ -314,8 +314,8 @@ test('every recording channel says what it records', () => {
     .sort();
   assert.deepEqual(recordingChannels, [
     'bible-study-recordings',
-    'call-recordings',
     'coaching-recordings',
+    'sales-and-setting-recordings',
   ]);
 });
 
@@ -344,7 +344,7 @@ test('Sales and Setting are one category, sharing one recordings channel', () =>
   const names = merged.channels.map((c) => c.name);
   // One recordings channel for both disciplines; reviews stay split because
   // a DM thread and a closing call aren't critiqued the same way.
-  assert.ok(names.includes('call-recordings'));
+  assert.ok(names.includes('sales-and-setting-recordings'));
   assert.ok(names.includes('call-reviews'));
   assert.ok(names.includes('convo-reviews'));
   assert.ok(grantFor(merged, 'Tier: Momentum'));

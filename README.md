@@ -59,12 +59,13 @@ in a mixed channel and are the @-mention target for a brand-wide
 announcement — but they gate nothing. Per-tier conversation happens in each
 tier's own `#<tier>-chat`, and one `#the-forge-chat` covers everyone paying.
 
-**`Coach`** (formerly the `Eddie` role) reaches every category, including the
-tier ones, but never a private client channel — those are built from each
-tier's `staffRoleNames` in `tiers.js`, which deliberately omits it. It also
-carries `ManageEvents` for the weekly call it exists to run. Whoever holds it
-can separately hold a `Tier:` role as a client; the two compose rather than
-needing a special case.
+**`Coach`** reaches every category, including the tier ones, but never a
+private client channel — those are built from each tier's `staffRoleNames` in
+`tiers.js`, which deliberately omits it. It carries `ManageEvents` for the
+weekly call. It replaces both the old `Eddie` and `Ops Team` roles, which
+wanted the same thing: everything staff see, minus the private client chats.
+Whoever holds it can separately hold a `Tier:` role as a client; the two
+compose rather than needing a special case.
 
 **`Nigel`** stands in for what would otherwise be a `Founder` role — the role
 already exists and is integration-managed, so it can't be renamed.
@@ -78,11 +79,12 @@ brings someone back.
 
 **Every channel name is unique across the server**, and a test enforces it.
 Each recording channel says what it records — `#bible-study-recordings`,
-`#coaching-recordings`, `#call-recordings`. Warrior Huddles aren't recorded,
-bible study is, hence one channel in THE CALLED rather than a catch-all.
+`#coaching-recordings`, `#sales-and-setting-recordings`. Warrior Huddles
+aren't recorded, bible study is, hence one channel in THE CALLED rather than
+a catch-all.
 
 Sales and Setting are **one category**: identical permissions, and Sales was
-down to a single live channel. They share one `#call-recordings` — a
+down to a single live channel. They share one recordings channel — a
 recording is a recording — while `#convo-reviews` and `#call-reviews` stay
 split, because a DM thread and a closing call don't get critiqued the same
 way.

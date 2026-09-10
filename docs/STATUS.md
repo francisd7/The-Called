@@ -8,7 +8,7 @@ Tracks progress against the build priority in `Automation_Hub_Blueprint.md`.
 | 2 | Weekly Check-in → Discord | ✅ Live | Deployed to Railway, verified end-to-end: a real Weekly Check-in submission posted to `DISCORD_WEEKLY_CHECKIN_CHANNEL_ID` (a separate channel/server from #1, at the user's request). |
 | 3 | Discord ID field + Friday reminder DMs | ✅ Live | `WEEKLY_REMINDER_ENABLED=true` set on Railway and confirmed on 2026-09-09; deployment stable. First real send: Friday 2026-09-11, 12:00 PM ET (`America/New_York`, DST-aware). 19 of 22 active clients backfilled with a Discord ID; Wylie Hawkins, Malachi Hardware, Patric Cocos have `Skip Weekly Reminder` checked (bible-study-only clients, no personal-branding access, confirmed with the user). Message: "Hey [First Name], time for your Weekly Check-in — [link]". Dry-run path (`npm run weekly-reminder-dry-run`) still available for testing future changes without risk. |
 | 4 | New-member onboarding flow | ✅ Live | Enabled on Railway and verified end-to-end on 2026-09-09 with a real test-account join: channel creation, permissions, welcome message (mentions rendering correctly), and the no-match path were confirmed working via a real join in the client server. Design went through two iterations after that first live test: (1) no-match originally just flagged staff and waited — the user pointed out a new signup's Airtable record essentially never exists yet at join time, so that path would have fired for almost every real new member; (2) briefly fixed with a retry-on-poll-cycle mechanism, then the user clarified they actually wanted the automation to create the starter Client record itself (Name, Email, Discord ID, Start Date, Status Active) rather than wait on staff — so it does that now, and the retry mechanism was removed as unnecessary. Flag channel is a dedicated channel (`DISCORD_ONBOARDING_FLAG_CHANNEL_ID`), not the Weekly Check-in channel, per the user's request after seeing the first test flag land there. Team "new member joined" notification explicitly dropped per the user — they want a separate Whop-based notification with purchase amount instead (not built). Status `Active` on the starter record was a deliberate choice, confirmed with the user, even though it makes the client immediately eligible for automation #3's Friday reminder before a CSM is assigned. |
-| 5 | Discord restructure: roles, tier categories, invite routing | 🔨 Built, not applied | Blueprint approved. `src/discord/serverStructure.js` defines 15 roles, 9 categories and 30 declared channels; `scripts/apply-discord-structure.js` reconciles them (dry-run by default, additive only, never deletes). Invite-link routing and tier sync are wired but `TIER_SYNC_ENABLED` is off. **Nothing has been applied to the live server yet.** The Whop blocker cleared on 2026-09-09; see the decisions and open items below. |
+| 5 | Discord restructure: roles, tier categories, invite routing | 🔨 Built, not applied | Blueprint approved. `src/discord/serverStructure.js` defines 15 roles, 9 categories and 28 declared channels; `scripts/apply-discord-structure.js` reconciles them (dry-run by default, additive only, never deletes). Invite-link routing and tier sync are wired but `TIER_SYNC_ENABLED` is off. **Nothing has been applied to the live server yet.** The Whop blocker cleared on 2026-09-09; see the decisions and open items below. |
 
 ### #5 — decisions settled with the user
 
@@ -55,17 +55,21 @@ Tracks progress against the build priority in `Automation_Hub_Blueprint.md`.
   to reach one tier without messaging the whole server.
 - **`RESOURCES` deleted** — it was empty, and `#links` in THE FORGE covers it.
 - **`SETTING` and `SALES` merged** into one `SALES & SETTING` category, with
-  one shared `#call-recordings` for both disciplines. `#convo-reviews` and
-  `#call-reviews` stay split — a DM thread and a closing call aren't
-  critiqued the same way.
+  one shared `#sales-and-setting-recordings` for both disciplines — named for
+  the two rather than `call-recordings` so it can't be confused with the
+  coaching or bible-study ones. `#convo-reviews` and `#call-reviews` stay
+  split: a DM thread and a closing call aren't critiqued the same way.
+  `#setting-faq` and `#tips` retired by the user.
 - **No brand-specific chat.** Per-tier conversation happens in each tier's
   own `#<tier>-chat` and one `#the-forge-chat` covers everyone paying, so
   `#coaches-general` / `#creators-general` were dropped. Brand roles gate
   nothing at all now.
 - **`Founder` is `Nigel`** — that role already exists and is
   integration-managed, so it can't be renamed to the seat.
-- **`Eddie` becomes `Coach`** — function, not person, so it survives him and
-  a second one doesn't need inventing. It reaches every category (including
+- **`Eddie` and `Ops Team` both become `Coach`** — function, not person, so
+  it survives him and a second one doesn't need inventing. Ops Team wanted
+  the same access, and may field setting questions later, so one role covers
+  both. It reaches every category (including
   each tier's announcements and chat) but never a private client channel,
   since those are built from `tiers.js` `staffRoleNames`, which omits it. It
   carries `ManageEvents` for the weekly call. Whoever holds it can also hold
@@ -96,9 +100,25 @@ Tracks progress against the build priority in `Automation_Hub_Blueprint.md`.
 - **Housekeeping** — Nick Martinez has `CSM = Unassigned`; Liam McCormack and
   Nathan Soriano have blank `Contract Value`; the `testing` record from the
   2026-09-09 onboarding test should be deleted.
+- **`SETTING MANAGER` left alone** — integration-managed, one member, staying
+  as-is per the user.
 - **Nothing has been applied to the live server yet.** No Discord token was
   available in the build environment, so the structure config is verified by
   tests only. The first live run must be without `--apply`.
+
+### Rename these by hand before applying
+
+The apply script never renames or deletes, so a renamed thing would otherwise
+be created empty alongside the original and the history would be stranded.
+Renaming first means the script finds them and only fixes permissions.
+
+| Rename | To |
+|---|---|
+| `SETTING` (category) | `SALES & SETTING`, then move `#sales-general` in and delete the empty `SALES` |
+| `SETTING` → `#call-recordings` | `sales-and-setting-recordings` |
+| `THE CALLED` → `#recordings` | `bible-study-recordings` |
+| `💪` (category) | `VETERANS · 💪` |
+| `Eddie` (role) | `Coach` — then add the two `Ops Team` members to it |
 
 ### A bug caught while wiring Veterans
 
