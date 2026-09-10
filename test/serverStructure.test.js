@@ -7,11 +7,14 @@ import {
   mergeOverwrites,
   resolveChannelOverwrites,
   findUnknownOverwriteRoles,
-  isExclusiveChannel,
-  exclusiveChannelOverwrites,
   allRoleNames,
 } from '../src/discord/serverStructure.js';
-import { TIERS, TIER_ROLE_NAMES, resolveTierFromRoleNames } from '../src/discord/tiers.js';
+import {
+  TIERS,
+  TIER_ROLE_NAMES,
+  getTierByKey,
+  resolveTierFromRoleNames,
+} from '../src/discord/tiers.js';
 
 function categoryNamed(name) {
   return CATEGORIES.find((cat) => cat.name === name);
@@ -81,8 +84,8 @@ test('mergeOverwrites never leaves a permission both allowed and denied', () => 
 
 // The entitlement the user called out directly: low ticket must not reach
 // Setting or Sales.
-test('SETTING & SALES is closed to Foundations and to the bible-study tier', () => {
-  for (const name of ['SETTING & SALES']) {
+test('SALES & SETTING is closed to Foundations and to the bible-study tier', () => {
+  for (const name of ['SALES & SETTING']) {
     const category = categoryNamed(name);
     assert.equal(grantFor(category, 'Tier: Foundations'), undefined, name);
     assert.equal(grantFor(category, 'Tier: The Called'), undefined, name);
@@ -176,12 +179,10 @@ test('FOUNDATIONS excludes the CMO and Founder', () => {
   const foundations = categoryNamed('FOUNDATIONS');
   assert.ok(grantFor(foundations, 'CSM'));
   assert.ok(grantFor(foundations, 'COO'));
-  assert.equal(grantFor(foundations, 'CMO'), undefined);
-  assert.equal(grantFor(foundations, 'Founder'), undefined);
-
-  const momentum = categoryNamed('MOMENTUM');
-  assert.ok(grantFor(momentum, 'CMO'));
-  assert.ok(grantFor(momentum, 'Founder'));
+  // Coach reaches the category (announcements + chat), but tiers.js keeps
+  // both CMO and Nigel out of a Foundations client's private channel.
+  assert.deepEqual(getTierByKey('foundations').staffRoleNames, ['CSM', 'COO']);
+  assert.deepEqual(getTierByKey('momentum').staffRoleNames, ['CSM', 'CMO', 'Nigel', 'COO']);
 });
 
 // Course content is delivered in each client's private channel, so the
@@ -218,7 +219,41 @@ test('STAFF is staff-only', () => {
   const granted = categoryNamed('STAFF')
     .overwrites.filter((o) => o.allow)
     .map((o) => o.role);
-  assert.deepEqual(granted.sort(), ['CMO', 'COO', 'CSM', 'Founder']);
+  assert.deepEqual(granted.sort(), ['CMO', 'COO', 'CSM', 'Coach', 'Nigel']);
+});
+
+// Coach reaches every category, including the tier ones, but never a
+// client's private channel - those are built from tiers.js staffRoleNames,
+// which deliberately omits it. That is "everything staff see except private
+// client chats" expressed in one place.
+test('Coach reaches every category but no private client channel', () => {
+  for (const cat of CATEGORIES) {
+    if (cat.name === 'WELCOME') continue;
+    assert.ok(grantFor(cat, 'Coach'), `Coach should reach ${cat.name}`);
+  }
+  for (const tier of TIERS.filter((t) => t.hasPrivateChannel)) {
+    assert.equal(
+      tier.staffRoleNames.includes('Coach'),
+      false,
+      `${tier.name} private channels must exclude Coach`
+    );
+  }
+});
+
+test('Coach can schedule the weekly call it exists to run', () => {
+  const coach = ROLES.find((r) => r.name === 'Coach');
+  assert.deepEqual(coach.permissions, ['ManageEvents']);
+});
+
+// The role is named for the seat everywhere except this one, which the user
+// kept as-is because it is integration-managed and cannot be renamed.
+test('the founder role is Nigel, and no Founder role is created alongside it', () => {
+  assert.ok(ROLES.find((r) => r.name === 'Nigel'));
+  assert.equal(ROLES.find((r) => r.name === 'Founder'), undefined);
+  for (const tier of TIERS.filter((t) => t.hasPrivateChannel && t.staffRoleNames.length > 2)) {
+    assert.ok(tier.staffRoleNames.includes('Nigel'), tier.name);
+    assert.equal(tier.staffRoleNames.includes('Founder'), false, tier.name);
+  }
 });
 
 // Pods are no longer used, so the config declares nothing about them and the
@@ -238,7 +273,7 @@ test('a Veteran reaches the community section and the 💪 section, and nothing 
   const reachable = CATEGORIES.filter((cat) => grantFor(cat, 'Veteran')).map((cat) => cat.name);
   assert.deepEqual(reachable.sort(), ['THE CALLED', 'VETERANS · 💪']);
 
-  for (const name of ['THE FORGE', 'SETTING & SALES', 'FOUNDATIONS', 'MOMENTUM']) {
+  for (const name of ['THE FORGE', 'SALES & SETTING', 'FOUNDATIONS', 'MOMENTUM']) {
     assert.equal(grantFor(categoryNamed(name), 'Veteran'), undefined, name);
   }
 });
@@ -279,8 +314,8 @@ test('every recording channel says what it records', () => {
     .sort();
   assert.deepEqual(recordingChannels, [
     'bible-study-recordings',
+    'call-recordings',
     'coaching-recordings',
-    'setting-recordings',
   ]);
 });
 
@@ -291,43 +326,27 @@ test('no category is declared empty', () => {
   assert.deepEqual(empty, []);
 });
 
-// Two independent gates: THE FORGE is gated on tier, and these two channels
-// inside it on brand. The brand gate cuts across the tiers, not down them —
-// a Foundations coach reaches everything in THE FORGE except the creators'
-// chat, which is the whole point.
-test('a brand chat replaces the category grants instead of adding to them', () => {
-  const coaches = categoryNamed('THE FORGE').channels.find((c) => c.name === 'coaches-general');
-  assert.ok(isExclusiveChannel(coaches));
-
-  const overwrites = exclusiveChannelOverwrites(coaches);
-  const granted = overwrites.filter((o) => o.allow).map((o) => o.role);
-
-  assert.ok(granted.includes('Called Coaches'));
-  assert.equal(granted.includes('Called Creators'), false);
-  // If the tier roles leaked in here, every paid tier would see the coaches
-  // chat and the brand gate would do nothing.
-  for (const tierRole of TIER_ROLE_NAMES) {
-    assert.equal(granted.includes(tierRole), false, `${tierRole} must not reach #coaches-general`);
-  }
-  assert.deepEqual(overwrites[0], { role: EVERYONE, deny: ['ViewChannel'] });
-  // Staff still see it — they service both brands.
-  for (const staff of ['Founder', 'COO', 'CMO', 'CSM']) {
-    assert.ok(granted.includes(staff), staff);
-  }
-});
-
-test('only the two brand chats are exclusive; the rest of THE FORGE is shared', () => {
-  const forge = categoryNamed('THE FORGE');
-  const exclusive = forge.channels.filter(isExclusiveChannel).map((c) => c.name);
-  assert.deepEqual(exclusive, ['coaches-general', 'creators-general']);
+// Brand-specific chat was dropped: per-tier conversation happens in each
+// tier's own channel, and one shared forge chat covers the rest.
+test('THE FORGE has one shared chat, not a chat per brand', () => {
+  const names = categoryNamed('THE FORGE').channels.map((c) => c.name);
+  assert.ok(names.includes('the-forge-chat'));
+  assert.equal(names.includes('coaches-general'), false);
+  assert.equal(names.includes('creators-general'), false);
 });
 
 // Two categories with identical permissions, one down to a single live
 // channel, is the same problem RESOURCES had.
-test('Setting and Sales are one category', () => {
+test('Sales and Setting are one category, sharing one recordings channel', () => {
   assert.equal(categoryNamed('SETTING'), undefined);
   assert.equal(categoryNamed('SALES'), undefined);
-  const merged = categoryNamed('SETTING & SALES');
+  const merged = categoryNamed('SALES & SETTING');
+  const names = merged.channels.map((c) => c.name);
+  // One recordings channel for both disciplines; reviews stay split because
+  // a DM thread and a closing call aren't critiqued the same way.
+  assert.ok(names.includes('call-recordings'));
+  assert.ok(names.includes('call-reviews'));
+  assert.ok(names.includes('convo-reviews'));
   assert.ok(grantFor(merged, 'Tier: Momentum'));
   assert.ok(grantFor(merged, 'Tier: Inner Circle'));
   assert.equal(grantFor(merged, 'Tier: Foundations'), undefined);

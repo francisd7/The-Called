@@ -16,17 +16,36 @@ const READ = ['ViewChannel', 'ReadMessageHistory'];
 const READ_WRITE = ['ViewChannel', 'SendMessages', 'ReadMessageHistory'];
 const VOICE = ['ViewChannel', 'Connect', 'Speak'];
 
-export const STAFF_ROLE_NAMES = ['Founder', 'COO', 'CMO', 'CSM'];
+// The people who own client relationships. Deliberately separate from
+// CATEGORY_STAFF_ROLES below, and from each tier's own `staffRoleNames` in
+// tiers.js - which staff sit in a client's PRIVATE channel is a narrower
+// question than which staff can see a category.
+export const STAFF_ROLE_NAMES = ['Nigel', 'COO', 'CMO', 'CSM'];
+
+// Everyone granted at the category level. `Coach` is here but never in a
+// tier's staffRoleNames: it reaches every category, including the tier ones
+// (so their announcements and chat), while private client channels - which
+// carry their own overwrite list and are built from tiers.js - leave it out.
+// That is the whole "everything staff see except private client chats" ask,
+// expressed once rather than as a carve-out per channel.
+export const CATEGORY_STAFF_ROLES = [...STAFF_ROLE_NAMES, 'Coach'];
 
 // Ordered top-to-bottom exactly as they should sit in Discord's role list.
 // Hierarchy is not cosmetic: the bot can only assign roles positioned below
 // its own, so BOT_ROLE_ANCHOR marks where the bot's managed role has to sit
 // - above every client role, below the humans it never manages.
 export const ROLES = [
-  { name: 'Founder', color: '#E6A817', hoist: true, mentionable: true },
+  // Named for the person rather than the seat, at the user's call - the role
+  // already exists and is integration-managed, so it can't be renamed.
+  { name: 'Nigel', color: '#E6A817', hoist: true, mentionable: true },
   { name: 'COO', color: '#2C6FBB', hoist: true, mentionable: true },
   { name: 'CMO', color: '#8B5CF6', hoist: true, mentionable: true },
   { name: 'CSM', color: '#14B8A6', hoist: true, mentionable: true },
+  // Was the `Eddie` role - renamed to the function so it survives him, and
+  // so a second one doesn't need inventing. ManageEvents lets him schedule
+  // the weekly call he runs. He separately holds Tier: Inner Circle as a
+  // client; the two compose rather than needing a special case.
+  { name: 'Coach', color: '#0EA5E9', hoist: true, mentionable: true, permissions: ['ManageEvents'] },
 
   { name: 'Called Coaches', color: '#3B82F6', hoist: true, mentionable: true },
   { name: 'Called Creators', color: '#F97316', hoist: true, mentionable: true },
@@ -66,7 +85,7 @@ function allow(roleNames, permissions) {
   return roleNames.map((role) => ({ role, allow: permissions }));
 }
 
-const ALL_STAFF_READ_WRITE = allow(STAFF_ROLE_NAMES, READ_WRITE);
+const ALL_STAFF_READ_WRITE = allow(CATEGORY_STAFF_ROLES, READ_WRITE);
 const ALL_TIERS_READ_WRITE = allow(TIER_ROLE_NAMES, READ_WRITE);
 const PAID_TIERS = tierRoleNamesAtOrAbove('foundations');
 const SELLING_TIERS = tierRoleNamesAtOrAbove('momentum');
@@ -171,13 +190,10 @@ export const CATEGORIES = [
     name: 'THE FORGE',
     grants: [...allow(PAID_TIERS, READ_WRITE), ...ALL_STAFF_READ_WRITE],
     channels: [
+      // One chat for every paying client, both brands. Per-tier conversation
+      // happens in each tier's own #<tier>-chat; brand-specific chat was
+      // dropped as an unnecessary split.
       { name: 'the-forge-chat', type: 'text' },
-      // Two independent gates: the category is gated on tier, these two
-      // channels on brand. A Foundations coach reaches THE FORGE and
-      // everything in it except #creators-general, and vice versa - the
-      // brand gate cuts across the tiers rather than down them.
-      { name: 'coaches-general', type: 'text', visibleOnlyTo: ['Called Coaches'] },
-      { name: 'creators-general', type: 'text', visibleOnlyTo: ['Called Creators'] },
       { name: 'reel-ideas', type: 'text' },
       { name: 'content-review', type: 'text' },
       { name: 'coaching-recordings', type: 'text', readOnlyFor: PAID_TIERS },
@@ -192,15 +208,19 @@ export const CATEGORIES = [
   // SALES back out when it has enough content to earn its own - it is a
   // five-minute change.
   category({
-    name: 'SETTING & SALES',
+    name: 'SALES & SETTING',
     grants: [...allow(SELLING_TIERS, READ_WRITE), ...ALL_STAFF_READ_WRITE],
     channels: [
+      { name: 'sales-general', type: 'text' },
       { name: 'setting-general', type: 'text' },
       { name: 'setting-faq', type: 'text', readOnlyFor: SELLING_TIERS },
-      { name: 'convo-reviews', type: 'text' },
       { name: 'tips', type: 'text' },
-      { name: 'setting-recordings', type: 'text', readOnlyFor: SELLING_TIERS },
-      { name: 'sales-general', type: 'text' },
+      // Reviews stay split because the work is different - a DM thread and a
+      // closing call don't get critiqued the same way - but one recordings
+      // channel holds both, since a recording is a recording.
+      { name: 'convo-reviews', type: 'text' },
+      { name: 'call-reviews', type: 'text' },
+      { name: 'call-recordings', type: 'text', readOnlyFor: SELLING_TIERS },
     ],
   }),
 
@@ -216,7 +236,10 @@ export const CATEGORIES = [
   ...TIERS.filter((tier) => tier.hasPrivateChannel).map((tier) =>
     category({
       name: tier.categoryName,
-      grants: [{ role: tier.roleName, allow: READ_WRITE }, ...allow(tier.staffRoleNames, READ_WRITE)],
+      grants: [
+        { role: tier.roleName, allow: READ_WRITE },
+        ...allow([...tier.staffRoleNames, 'Coach'], READ_WRITE),
+      ],
       channels: [
         { name: `${tier.key}-announcements`, type: 'text', readOnlyFor: [tier.roleName] },
         { name: `${tier.key}-chat`, type: 'text' },
@@ -257,22 +280,6 @@ export function resolveChannelOverwrites(channel) {
   return [];
 }
 
-// A channel whose access REPLACES its category's client grants instead of
-// adding to them - how #coaches-general sits inside a tier-gated category
-// but is only visible to one brand. Staff grants are kept, since staff need
-// to see everything either way.
-export function isExclusiveChannel(channel) {
-  return Array.isArray(channel.visibleOnlyTo) && channel.visibleOnlyTo.length > 0;
-}
-
-export function exclusiveChannelOverwrites(channel) {
-  return [
-    { role: EVERYONE, deny: ['ViewChannel'] },
-    ...allow(channel.visibleOnlyTo, READ_WRITE),
-    ...ALL_STAFF_READ_WRITE,
-  ];
-}
-
 export function allRoleNames() {
   return ROLES.map((role) => role.name);
 }
@@ -293,10 +300,7 @@ export function findUnknownOverwriteRoles() {
       if (!known.has(overwrite.role)) unknown.add(overwrite.role);
     }
     for (const channel of cat.channels) {
-      const overwrites = isExclusiveChannel(channel)
-        ? exclusiveChannelOverwrites(channel)
-        : resolveChannelOverwrites(channel);
-      for (const overwrite of overwrites) {
+      for (const overwrite of resolveChannelOverwrites(channel)) {
         if (!known.has(overwrite.role)) unknown.add(overwrite.role);
       }
     }

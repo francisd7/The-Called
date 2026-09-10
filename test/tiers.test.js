@@ -35,7 +35,7 @@ test('only the bible-study tier has no private channel', () => {
 test('Foundations is serviced by the CSM only; the top two tiers get the full team', () => {
   assert.deepEqual(getTierByKey('foundations').staffRoleNames, ['CSM', 'COO']);
   for (const key of ['momentum', 'inner-circle']) {
-    assert.deepEqual(getTierByKey(key).staffRoleNames, ['CSM', 'CMO', 'Founder', 'COO'], key);
+    assert.deepEqual(getTierByKey(key).staffRoleNames, ['CSM', 'CMO', 'Nigel', 'COO'], key);
   }
 });
 

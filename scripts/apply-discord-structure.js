@@ -30,8 +30,6 @@ import {
   BOT_ROLE_ANCHOR,
   mergeOverwrites,
   resolveChannelOverwrites,
-  isExclusiveChannel,
-  exclusiveChannelOverwrites,
   findUnknownOverwriteRoles,
 } from '../src/discord/serverStructure.js';
 import { INVITE_SLOTS } from '../src/discord/inviteRoles.js';
@@ -140,6 +138,7 @@ client.once('clientReady', async () => {
         color: role.color ?? undefined,
         hoist: role.hoist,
         mentionable: role.mentionable,
+        ...(role.permissions ? { permissions: bits(role.permissions) } : {}),
         reason: 'The Called Discord restructure',
       });
       roleIdByName.set(role.name, created.id);
@@ -175,19 +174,14 @@ client.once('clientReady', async () => {
     for (const channelSpec of category.channels) {
       const isVoice = channelSpec.type === 'voice';
 
-      // Self-contained either way, because an unsynced channel inherits
-      // nothing at permission-check time.
-      //
-      // Normally the channel's own spec layers over the category's, and
-      // mergeOverwrites lets the channel entry win outright for a role -
-      // that is how #wins downgrades the bible-study tier to read-only.
-      //
-      // An exclusive channel (#coaches-general) instead REPLACES the
-      // category's client grants: merging them in would hand every paid tier
-      // access and quietly undo the brand gate.
-      const specs = isExclusiveChannel(channelSpec)
-        ? mergeOverwrites(exclusiveChannelOverwrites(channelSpec))
-        : mergeOverwrites([...category.overwrites, ...resolveChannelOverwrites(channelSpec)]);
+      // Self-contained: the channel's own spec layered over the category's,
+      // because an unsynced channel inherits nothing at permission-check
+      // time. mergeOverwrites lets the channel entry win outright for a role
+      // (that is how #wins downgrades the bible-study tier to read-only).
+      const specs = mergeOverwrites([
+        ...category.overwrites,
+        ...resolveChannelOverwrites(channelSpec),
+      ]);
 
       const existing = guild.channels.cache.find(
         (channel) => channel.name === channelSpec.name && channel.parentId === parent?.id

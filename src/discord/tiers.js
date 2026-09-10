@@ -46,7 +46,7 @@ export const TIERS = [
     roleName: 'Tier: Momentum',
     hasPrivateChannel: true,
     categoryName: 'MOMENTUM',
-    staffRoleNames: ['CSM', 'CMO', 'Founder', 'COO'],
+    staffRoleNames: ['CSM', 'CMO', 'Nigel', 'COO'],
   },
   {
     key: 'inner-circle',
@@ -55,7 +55,7 @@ export const TIERS = [
     roleName: 'Tier: Inner Circle',
     hasPrivateChannel: true,
     categoryName: 'INNER CIRCLE',
-    staffRoleNames: ['CSM', 'CMO', 'Founder', 'COO'],
+    staffRoleNames: ['CSM', 'CMO', 'Nigel', 'COO'],
   },
 ];
 
