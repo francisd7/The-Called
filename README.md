@@ -30,9 +30,10 @@ and reconciled onto Discord by `npm run discord-structure`. **Edit that file,
 never the server by hand** — otherwise the two drift and the next run fights
 you.
 
-Two axes, deliberately separate. **Brand** decides which course content you
-see (`Called Coaches`, `Called Creators`, `The Called`). **Tier** decides how
-much of the team you get:
+Two axes, deliberately separate. **Brand** says which product line someone
+bought into (`Called Coaches`, `Called Creators`, `The Called`) and is purely
+a label. **Tier** is what gates access, and what it buys is how much of the
+team you get:
 
 | Tier | Price | Private channel | Who else is in it |
 |---|---|---|---|

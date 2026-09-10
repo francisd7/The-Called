@@ -59,7 +59,6 @@ Tracks progress against the build priority in `Automation_Hub_Blueprint.md`.
   `#sales-recordings`. Merging the brand categories made three channels called
   `call-recordings` visible to the same client at once; a test now enforces
   that no two channel names collide anywhere in the server.
-
 - **Bot output lives in the ops server.** The EOD feed is already there, and
   onboarding flags plus the tier-change audit log now go to
   `DISCORD_OPS_NOTIFICATIONS_CHANNEL_ID` (defaults to `1547339220840882306`)
