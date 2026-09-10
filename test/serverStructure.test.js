@@ -7,6 +7,7 @@ import {
   mergeOverwrites,
   resolveChannelOverwrites,
   findUnknownOverwriteRoles,
+  normalizeChannelName,
   visibleChannelsFor,
   allRoleNames,
 } from '../src/discord/serverStructure.js';
@@ -175,12 +176,12 @@ test('every tier with private channels has its own category', () => {
 
 // The gap this closes: before, there was nowhere to tell every Momentum
 // client something without messaging the whole server.
-test('each tier gets its own announcements and chat channel', () => {
+test('each tier gets its own announcements and general channel', () => {
   for (const tier of TIERS.filter((t) => t.hasPrivateChannel)) {
     const cat = categoryNamed(tier.categoryName);
     assert.deepEqual(
       cat.channels.map((c) => c.name),
-      [`${tier.key}-announcements`, `${tier.key}-chat`],
+      [`${tier.key}-announcements`, `${tier.key}-general`],
       tier.categoryName
     );
     // Announcements are staff-to-tier, so clients read but don't post.
@@ -258,7 +259,7 @@ test('every tier category holds exactly its announcements and chat', () => {
   for (const tier of TIERS.filter((t) => t.hasPrivateChannel)) {
     assert.deepEqual(
       categoryNamed(tier.categoryName).channels.map((c) => c.name),
-      [`${tier.key}-announcements`, `${tier.key}-chat`],
+      [`${tier.key}-announcements`, `${tier.key}-general`],
       tier.categoryName
     );
   }
@@ -449,4 +450,25 @@ test('nobody unpaid reaches the training material', () => {
     const hub = visibleChannelsFor(role).filter((c) => c.category === 'TRAINING HUB');
     assert.deepEqual(hub, [], role);
   }
+});
+
+// Live channel names carry decorative emoji and separators, so matching on
+// the exact string finds nothing and the apply script would create a
+// duplicate of every channel that already exists. This is what the first
+// real dry run caught.
+test('channel names normalize past emoji, separators and case', () => {
+  assert.equal(normalizeChannelName('🌐│welcome'), 'welcome');
+  assert.equal(normalizeChannelName('🌐 | welcome'), 'welcome');
+  assert.equal(normalizeChannelName('welcome'), 'welcome');
+  assert.equal(normalizeChannelName('⚔️ | Warrior Huddle'), 'warriorhuddle');
+  assert.equal(normalizeChannelName('Warrior Huddle'), 'warriorhuddle');
+  assert.equal(normalizeChannelName('📅|training-recordings'), 'trainingrecordings');
+});
+
+// Normalizing is only safe while no two declared channels collapse onto the
+// same value — if they did, the matcher could bind one to the other's
+// existing channel and rewrite the wrong permissions.
+test('no two declared channels normalize to the same name', () => {
+  const names = CATEGORIES.flatMap((cat) => cat.channels).map((c) => normalizeChannelName(c.name));
+  assert.equal(new Set(names).size, names.length);
 });

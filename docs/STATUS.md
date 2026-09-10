@@ -50,7 +50,7 @@ Tracks progress against the build priority in `Automation_Hub_Blueprint.md`.
   but they gate nothing.
 - **Three tier categories, each that tier's whole home**: `FOUNDATIONS`,
   `MOMENTUM`, `INNER CIRCLE` (the `CLIENTS · ` prefix is gone), each with
-  `#<tier>-announcements`, `#<tier>-chat`, and that tier's private channels.
+  `#<tier>-announcements`, `#<tier>-general`, and that tier's private channels.
   The announcements channel closes a real gap — there was previously no way
   to reach one tier without messaging the whole server.
 - **No `STAFF` category** — staff work in the ops server, where the bot's
@@ -80,7 +80,7 @@ Tracks progress against the build priority in `Automation_Hub_Blueprint.md`.
   apart line by line. `#setting-faq`, `#tips` and `#call-reviews` retired by
   the user.
 - **No brand-specific chat.** Per-tier conversation happens in each tier's
-  own `#<tier>-chat` and one `#the-forge-chat` covers everyone paying, so
+  own `#<tier>-general` and one `#the-forge-chat` covers everyone paying, so
   `#coaches-general` / `#creators-general` were dropped. Brand roles gate
   nothing at all now.
 - **`Founder` is `Nigel`** — that role already exists and is
@@ -113,6 +113,23 @@ Tracks progress against the build priority in `Automation_Hub_Blueprint.md`.
   creating Client records for people the CSMs have never spoken to would
   just confuse them. Nothing reconciles the `Veteran` role against Airtable,
   by design.
+
+### What the first live dry run caught
+
+Run against the real server on 2026-09-10, the plan came back proposing to
+create ~20 channels that already exist. Two causes, both fixed:
+
+- **Live channel names carry decorative emoji and separators** — `🌐│welcome`
+  rather than `welcome` — so exact-string matching found nothing. The apply
+  script now matches exactly first, then on the name with emoji and
+  punctuation stripped, and prints every loose match so they can be checked.
+  New channels are still created with the plain config name; existing ones
+  keep their styling.
+- **The tier chat channel was `#<tier>-chat` in the config** but the user had
+  built `#momentum-general`, matching the `-general` convention used
+  everywhere else in the server. The config follows the server.
+
+Nothing was applied. This is what the dry run is for.
 
 ### #5 — still open
 

@@ -30,6 +30,7 @@ import {
   BOT_ROLE_ANCHOR,
   mergeOverwrites,
   resolveChannelOverwrites,
+  normalizeChannelName,
   findUnknownOverwriteRoles,
 } from '../src/discord/serverStructure.js';
 import { INVITE_SLOTS } from '../src/discord/inviteRoles.js';
@@ -152,9 +153,17 @@ client.once('clientReady', async () => {
     if (category.note) console.log(`  note: ${category.note}`);
     const categoryChanges = changeCount;
 
-    let parent = guild.channels.cache.find(
-      (channel) => channel.type === ChannelType.GuildCategory && channel.name === category.name
-    );
+    // Exact match first, then ignoring decorative emoji and punctuation, so
+    // a category the user styled still resolves to the one the config means.
+    let parent =
+      guild.channels.cache.find(
+        (channel) => channel.type === ChannelType.GuildCategory && channel.name === category.name
+      ) ??
+      guild.channels.cache.find(
+        (channel) =>
+          channel.type === ChannelType.GuildCategory &&
+          normalizeChannelName(channel.name) === normalizeChannelName(category.name)
+      );
 
     if (!parent) {
       note('create', `category "${category.name}"`);
@@ -183,9 +192,23 @@ client.once('clientReady', async () => {
         ...resolveChannelOverwrites(channelSpec),
       ]);
 
-      const existing = guild.channels.cache.find(
-        (channel) => channel.name === channelSpec.name && channel.parentId === parent?.id
-      );
+      // Same two-pass match. Live channel names carry emoji and separators
+      // ("\u{1F310}\u2502welcome"), so an exact-only match would report every
+      // existing channel as missing and create a duplicate of each.
+      const inParent = (channel) => parent && channel.parentId === parent.id;
+      const existing =
+        guild.channels.cache.find(
+          (channel) => inParent(channel) && channel.name === channelSpec.name
+        ) ??
+        guild.channels.cache.find(
+          (channel) =>
+            inParent(channel) &&
+            normalizeChannelName(channel.name) === normalizeChannelName(channelSpec.name)
+        );
+
+      if (existing && existing.name !== channelSpec.name) {
+        console.log(`  matched   #${channelSpec.name} -> existing "${existing.name}"`);
+      }
 
       if (!existing) {
         note('create', `#${channelSpec.name}${isVoice ? ' (voice)' : ''}`);

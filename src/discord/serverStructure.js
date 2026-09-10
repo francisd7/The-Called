@@ -247,7 +247,7 @@ export const CATEGORIES = [
       ],
       channels: [
         { name: `${tier.key}-announcements`, type: 'text', readOnlyFor: [tier.roleName] },
-        { name: `${tier.key}-chat`, type: 'text' },
+        { name: `${tier.key}-general`, type: 'text' },
       ],
     })
   ),
@@ -306,6 +306,19 @@ export function visibleChannelsFor(roleName) {
     }
   }
   return visible;
+}
+
+// Channel names in the live server carry decorative emoji and separators -
+// "welcome" is really "\u{1F310}\u2502welcome". Matching on the exact string
+// finds nothing and the apply script would create a duplicate of every
+// channel that already exists. Stripping everything but letters and digits
+// compares what the name actually means: "\u{1F310}\u2502welcome" and
+// "welcome" both reduce to "welcome", as do "Warrior Huddle" and
+// "warrior-huddle".
+export function normalizeChannelName(name) {
+  return String(name ?? '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '');
 }
 
 export function allRoleNames() {
