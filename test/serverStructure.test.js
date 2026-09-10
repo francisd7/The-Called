@@ -276,6 +276,7 @@ test('every recording channel says what it records', () => {
     .filter((name) => name.includes('recordings'))
     .sort();
   assert.deepEqual(recordingChannels, [
+    'bible-study-recordings',
     'coaching-recordings',
     'sales-recordings',
     'setting-recordings',

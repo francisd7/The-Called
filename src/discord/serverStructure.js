@@ -147,8 +147,17 @@ export const CATEGORIES = [
         ],
       },
       { name: 'bible-study', type: 'text' },
-      // No recordings channel here - huddles and bible study aren't
-      // recorded. The paid tiers' coaching calls are, in THE FORGE.
+      {
+        // Warrior Huddles aren't recorded, bible study is - hence one
+        // channel here rather than a catch-all "recordings". Staff post,
+        // everyone reads, veterans included.
+        name: 'bible-study-recordings',
+        type: 'text',
+        overwrites: allow([...TIER_ROLE_NAMES, 'Veteran'], READ).map((o) => ({
+          ...o,
+          deny: ['SendMessages'],
+        })),
+      },
       { name: 'Warrior Huddle', type: 'voice' },
     ],
   }),
