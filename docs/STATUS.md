@@ -170,31 +170,51 @@ structure was correct while the bot was not, which looks identical from
 Discord. Fixed in Settings → Source. Worth remembering: the deploy log is the
 only place that discrepancy is visible.
 
+Also applied, after the above:
+
+| Step | Result |
+|---|---|
+| `discord-migrate-channels --apply` | 19 moved, 0 failed — 8 Foundations, 10 Momentum, 1 Inner Circle |
+| Retired channels synced | 21 of 21, so retiring one actually hides it |
+| By-hand roles | Eddie given `Tier: Inner Circle`; Ops Team members given `Coach` and the role deleted; the duplicate `Gabe Gois` account kicked; the 20 unmatched members resolved |
+| `@everyone` → View Channels | **OFF** — the server is deny-by-default |
+
+The channel run reconciled exactly: 19 moved + 1 problem (the `testing`
+record) + 3 with no private channel by design = the 23 active clients holding
+a Discord ID. Nothing was dropped and nothing was guessed.
+
 Still open:
 
-- **The private client channels have not been moved yet.** This is the last
-  step and the one the whole restructure exists for —
-  `npm run discord-migrate-channels`, dry run first.
-- **`@everyone` → View Channel is still ON.** Deny-by-default doesn't take
-  effect until this is turned off, and it should not be turned off until the
-  by-hand list below is done — anyone missed sees only `WELCOME`.
-- **`TIER_SYNC_ENABLED` is still off** on Railway, deliberately. Turn it on
-  once the channels are in place, or the first tier change will try to move a
-  channel that isn't where it expects.
-- **By hand**: Eddie needs `Tier: Inner Circle` (correctly skipped by the role
-  migration as staff, but he is also a client); the two `Ops Team` members
-  need `Coach`, then `Ops Team` can be deleted; 20 members matched neither
-  Airtable nor a legacy client role and need a decision.
-- **`Gabe Gois` appears in both the client and veteran lists** — two Discord
-  accounts. Only one should end up with a tier role.
+- **`TIER_SYNC_ENABLED`** — being turned on now that the channels are in
+  place. Until the first real upsell fires it, the end-to-end write has only
+  been smoke-tested.
 - **Rotate the seven invite links.** Their codes were pasted into a chat
   transcript during the rollout. Re-run `discord-structure --apply --invites`
   and update `DISCORD_INVITE_ROLE_MAP` on Railway.
 - **Housekeeping** — Nick Martinez has `CSM = Unassigned`; Liam McCormack and
   Nathan Soriano have blank `Contract Value`; the `testing` record from the
-  2026-09-09 onboarding test should be deleted.
+  2026-09-09 onboarding test should be deleted (it is the one thing the
+  channel migration cannot resolve).
+- **Empty channels** — `#start-here`, the three `#<tier>-announcements`,
+  `#foundations-chat` and `#inner-circle-chat` were created by the structure
+  script and have no content yet.
 - **`SETTING MANAGER` left alone** — integration-managed, one member, staying
   as-is per the user.
+
+### Two rules this rollout kept proving
+
+Both cost a round trip each time they were forgotten, so they are worth
+stating plainly:
+
+1. **A channel is judged on its own overwrites, never its category's.** The
+   category's list is only a default for channels *synced* to it. A private
+   client channel can never be synced — it carries the client's own grant,
+   which desyncs it by definition — so moving one between categories changes
+   nothing about who can see it. Every move must rewrite the overwrites too.
+2. **The same rule in reverse for retiring.** Dragging a channel into a
+   locked category does not hide it if that channel carries its own
+   overwrites. It needs syncing, which is safe on a dead channel and
+   destructive on a client's.
 
 ### Rename these by hand before applying
 
