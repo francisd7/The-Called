@@ -271,7 +271,7 @@ test('pods are not managed by the config at all', () => {
 // produced them is what brings someone back.
 test('a Veteran reaches the community section and the 💪 section, and nothing else', () => {
   const reachable = CATEGORIES.filter((cat) => grantFor(cat, 'Veteran')).map((cat) => cat.name);
-  assert.deepEqual(reachable.sort(), ['THE CALLED', 'VETERANS · 💪']);
+  assert.deepEqual(reachable.sort(), ['THE CALLED', 'VETERANS']);
 
   for (const name of ['THE FORGE', 'SALES & SETTING', 'FOUNDATIONS', 'MOMENTUM']) {
     assert.equal(grantFor(categoryNamed(name), 'Veteran'), undefined, name);
@@ -315,7 +315,7 @@ test('every recording channel says what it records', () => {
   assert.deepEqual(recordingChannels, [
     'bible-study-recordings',
     'coaching-recordings',
-    'sales-and-setting-recordings',
+    'training-recordings',
   ]);
 });
 
@@ -344,9 +344,10 @@ test('Sales and Setting are one category, sharing one recordings channel', () =>
   const names = merged.channels.map((c) => c.name);
   // One recordings channel for both disciplines; reviews stay split because
   // a DM thread and a closing call aren't critiqued the same way.
-  assert.ok(names.includes('sales-and-setting-recordings'));
-  assert.ok(names.includes('call-reviews'));
+  assert.ok(names.includes('training-recordings'));
   assert.ok(names.includes('convo-reviews'));
+  // Call reviews fold into training-recordings; convo-reviews stays separate.
+  assert.equal(names.includes('call-reviews'), false);
   assert.ok(grantFor(merged, 'Tier: Momentum'));
   assert.ok(grantFor(merged, 'Tier: Inner Circle'));
   assert.equal(grantFor(merged, 'Tier: Foundations'), undefined);

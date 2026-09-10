@@ -39,10 +39,10 @@ team you get:
 |---|---|---|---|
 | The Called | $1,000 | none — the shared THE CALLED section is everything | — |
 | Foundations | $3k/3mo or $5k/6mo | ✓ | CSM, COO |
-| Momentum | $10k one-time or $12k split | ✓ | CSM, CMO, Founder, COO |
-| Inner Circle | $20k | ✓ | CSM, CMO, Founder, COO |
+| Momentum | $10k one-time or $12k split | ✓ | CSM, CMO, Nigel, COO |
+| Inner Circle | $20k | ✓ | CSM, CMO, Nigel, COO |
 
-Foundations deliberately excludes the CMO and Founder — they only service the
+Foundations deliberately excludes the CMO and Nigel — they only service the
 top two tiers, and the tier categories are what make that legible at a glance
 instead of a mental note. SALES & SETTING opens at Momentum, for both brands.
 
@@ -73,26 +73,66 @@ already exists and is integration-managed, so it can't be renamed.
 **Veterans** are past clients with lifetime community access. `Veteran` is a
 role, not a tier — nobody is paying for it, so giving them a tier role would
 make tier sync write a package onto a Completed/Cancelled record. It grants
-THE CALLED and the 💪 section, and nothing else. Losing the paid areas is the
+THE CALLED and the VETERANS section, and nothing else. Losing the paid areas is the
 point: seeing `#wins` without being able to reach what produced them is what
 brings someone back.
 
 **Every channel name is unique across the server**, and a test enforces it.
 Each recording channel says what it records — `#bible-study-recordings`,
-`#coaching-recordings`, `#sales-and-setting-recordings`. Warrior Huddles
+`#coaching-recordings`, `#training-recordings`. Warrior Huddles
 aren't recorded, bible study is, hence one channel in THE CALLED rather than
 a catch-all.
 
 Sales and Setting are **one category**: identical permissions, and Sales was
-down to a single live channel. They share one recordings channel — a
-recording is a recording — while `#convo-reviews` and `#call-reviews` stay
-split, because a DM thread and a closing call don't get critiqued the same
-way.
+down to a single live channel. `#training-recordings` holds sales calls,
+setting calls and the reviews of both; `#convo-reviews` stays separate,
+because a DM thread gets picked apart line by line and that isn't what a
+recording drop is for.
 
 Pods are no longer used, so the config declares nothing about them. The apply
 script never deletes, so the existing pod channels stay untouched in Discord
 until someone archives them by hand. Same for the old `#course-content` and
 per-brand channels — dropped from the config, left alone in Discord.
+
+### Rolling it out
+
+Two scripts, both dry-run by default and both additive — neither ever
+deletes a role, a channel or a category, because a wrong delete costs real
+client history and there is no undo.
+
+```
+npm run discord-structure                 # plan the roles/categories/channels
+npm run discord-structure -- --apply
+npm run grant-bot-channel-access          # new categories lock the bot out
+npm run discord-structure -- --apply --invites   # prints the invite map
+npm run discord-migrate-roles             # plan the role assignments
+npm run discord-migrate-roles -- --apply
+```
+
+`discord-migrate-roles` is the one-time pass that gets everyone already in
+the server onto the new roles: brand + tier for anyone matched in Airtable by
+`Discord ID`, and `Veteran` for anyone holding a legacy client role who isn't
+in Airtable at all. **This is the only time Airtable seeds Discord** — after
+it the direction reverses permanently.
+
+That `Veteran` fallback matters more than it sounds: access is deny-by-default
+and every category is gated on a `Tier:` role or `Veteran`, so anyone the
+migration doesn't touch sees only WELCOME. `Called Coaches` alone has 79
+members against 13 active clients.
+
+Two cases it deliberately refuses to guess: a member in Airtable with no
+`Package / Tier` recorded (demoting them to `Veteran` would strip a paying
+client; inventing a tier would fabricate a sale), and staff, who service
+clients rather than being one. Both are listed as skipped for a human.
+
+Four things the scripts can't do, in Server Settings afterwards:
+
+1. Move the bot's role above `Called Coaches` so it can assign roles.
+2. Turn `@everyone` → View Channel **off** at the server level.
+3. Give the bot **Manage Roles** and **Manage Guild**.
+4. Rename anything the config renamed — see `docs/STATUS.md`. The scripts
+   never rename, so a renamed channel is created empty alongside the original
+   and the history is stranded.
 
 ### Where the bot's output goes
 

@@ -215,14 +215,13 @@ export const CATEGORIES = [
     channels: [
       { name: 'sales-general', type: 'text' },
       { name: 'setting-general', type: 'text' },
-      // Reviews stay split because the work is different - a DM thread and a
-      // closing call don't get critiqued the same way - but one recordings
-      // channel holds both, since a recording is a recording. Named for the
-      // two disciplines rather than "call-recordings" so it can't be mistaken
-      // for the coaching or bible-study ones.
+      // One recordings channel for sales calls, setting calls and the reviews
+      // of both. Named "training-recordings" rather than "call-recordings" so
+      // it can't be mistaken for the coaching or bible-study ones.
+      // #convo-reviews stays separate because a DM thread gets picked apart
+      // line by line, which is not what a recording drop is for.
       { name: 'convo-reviews', type: 'text' },
-      { name: 'call-reviews', type: 'text' },
-      { name: 'sales-and-setting-recordings', type: 'text', readOnlyFor: SELLING_TIERS },
+      { name: 'training-recordings', type: 'text', readOnlyFor: SELLING_TIERS },
     ],
   }),
 
@@ -255,7 +254,7 @@ export const CATEGORIES = [
   // them by hand whenever you get to it.
 
   category({
-    name: 'VETERANS · 💪',
+    name: 'VETERANS',
     grants: [{ role: 'Veteran', allow: READ_WRITE }, ...ALL_STAFF_READ_WRITE],
     channels: [{ name: '💪-chat', type: 'text' }],
   }),

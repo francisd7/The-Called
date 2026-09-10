@@ -8,7 +8,7 @@ Tracks progress against the build priority in `Automation_Hub_Blueprint.md`.
 | 2 | Weekly Check-in → Discord | ✅ Live | Deployed to Railway, verified end-to-end: a real Weekly Check-in submission posted to `DISCORD_WEEKLY_CHECKIN_CHANNEL_ID` (a separate channel/server from #1, at the user's request). |
 | 3 | Discord ID field + Friday reminder DMs | ✅ Live | `WEEKLY_REMINDER_ENABLED=true` set on Railway and confirmed on 2026-09-09; deployment stable. First real send: Friday 2026-09-11, 12:00 PM ET (`America/New_York`, DST-aware). 19 of 22 active clients backfilled with a Discord ID; Wylie Hawkins, Malachi Hardware, Patric Cocos have `Skip Weekly Reminder` checked (bible-study-only clients, no personal-branding access, confirmed with the user). Message: "Hey [First Name], time for your Weekly Check-in — [link]". Dry-run path (`npm run weekly-reminder-dry-run`) still available for testing future changes without risk. |
 | 4 | New-member onboarding flow | ✅ Live | Enabled on Railway and verified end-to-end on 2026-09-09 with a real test-account join: channel creation, permissions, welcome message (mentions rendering correctly), and the no-match path were confirmed working via a real join in the client server. Design went through two iterations after that first live test: (1) no-match originally just flagged staff and waited — the user pointed out a new signup's Airtable record essentially never exists yet at join time, so that path would have fired for almost every real new member; (2) briefly fixed with a retry-on-poll-cycle mechanism, then the user clarified they actually wanted the automation to create the starter Client record itself (Name, Email, Discord ID, Start Date, Status Active) rather than wait on staff — so it does that now, and the retry mechanism was removed as unnecessary. Flag channel is a dedicated channel (`DISCORD_ONBOARDING_FLAG_CHANNEL_ID`), not the Weekly Check-in channel, per the user's request after seeing the first test flag land there. Team "new member joined" notification explicitly dropped per the user — they want a separate Whop-based notification with purchase amount instead (not built). Status `Active` on the starter record was a deliberate choice, confirmed with the user, even though it makes the client immediately eligible for automation #3's Friday reminder before a CSM is assigned. |
-| 5 | Discord restructure: roles, tier categories, invite routing | 🔨 Built, not applied | Blueprint approved. `src/discord/serverStructure.js` defines 15 roles, 9 categories and 28 declared channels; `scripts/apply-discord-structure.js` reconciles them (dry-run by default, additive only, never deletes). Invite-link routing and tier sync are wired but `TIER_SYNC_ENABLED` is off. **Nothing has been applied to the live server yet.** The Whop blocker cleared on 2026-09-09; see the decisions and open items below. |
+| 5 | Discord restructure: roles, tier categories, invite routing | 🔨 Built, not applied | Blueprint approved. `src/discord/serverStructure.js` defines 16 roles, 9 categories and 28 declared channels; `scripts/apply-discord-structure.js` reconciles them (dry-run by default, additive only, never deletes). Invite-link routing and tier sync are wired but `TIER_SYNC_ENABLED` is off. **Nothing has been applied to the live server yet.** The Whop blocker cleared on 2026-09-09; see the decisions and open items below. |
 
 ### #5 — decisions settled with the user
 
@@ -32,7 +32,7 @@ Tracks progress against the build priority in `Automation_Hub_Blueprint.md`.
   never deletes, so the existing pod channels stay in Discord until someone
   archives them by hand.
 - **The 💪 section is now `Veteran`** — past clients with lifetime community
-  access to THE CALLED plus the 💪 section, and nothing else. Named Veteran
+  access to THE CALLED plus the VETERANS section, and nothing else. Named Veteran
   rather than Alumni because a badge sitting next to paying clients in #wins
   should read as "been through it", not "former customer". It is deliberately
   *not* a tier role: nobody is paying for it, so a tier role would make tier
@@ -55,11 +55,11 @@ Tracks progress against the build priority in `Automation_Hub_Blueprint.md`.
   to reach one tier without messaging the whole server.
 - **`RESOURCES` deleted** — it was empty, and `#links` in THE FORGE covers it.
 - **`SETTING` and `SALES` merged** into one `SALES & SETTING` category, with
-  one shared `#sales-and-setting-recordings` for both disciplines — named for
-  the two rather than `call-recordings` so it can't be confused with the
-  coaching or bible-study ones. `#convo-reviews` and `#call-reviews` stay
-  split: a DM thread and a closing call aren't critiqued the same way.
-  `#setting-faq` and `#tips` retired by the user.
+  one shared `#training-recordings` — sales calls, setting calls and the
+  reviews of both, named so it can't be confused with the coaching or
+  bible-study ones. `#convo-reviews` stays separate: a DM thread gets picked
+  apart line by line. `#setting-faq`, `#tips` and `#call-reviews` retired by
+  the user.
 - **No brand-specific chat.** Per-tier conversation happens in each tier's
   own `#<tier>-chat` and one `#the-forge-chat` covers everyone paying, so
   `#coaches-general` / `#creators-general` were dropped. Brand roles gate
@@ -79,8 +79,8 @@ Tracks progress against the build priority in `Automation_Hub_Blueprint.md`.
   Without this they would see only `WELCOME` the moment the restructure is
   applied, since access is deny-by-default.
 - **Recording channels renamed to say what they record**:
-  `#bible-study-recordings`, `#coaching-recordings`, `#setting-recordings`,
-  `#sales-recordings`. Merging the brand categories made three channels called
+  `#bible-study-recordings`, `#coaching-recordings`, `#training-recordings`.
+  Merging the brand categories made three channels called
   `call-recordings` visible to the same client at once; a test now enforces
   that no two channel names collide anywhere in the server. Warrior Huddles
   aren't recorded, bible study is.
@@ -115,10 +115,16 @@ Renaming first means the script finds them and only fixes permissions.
 | Rename | To |
 |---|---|
 | `SETTING` (category) | `SALES & SETTING`, then move `#sales-general` in and delete the empty `SALES` |
-| `SETTING` → `#call-recordings` | `sales-and-setting-recordings` |
+| `SETTING` → `#call-recordings` | `training-recordings` |
 | `THE CALLED` → `#recordings` | `bible-study-recordings` |
-| `💪` (category) | `VETERANS · 💪` |
+| `💪` (category) | `VETERANS` |
 | `Eddie` (role) | `Coach` — then add the two `Ops Team` members to it |
+| `CALLED COACHES` → `#reel-ideas` | move into `THE FORGE` (the config puts it there, so leaving it creates a duplicate) |
+
+`#coaches-general` and `#creators-general` have no home in the config — brand
+chat was dropped in favour of per-tier chat plus one shared `#the-forge-chat`.
+Retire them, or the `CALLED COACHES` / `CALLED CREATORS` categories linger
+unmanaged.
 
 ### A bug caught while wiring Veterans
 
