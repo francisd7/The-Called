@@ -70,7 +70,7 @@ top two tiers, and the tier categories are what make that legible at a glance
 instead of a mental note. TRAINING HUB opens at Momentum, for both brands.
 
 **Each tier's category is that tier's whole home** — `#<tier>-announcements`
-(staff post, clients read), `#<tier>-general`, and that tier's private client
+(staff post, clients read), `#<tier>-chat`, and that tier's private client
 channels underneath. Before this there was nowhere to tell every Momentum
 client something without messaging the whole server.
 
@@ -80,7 +80,7 @@ splitting and their channels moved into THE FORGE. `Called Coaches` and
 `Called Creators` survive as hoisted, colored roles — they identify someone
 in a mixed channel and are the @-mention target for a brand-wide
 announcement — but they gate nothing. Per-tier conversation happens in each
-tier's own `#<tier>-general`, and one `#the-forge-chat` covers everyone paying.
+tier's own `#<tier>-chat`, and one `#the-forge-chat` covers everyone paying.
 
 **`Coach`** reaches every category, including the tier ones, but never a
 private client channel — those are built from each tier's `staffRoleNames` in

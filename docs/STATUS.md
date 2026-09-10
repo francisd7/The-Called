@@ -50,7 +50,7 @@ Tracks progress against the build priority in `Automation_Hub_Blueprint.md`.
   but they gate nothing.
 - **Three tier categories, each that tier's whole home**: `FOUNDATIONS`,
   `MOMENTUM`, `INNER CIRCLE` (the `CLIENTS · ` prefix is gone), each with
-  `#<tier>-announcements`, `#<tier>-general`, and that tier's private channels.
+  `#<tier>-announcements`, `#<tier>-chat`, and that tier's private channels.
   The announcements channel closes a real gap — there was previously no way
   to reach one tier without messaging the whole server.
 - **No `STAFF` category** — staff work in the ops server, where the bot's
@@ -80,7 +80,7 @@ Tracks progress against the build priority in `Automation_Hub_Blueprint.md`.
   apart line by line. `#setting-faq`, `#tips` and `#call-reviews` retired by
   the user.
 - **No brand-specific chat.** Per-tier conversation happens in each tier's
-  own `#<tier>-general` and one `#the-forge-chat` covers everyone paying, so
+  own `#<tier>-chat` and one `#the-forge-chat` covers everyone paying, so
   `#coaches-general` / `#creators-general` were dropped. Brand roles gate
   nothing at all now.
 - **`Founder` is `Nigel`** — that role already exists and is
@@ -125,9 +125,9 @@ create ~20 channels that already exist. Two causes, both fixed:
   punctuation stripped, and prints every loose match so they can be checked.
   New channels are still created with the plain config name; existing ones
   keep their styling.
-- **The tier chat channel was `#<tier>-chat` in the config** but the user had
-  built `#momentum-general`, matching the `-general` convention used
-  everywhere else in the server. The config follows the server.
+- **The tier chat channel is `#<tier>-chat`**, matching `#the-forge-chat`,
+  and consistent across all three tiers. The user had built
+  `#momentum-general` and renames it to match.
 
 Nothing was applied. This is what the dry run is for.
 

@@ -247,7 +247,7 @@ export const CATEGORIES = [
       ],
       channels: [
         { name: `${tier.key}-announcements`, type: 'text', readOnlyFor: [tier.roleName] },
-        { name: `${tier.key}-general`, type: 'text' },
+        { name: `${tier.key}-chat`, type: 'text' },
       ],
     })
   ),

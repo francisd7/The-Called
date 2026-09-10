@@ -176,12 +176,12 @@ test('every tier with private channels has its own category', () => {
 
 // The gap this closes: before, there was nowhere to tell every Momentum
 // client something without messaging the whole server.
-test('each tier gets its own announcements and general channel', () => {
+test('each tier gets its own announcements and chat channel', () => {
   for (const tier of TIERS.filter((t) => t.hasPrivateChannel)) {
     const cat = categoryNamed(tier.categoryName);
     assert.deepEqual(
       cat.channels.map((c) => c.name),
-      [`${tier.key}-announcements`, `${tier.key}-general`],
+      [`${tier.key}-announcements`, `${tier.key}-chat`],
       tier.categoryName
     );
     // Announcements are staff-to-tier, so clients read but don't post.
@@ -259,7 +259,7 @@ test('every tier category holds exactly its announcements and chat', () => {
   for (const tier of TIERS.filter((t) => t.hasPrivateChannel)) {
     assert.deepEqual(
       categoryNamed(tier.categoryName).channels.map((c) => c.name),
-      [`${tier.key}-announcements`, `${tier.key}-general`],
+      [`${tier.key}-announcements`, `${tier.key}-chat`],
       tier.categoryName
     );
   }
