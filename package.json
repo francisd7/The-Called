@@ -14,7 +14,8 @@
     "weekly-reminder-dry-run": "node scripts/run-weekly-checkin-reminder-dry-run.js",
     "discord-structure": "node scripts/apply-discord-structure.js",
     "discord-migrate-roles": "node scripts/migrate-discord-roles.js",
-    "discord-migrate-channels": "node scripts/migrate-client-channels.js"
+    "discord-migrate-channels": "node scripts/migrate-client-channels.js",
+    "discord-sync-retired": "node scripts/sync-retired-channels.js"
   },
   "dependencies": {
     "discord.js": "^14.16.3",

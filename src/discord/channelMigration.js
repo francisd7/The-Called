@@ -211,6 +211,70 @@ export function planClientChannelMoves({
   return { moves, problems, noChannelByDesign, unclaimed };
 }
 
+// Retiring a channel by dragging it into a locked category does not hide it.
+// A channel carrying its own overwrites - which every pod channel does, from
+// when members were granted individually - is unsynced, and Discord resolves
+// an unsynced channel against its own list, never its category's. So the old
+// grants survive the @everyone lockdown and those members still see a
+// "Retired Channels" category with the dead channels in it.
+//
+// Syncing wipes the channel's overwrites and inherits the category's. That is
+// the right move here and the wrong one on a client channel, where it would
+// wipe the client's access to their own channel - so this refuses to touch
+// anything that looks like a live client's, by name or by overwrite. A
+// channel dragged in by mistake is the whole reason this isn't done by hand.
+export function planRetiredSync({ channels, categoryId, clients, tierCategoryIds = [] }) {
+  const byName = new Map(
+    [...clients.values()].map((fields) => [
+      normalizeChannelName(fields['Client Name']),
+      fields['Client Name'],
+    ])
+  );
+
+  // "Grants an active client" cannot be the guard on its own: every pod
+  // channel grants several, which is exactly why they are still visible and
+  // the reason to sync them. What separates a leftover from someone's real
+  // channel is whether they have one elsewhere - after the migration every
+  // active client's channel sits in a tier category, so a client with a home
+  // there has nothing to lose here. A client with no home anywhere might be
+  // looking at their only channel, dragged in by mistake.
+  const homed = new Set();
+  for (const channel of channels) {
+    if (!tierCategoryIds.includes(channel.parentId)) continue;
+    for (const overwrite of channel.overwrites ?? []) {
+      if (overwrite.type === 'member' && clients.has(overwrite.id)) homed.add(overwrite.id);
+    }
+  }
+
+  const sync = [];
+  const protectedChannels = [];
+
+  for (const channel of channels) {
+    if (channel.parentId !== categoryId) continue;
+
+    const nameMatch = byName.get(normalizeChannelName(channel.name));
+    const homeless = (channel.overwrites ?? []).find(
+      (overwrite) =>
+        overwrite.type === 'member' && clients.has(overwrite.id) && !homed.has(overwrite.id)
+    );
+
+    if (nameMatch || homeless) {
+      protectedChannels.push({
+        ...channel,
+        reason: nameMatch
+          ? `named after active client ${nameMatch}`
+          : `only channel granting active client ${
+              clients.get(homeless.id)?.['Client Name'] ?? homeless.id
+            }`,
+      });
+      continue;
+    }
+    sync.push(channel);
+  }
+
+  return { sync, protected: protectedChannels };
+}
+
 export function formatChannelPlan(plan, { categoryNameById = new Map() } = {}) {
   const lines = [];
   const byTier = new Map();

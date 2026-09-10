@@ -2,6 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   planClientChannelMoves,
+  planRetiredSync,
   formatChannelPlan,
   NO_TIER,
   NO_CHANNEL,
@@ -275,4 +276,51 @@ test('the summary names the tier, the client and what would be dropped', () => {
   assert.match(text, /from CLIENTS/);
   assert.match(text, /drops 1 overwrite/);
   assert.match(text, /1 channel\(s\) to move and re-permission\./);
+});
+
+test('retired sync takes dead channels and only those in the category', () => {
+  // The live shape: a pod channel grants several active clients, which is
+  // precisely why it is still visible. It is safe because each of them has a
+  // real channel in a tier category.
+  const plan = planRetiredSync({
+    categoryId: 'cat-retired',
+    tierCategoryIds: ['cat-momentum'],
+    clients: clientsMap([['m1', 'Luke Buscher', { name: 'Momentum (Mid)' }]]),
+    channels: [
+      channel('c1', 'pod-2-chat', { parentId: 'cat-retired', overwrites: [member('m1')] }),
+      channel('c2', 'links', { parentId: 'cat-retired', overwrites: [role('r-old')] }),
+      // Elsewhere in the server - not this script's business.
+      channel('c3', 'luke-buscher', { parentId: 'cat-momentum', overwrites: [member('m1')] }),
+    ],
+  });
+  assert.deepEqual(plan.sync.map((entry) => entry.id), ['c1', 'c2']);
+  assert.equal(plan.protected.length, 0);
+});
+
+test('a live client channel dragged into retired is protected by name', () => {
+  const plan = planRetiredSync({
+    categoryId: 'cat-retired',
+    clients: clientsMap([['m1', 'Luke Buscher', { name: 'Momentum (Mid)' }]]),
+    channels: [channel('c1', 'luke-buscher', { parentId: 'cat-retired', overwrites: [] })],
+  });
+  assert.equal(plan.sync.length, 0);
+  assert.match(plan.protected[0].reason, /named after active client Luke Buscher/);
+});
+
+test('a renamed client channel with no home elsewhere is protected', () => {
+  // The name guard alone would miss this and the sync would wipe the client's
+  // access to their only channel.
+  const plan = planRetiredSync({
+    categoryId: 'cat-retired',
+    tierCategoryIds: ['cat-momentum'],
+    clients: clientsMap([['m1', 'Luke Buscher', { name: 'Momentum (Mid)' }]]),
+    channels: [
+      channel('c1', 'old-onboarding-thread', {
+        parentId: 'cat-retired',
+        overwrites: [member('m1')],
+      }),
+    ],
+  });
+  assert.equal(plan.sync.length, 0);
+  assert.match(plan.protected[0].reason, /only channel granting active client Luke Buscher/);
 });

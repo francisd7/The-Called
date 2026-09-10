@@ -191,6 +191,30 @@ dry run also prints, by name, every overwrite each rewrite would drop, plus
 any undeclared channel carrying a personal grant that no active client
 claimed (mostly past clients — reported, never touched).
 
+### Retiring a channel
+
+Dragging a channel into a locked category does not hide it. Any channel
+carrying its own overwrites — which every pod channel does, from when members
+were granted access individually — is unsynced, so Discord resolves it
+against its own list and the old personal grants survive the `@everyone`
+lockdown. Those members keep seeing a `Retired Channels` category with the
+dead channels in it.
+
+```
+npm run discord-sync-retired              # plan
+npm run discord-sync-retired -- --apply
+npm run discord-sync-retired -- --category "Some Other Name"
+```
+
+Syncing wipes a channel's own overwrites and inherits the category's, which
+is right on a dead channel and wrong on a client's — there it would wipe
+their access to their own channel. So the script refuses to touch anything
+named after an active client, or any channel that is the *only* one granting
+an active client. "Grants an active client" can't be the guard by itself:
+every pod channel grants several, which is exactly why they're still visible.
+What separates a leftover from someone's real channel is whether they have
+one in a tier category.
+
 Four things the scripts can't do, in Server Settings afterwards:
 
 1. Move the bot's role above `Called Coaches` so it can assign roles.
