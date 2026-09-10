@@ -223,7 +223,26 @@ export function planClientChannelMoves({
 // wipe the client's access to their own channel - so this refuses to touch
 // anything that looks like a live client's, by name or by overwrite. A
 // channel dragged in by mistake is the whole reason this isn't done by hand.
-export function planRetiredSync({ channels, categoryId, clients, tierCategoryIds = [] }) {
+// Discord's definition of synced: the channel's overwrite list is identical
+// to its category's, entry for entry. It does not mean "has no overwrites" -
+// syncing copies the category's list down, so a synced channel still has
+// them. Without this comparison the plan can only report how many overwrites
+// a channel carries, which says nothing about whether it needs syncing, and
+// the script degrades into a button that says yes 21 times.
+function sameOverwrites(a = [], b = []) {
+  if (a.length !== b.length) return false;
+  const key = (overwrite) => `${overwrite.id}:${overwrite.allow ?? ''}:${overwrite.deny ?? ''}`;
+  const mine = new Set(a.map(key));
+  return b.every((overwrite) => mine.has(key(overwrite)));
+}
+
+export function planRetiredSync({
+  channels,
+  categoryId,
+  categoryOverwrites = [],
+  clients,
+  tierCategoryIds = [],
+}) {
   const byName = new Map(
     [...clients.values()].map((fields) => [
       normalizeChannelName(fields['Client Name']),
@@ -247,6 +266,7 @@ export function planRetiredSync({ channels, categoryId, clients, tierCategoryIds
   }
 
   const sync = [];
+  const alreadySynced = [];
   const protectedChannels = [];
 
   for (const channel of channels) {
@@ -269,10 +289,18 @@ export function planRetiredSync({ channels, categoryId, clients, tierCategoryIds
       });
       continue;
     }
+
+    // Checked after the guard, not before. An active client's channel that is
+    // already synced here is not "nothing to do" - it means that client has
+    // already lost access to their own channel and needs a human now.
+    if (sameOverwrites(channel.overwrites, categoryOverwrites)) {
+      alreadySynced.push(channel);
+      continue;
+    }
     sync.push(channel);
   }
 
-  return { sync, protected: protectedChannels };
+  return { sync, alreadySynced, protected: protectedChannels };
 }
 
 export function formatChannelPlan(plan, { categoryNameById = new Map() } = {}) {

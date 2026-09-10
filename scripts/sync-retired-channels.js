@@ -88,25 +88,37 @@ client.once('clientReady', async () => {
     )
     .map((channel) => channel.id);
 
-  const plan = planRetiredSync({
-    categoryId: category.id,
-    tierCategoryIds,
-    clients,
-    channels: [...guild.channels.cache.values()].filter(Boolean).map((channel) => ({
-      id: channel.id,
-      name: channel.name,
-      parentId: channel.parentId ?? null,
-      overwrites: [...(channel.permissionOverwrites?.cache?.values() ?? [])].map((overwrite) => ({
-        id: overwrite.id,
-        type: overwrite.type === 1 ? 'member' : 'role',
-      })),
+  // Bitfields included: "synced" means the channel's overwrite list is
+  // identical to its category's, and syncing copies that list down - so a
+  // synced channel still has overwrites and comparing counts alone proves
+  // nothing.
+  const describe = (channel) => ({
+    id: channel.id,
+    name: channel.name,
+    parentId: channel.parentId ?? null,
+    overwrites: [...(channel.permissionOverwrites?.cache?.values() ?? [])].map((overwrite) => ({
+      id: overwrite.id,
+      type: overwrite.type === 1 ? 'member' : 'role',
+      allow: String(overwrite.allow.bitfield),
+      deny: String(overwrite.deny.bitfield),
     })),
   });
 
+  const plan = planRetiredSync({
+    categoryId: category.id,
+    categoryOverwrites: describe(category).overwrites,
+    tierCategoryIds,
+    clients,
+    channels: [...guild.channels.cache.values()].filter(Boolean).map(describe),
+  });
+
+  console.log(`Already synced (${plan.alreadySynced.length}) — nothing to do.\n`);
+
   console.log(`To sync (${plan.sync.length}):`);
   for (const channel of plan.sync) {
-    const own = channel.overwrites.length;
-    console.log(`  ${`#${channel.name}`.padEnd(32)} drops ${own} own overwrite(s)`);
+    const personal = channel.overwrites.filter((overwrite) => overwrite.type === 'member').length;
+    const detail = personal > 0 ? `${personal} personal grant(s) still visible` : 'differs from category';
+    console.log(`  ${`#${channel.name}`.padEnd(32)} ${detail}`);
   }
 
   if (plan.protected.length > 0) {

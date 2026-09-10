@@ -278,6 +278,42 @@ test('the summary names the tier, the client and what would be dropped', () => {
   assert.match(text, /1 channel\(s\) to move and re-permission\./);
 });
 
+test('a channel whose overwrites already match its category is left alone', () => {
+  // Syncing copies the category's list down, so a synced channel still has
+  // overwrites. Counting them proves nothing; only comparing does.
+  const CATEGORY = [{ id: 'r-admin', type: 'role', allow: '1024', deny: '0' }];
+  const plan = planRetiredSync({
+    categoryId: 'cat-retired',
+    categoryOverwrites: CATEGORY,
+    clients: new Map(),
+    channels: [
+      channel('c1', 'old-thing', { parentId: 'cat-retired', overwrites: CATEGORY }),
+      channel('c2', 'stale', {
+        parentId: 'cat-retired',
+        overwrites: [...CATEGORY, { id: 'someone', type: 'member', allow: '1024', deny: '0' }],
+      }),
+    ],
+  });
+  assert.deepEqual(plan.alreadySynced.map((entry) => entry.id), ['c1']);
+  assert.deepEqual(plan.sync.map((entry) => entry.id), ['c2']);
+});
+
+test('a matching id with different bits is not synced', () => {
+  const plan = planRetiredSync({
+    categoryId: 'cat-retired',
+    categoryOverwrites: [{ id: 'r-admin', type: 'role', allow: '1024', deny: '0' }],
+    clients: new Map(),
+    channels: [
+      channel('c1', 'loosened', {
+        parentId: 'cat-retired',
+        overwrites: [{ id: 'r-admin', type: 'role', allow: '3072', deny: '0' }],
+      }),
+    ],
+  });
+  assert.equal(plan.alreadySynced.length, 0);
+  assert.deepEqual(plan.sync.map((entry) => entry.id), ['c1']);
+});
+
 test('retired sync takes dead channels and only those in the category', () => {
   // The live shape: a pod channel grants several active clients, which is
   // precisely why it is still visible. It is safe because each of them has a
@@ -323,4 +359,19 @@ test('a renamed client channel with no home elsewhere is protected', () => {
   });
   assert.equal(plan.sync.length, 0);
   assert.match(plan.protected[0].reason, /only channel granting active client Luke Buscher/);
+});
+
+test('an already-synced client channel is reported, not filed as nothing to do', () => {
+  // The worst case: their channel is in the retired category AND already
+  // wiped, so they have lost access right now. Silence here would be the
+  // script confirming a live problem as fine.
+  const CATEGORY = [{ id: 'r-admin', type: 'role', allow: '1024', deny: '0' }];
+  const plan = planRetiredSync({
+    categoryId: 'cat-retired',
+    categoryOverwrites: CATEGORY,
+    clients: clientsMap([['m1', 'Luke Buscher', { name: 'Momentum (Mid)' }]]),
+    channels: [channel('c1', 'luke-buscher', { parentId: 'cat-retired', overwrites: CATEGORY })],
+  });
+  assert.equal(plan.alreadySynced.length, 0);
+  assert.match(plan.protected[0].reason, /named after active client Luke Buscher/);
 });
