@@ -44,19 +44,27 @@ team you get:
 
 Foundations deliberately excludes the CMO and Founder — they only service the
 top two tiers, and the tier categories are what make that legible at a glance
-instead of a mental note. SETTING and SALES open at Momentum, for both brands.
+instead of a mental note. SETTING & SALES opens at Momentum, for both brands.
 
 **Each tier's category is that tier's whole home** — `#<tier>-announcements`
 (staff post, clients read), `#<tier>-chat`, and that tier's private client
 channels underneath. Before this there was nowhere to tell every Momentum
 client something without messaging the whole server.
 
-**Brand is a role, not a category.** Course content is delivered in each
-client's private channel, so the per-brand categories had nothing left worth
-splitting and their work channels moved into THE FORGE. `Called Coaches` and
-`Called Creators` still exist as hoisted, colored roles — they identify who
-someone is in a mixed channel, and they're the @-mention target for a
-brand-wide announcement — but they gate no category.
+**Brand gates channels, tier gates categories.** Course content is delivered
+in each client's private channel, so the per-brand categories had nothing
+left worth splitting and their channels moved into THE FORGE. Brand survives
+as two things: a hoisted colored role that identifies someone in a mixed
+channel and can be @-mentioned, and a gate on `#coaches-general` /
+`#creators-general` inside THE FORGE.
+
+Those two are **exclusive channels** (`visibleOnlyTo` in the config): their
+overwrites *replace* the category's client grants rather than adding to them.
+Merging them would hand every paid tier access and quietly undo the gate. The
+two gates are independent and cut different ways — the category gate is tier,
+so a bible-study member never reaches THE FORGE at all; the channel gate is
+brand, so a Foundations coach reaches everything in THE FORGE except
+`#creators-general`.
 
 **Veterans** are past clients with lifetime community access. `Veteran` is a
 role, not a tier — nobody is paying for it, so giving them a tier role would
@@ -66,12 +74,15 @@ point: seeing `#wins` without being able to reach what produced them is what
 brings someone back.
 
 **Every channel name is unique across the server**, and a test enforces it.
-A Momentum client can see four different recording channels at once, so each
-says what it records: `#bible-study-recordings`, `#coaching-recordings`,
-`#setting-recordings`, `#sales-recordings`. Three channels called
+Each recording channel says what it records — `#bible-study-recordings`,
+`#coaching-recordings`, `#setting-recordings`. Three channels called
 `call-recordings` is the confusion this restructure exists to remove. Warrior
 Huddles aren't recorded, bible study is — hence one channel in THE CALLED
 rather than a catch-all.
+
+Setting and Sales are **one category**. They had identical permissions and
+Sales was down to a single live channel; a category per channel is the same
+problem an empty one has. Split `SALES` back out when it earns its own.
 
 Pods are no longer used, so the config declares nothing about them. The apply
 script never deletes, so the existing pod channels stay untouched in Discord

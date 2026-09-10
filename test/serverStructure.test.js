@@ -7,6 +7,8 @@ import {
   mergeOverwrites,
   resolveChannelOverwrites,
   findUnknownOverwriteRoles,
+  isExclusiveChannel,
+  exclusiveChannelOverwrites,
   allRoleNames,
 } from '../src/discord/serverStructure.js';
 import { TIERS, TIER_ROLE_NAMES, resolveTierFromRoleNames } from '../src/discord/tiers.js';
@@ -79,8 +81,8 @@ test('mergeOverwrites never leaves a permission both allowed and denied', () => 
 
 // The entitlement the user called out directly: low ticket must not reach
 // Setting or Sales.
-test('SETTING and SALES are closed to Foundations and to the bible-study tier', () => {
-  for (const name of ['SETTING', 'SALES']) {
+test('SETTING & SALES is closed to Foundations and to the bible-study tier', () => {
+  for (const name of ['SETTING & SALES']) {
     const category = categoryNamed(name);
     assert.equal(grantFor(category, 'Tier: Foundations'), undefined, name);
     assert.equal(grantFor(category, 'Tier: The Called'), undefined, name);
@@ -236,7 +238,7 @@ test('a Veteran reaches the community section and the 💪 section, and nothing 
   const reachable = CATEGORIES.filter((cat) => grantFor(cat, 'Veteran')).map((cat) => cat.name);
   assert.deepEqual(reachable.sort(), ['THE CALLED', 'VETERANS · 💪']);
 
-  for (const name of ['THE FORGE', 'SETTING', 'SALES', 'FOUNDATIONS', 'MOMENTUM']) {
+  for (const name of ['THE FORGE', 'SETTING & SALES', 'FOUNDATIONS', 'MOMENTUM']) {
     assert.equal(grantFor(categoryNamed(name), 'Veteran'), undefined, name);
   }
 });
@@ -278,7 +280,6 @@ test('every recording channel says what it records', () => {
   assert.deepEqual(recordingChannels, [
     'bible-study-recordings',
     'coaching-recordings',
-    'sales-recordings',
     'setting-recordings',
   ]);
 });
@@ -288,4 +289,48 @@ test('every recording channel says what it records', () => {
 test('no category is declared empty', () => {
   const empty = CATEGORIES.filter((cat) => cat.channels.length === 0).map((cat) => cat.name);
   assert.deepEqual(empty, []);
+});
+
+// Two independent gates: THE FORGE is gated on tier, and these two channels
+// inside it on brand. The brand gate cuts across the tiers, not down them —
+// a Foundations coach reaches everything in THE FORGE except the creators'
+// chat, which is the whole point.
+test('a brand chat replaces the category grants instead of adding to them', () => {
+  const coaches = categoryNamed('THE FORGE').channels.find((c) => c.name === 'coaches-general');
+  assert.ok(isExclusiveChannel(coaches));
+
+  const overwrites = exclusiveChannelOverwrites(coaches);
+  const granted = overwrites.filter((o) => o.allow).map((o) => o.role);
+
+  assert.ok(granted.includes('Called Coaches'));
+  assert.equal(granted.includes('Called Creators'), false);
+  // If the tier roles leaked in here, every paid tier would see the coaches
+  // chat and the brand gate would do nothing.
+  for (const tierRole of TIER_ROLE_NAMES) {
+    assert.equal(granted.includes(tierRole), false, `${tierRole} must not reach #coaches-general`);
+  }
+  assert.deepEqual(overwrites[0], { role: EVERYONE, deny: ['ViewChannel'] });
+  // Staff still see it — they service both brands.
+  for (const staff of ['Founder', 'COO', 'CMO', 'CSM']) {
+    assert.ok(granted.includes(staff), staff);
+  }
+});
+
+test('only the two brand chats are exclusive; the rest of THE FORGE is shared', () => {
+  const forge = categoryNamed('THE FORGE');
+  const exclusive = forge.channels.filter(isExclusiveChannel).map((c) => c.name);
+  assert.deepEqual(exclusive, ['coaches-general', 'creators-general']);
+});
+
+// Two categories with identical permissions, one down to a single live
+// channel, is the same problem RESOURCES had.
+test('Setting and Sales are one category', () => {
+  assert.equal(categoryNamed('SETTING'), undefined);
+  assert.equal(categoryNamed('SALES'), undefined);
+  const merged = categoryNamed('SETTING & SALES');
+  assert.ok(grantFor(merged, 'Tier: Momentum'));
+  assert.ok(grantFor(merged, 'Tier: Inner Circle'));
+  assert.equal(grantFor(merged, 'Tier: Foundations'), undefined);
+  assert.ok(merged.channels.some((c) => c.name === 'sales-general'));
+  assert.ok(merged.channels.some((c) => c.name === 'setting-general'));
 });

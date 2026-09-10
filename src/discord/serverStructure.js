@@ -172,6 +172,13 @@ export const CATEGORIES = [
     grants: [...allow(PAID_TIERS, READ_WRITE), ...ALL_STAFF_READ_WRITE],
     channels: [
       { name: 'the-forge-chat', type: 'text' },
+      // Two independent gates: the category is gated on tier, these two
+      // channels on brand. A Foundations coach reaches THE FORGE and
+      // everything in it except #creators-general, and vice versa - the
+      // brand gate cuts across the tiers rather than down them.
+      { name: 'coaches-general', type: 'text', visibleOnlyTo: ['Called Coaches'] },
+      { name: 'creators-general', type: 'text', visibleOnlyTo: ['Called Creators'] },
+      { name: 'reel-ideas', type: 'text' },
       { name: 'content-review', type: 'text' },
       { name: 'coaching-recordings', type: 'text', readOnlyFor: PAID_TIERS },
       { name: 'links', type: 'text', readOnlyFor: PAID_TIERS },
@@ -179,8 +186,13 @@ export const CATEGORIES = [
     ],
   }),
 
+  // Setting and Sales were two categories with identical permissions, and
+  // Sales is down to a single live channel. One category for one channel is
+  // the same "empty category reads as neglect" problem RESOURCES had. Split
+  // SALES back out when it has enough content to earn its own - it is a
+  // five-minute change.
   category({
-    name: 'SETTING',
+    name: 'SETTING & SALES',
     grants: [...allow(SELLING_TIERS, READ_WRITE), ...ALL_STAFF_READ_WRITE],
     channels: [
       { name: 'setting-general', type: 'text' },
@@ -188,17 +200,7 @@ export const CATEGORIES = [
       { name: 'convo-reviews', type: 'text' },
       { name: 'tips', type: 'text' },
       { name: 'setting-recordings', type: 'text', readOnlyFor: SELLING_TIERS },
-    ],
-  }),
-
-  category({
-    name: 'SALES',
-    grants: [...allow(SELLING_TIERS, READ_WRITE), ...ALL_STAFF_READ_WRITE],
-    channels: [
       { name: 'sales-general', type: 'text' },
-      { name: 'call-reviews', type: 'text' },
-      { name: 'sales-recordings', type: 'text', readOnlyFor: SELLING_TIERS },
-      { name: 'Mock Calls', type: 'voice', overwrites: allow(SELLING_TIERS, VOICE) },
     ],
   }),
 
@@ -255,6 +257,22 @@ export function resolveChannelOverwrites(channel) {
   return [];
 }
 
+// A channel whose access REPLACES its category's client grants instead of
+// adding to them - how #coaches-general sits inside a tier-gated category
+// but is only visible to one brand. Staff grants are kept, since staff need
+// to see everything either way.
+export function isExclusiveChannel(channel) {
+  return Array.isArray(channel.visibleOnlyTo) && channel.visibleOnlyTo.length > 0;
+}
+
+export function exclusiveChannelOverwrites(channel) {
+  return [
+    { role: EVERYONE, deny: ['ViewChannel'] },
+    ...allow(channel.visibleOnlyTo, READ_WRITE),
+    ...ALL_STAFF_READ_WRITE,
+  ];
+}
+
 export function allRoleNames() {
   return ROLES.map((role) => role.name);
 }
@@ -275,7 +293,10 @@ export function findUnknownOverwriteRoles() {
       if (!known.has(overwrite.role)) unknown.add(overwrite.role);
     }
     for (const channel of cat.channels) {
-      for (const overwrite of resolveChannelOverwrites(channel)) {
+      const overwrites = isExclusiveChannel(channel)
+        ? exclusiveChannelOverwrites(channel)
+        : resolveChannelOverwrites(channel);
+      for (const overwrite of overwrites) {
         if (!known.has(overwrite.role)) unknown.add(overwrite.role);
       }
     }
