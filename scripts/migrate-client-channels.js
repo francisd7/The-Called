@@ -80,7 +80,13 @@ function alreadyCorrect(channel, move) {
 }
 
 const airtableClient = createAirtableClient(airtablePat);
-const client = new Client({ intents: [GatewayIntentBits.Guilds] });
+// GuildMembers is privileged, and it's on for migrate-discord-roles already.
+// Needed here only to put a name on the overwrites a rewrite would remove -
+// but that list is the dry run's whole safety check, and "user 1532523139..."
+// is not something anyone can review.
+const client = new Client({
+  intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMembers],
+});
 
 client.once('clientReady', async () => {
   console.log(`Logged in as ${client.user.tag}.`);
@@ -95,6 +101,7 @@ client.once('clientReady', async () => {
   const guild = await client.guilds.fetch(guildId);
   await guild.roles.fetch();
   await guild.channels.fetch();
+  await guild.members.fetch();
 
   const roleIdByName = new Map(
     [...guild.roles.cache.values()].map((role) => [role.name, role.id])
