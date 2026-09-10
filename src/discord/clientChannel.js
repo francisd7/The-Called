@@ -1,4 +1,27 @@
+import { ChannelType } from 'discord.js';
+import { normalizeChannelName } from './serverStructure.js';
+
 const GRANT = ['ViewChannel', 'SendMessages', 'ReadMessageHistory'];
+
+// Both live automations have to find a tier's category before they can put a
+// channel in it, and both used to match the name exactly. Live category names
+// carry decorative emoji ("\u{1F310}│welcome" is really what #welcome is
+// called), so an exact match finds nothing and the channel silently lands
+// with no parent - the flat list this whole restructure existed to clear.
+// Every other lookup in the codebase normalizes; these two now do too.
+//
+// The type check matters as much as the normalizing: a top-level text channel
+// called MOMENTUM would otherwise match, and the move would fail with
+// something far more confusing than "not found".
+export function findCategoryByName(channels, name) {
+  return (
+    [...channels].find(
+      (channel) =>
+        channel?.type === ChannelType.GuildCategory &&
+        normalizeChannelName(channel.name) === normalizeChannelName(name)
+    ) ?? null
+  );
+}
 
 // Builds the complete overwrite set for one client's private channel.
 //

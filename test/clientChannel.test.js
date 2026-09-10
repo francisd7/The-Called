@@ -1,8 +1,10 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { ChannelType } from 'discord.js';
 import {
   buildClientChannelOverwrites,
   resolveRoleIdsByName,
+  findCategoryByName,
 } from '../src/discord/clientChannel.js';
 
 const GRANT = ['ViewChannel', 'SendMessages', 'ReadMessageHistory'];
@@ -79,4 +81,26 @@ test('a role that does not exist is reported, not quietly skipped', () => {
     ids: ['r1'],
     missing: ['CMO', 'Founder'],
   });
+});
+
+test('findCategoryByName matches past decorative emoji', () => {
+  // The live server calls it "\u{1F9F1}│FOUNDATIONS". An exact match
+  // finds nothing, and the new client's channel lands with no parent - back
+  // in the flat list this restructure existed to clear.
+  const channels = [
+    { id: 'c1', name: '\u{1F9F1}│FOUNDATIONS', type: ChannelType.GuildCategory },
+  ];
+  assert.equal(findCategoryByName(channels, 'FOUNDATIONS')?.id, 'c1');
+});
+
+test('findCategoryByName ignores a text channel with the same name', () => {
+  const channels = [
+    { id: 'c1', name: 'MOMENTUM', type: ChannelType.GuildText },
+    { id: 'c2', name: 'MOMENTUM', type: ChannelType.GuildCategory },
+  ];
+  assert.equal(findCategoryByName(channels, 'MOMENTUM')?.id, 'c2');
+});
+
+test('findCategoryByName returns null rather than undefined when absent', () => {
+  assert.equal(findCategoryByName([], 'INNER CIRCLE'), null);
 });

@@ -5,7 +5,11 @@ import {
   resolveTierFromRoleNames,
   tierRank,
 } from './tiers.js';
-import { buildClientChannelOverwrites, resolveRoleIdsByName } from './clientChannel.js';
+import {
+  buildClientChannelOverwrites,
+  resolveRoleIdsByName,
+  findCategoryByName,
+} from './clientChannel.js';
 
 // Discord leads, Airtable follows. The tier role is what actually gates
 // access, so it is the authoritative record of what someone bought - when a
@@ -173,9 +177,7 @@ async function moveClientChannel({ discord, member, change, log }) {
       return { channelId: null, warning: 'No private channel found to move.' };
     }
 
-    const target = channels.find(
-      (channel) => channel.name === change.to.categoryName && !channel.parentId
-    );
+    const target = findCategoryByName(channels, change.to.categoryName);
     if (!target) {
       return {
         channelId: clientChannel.id,

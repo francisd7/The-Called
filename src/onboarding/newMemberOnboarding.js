@@ -2,7 +2,11 @@ import { CLIENTS_TABLE_ID } from '../reminders/weeklyCheckinReminder.js';
 import { slugifyChannelName } from './channelName.js';
 import { looksLikeEmail, normalizeEmail } from './email.js';
 import { formatWelcomeMessage } from './welcomeMessage.js';
-import { buildClientChannelOverwrites, resolveRoleIdsByName } from '../discord/clientChannel.js';
+import {
+  buildClientChannelOverwrites,
+  resolveRoleIdsByName,
+  findCategoryByName,
+} from '../discord/clientChannel.js';
 import { resolveInvite } from '../discord/inviteRoles.js';
 import { getTierByAirtableValue, getTierByKey } from '../discord/tiers.js';
 import { RESOLVED, AMBIGUOUS } from '../discord/inviteTracker.js';
@@ -160,9 +164,7 @@ export function registerNewMemberOnboarding({
         : { ids: [csmRoleId].filter(Boolean) };
 
       const parentCategory = plan.tier
-        ? member.guild.channels.cache.find(
-            (channel) => channel.name === plan.tier.categoryName && !channel.parentId
-          )
+        ? findCategoryByName(member.guild.channels.cache.values(), plan.tier.categoryName)
         : null;
 
       const channel = await discord.createPrivateChannel(member.guild.id, {
