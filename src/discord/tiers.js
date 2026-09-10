@@ -47,6 +47,10 @@ export const TIERS = [
     hasPrivateChannel: true,
     categoryName: 'MOMENTUM',
     staffRoleNames: ['CSM', 'CMO', 'Nigel', 'COO'],
+    // Eddie's weekly call is Momentum-only, so its recordings live in the
+    // tier's own category rather than the shared work area - that is what a
+    // tier category is for. Read-only: he posts, the tier watches.
+    extraChannels: [{ name: 'momentum-recordings', readOnly: true }],
   },
   {
     key: 'inner-circle',

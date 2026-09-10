@@ -178,7 +178,7 @@ test('each tier gets its own announcements and chat channel', () => {
   for (const tier of TIERS.filter((t) => t.hasPrivateChannel)) {
     const cat = categoryNamed(tier.categoryName);
     assert.deepEqual(
-      cat.channels.map((c) => c.name),
+      cat.channels.slice(0, 2).map((c) => c.name),
       [`${tier.key}-announcements`, `${tier.key}-chat`],
       tier.categoryName
     );
@@ -237,11 +237,35 @@ test('THE FORGE holds the shared work channels for all paying tiers', () => {
   }
 });
 
-test('STAFF is staff-only', () => {
-  const granted = categoryNamed('STAFF')
-    .overwrites.filter((o) => o.allow)
-    .map((o) => o.role);
-  assert.deepEqual(granted.sort(), ['CMO', 'COO', 'CSM', 'Coach', 'Nigel']);
+// Staff work in the ops server, where the bot's output already goes. A staff
+// chat here would have been one more place to watch.
+test('there is no staff-only category in the client server', () => {
+  assert.equal(categoryNamed('STAFF'), undefined);
+  for (const cat of CATEGORIES) {
+    const clientRoles = cat.overwrites
+      .filter((o) => o.allow)
+      .map((o) => o.role)
+      .filter((r) => !['CMO', 'COO', 'CSM', 'Coach', 'Nigel'].includes(r));
+    assert.ok(clientRoles.length > 0, `${cat.name} would be staff-only`);
+  }
+});
+
+// Eddie's weekly call is Momentum-only, so it lives in that tier's category
+// rather than the shared work area.
+test('Momentum carries its own call recordings, and no other tier does', () => {
+  const momentum = categoryNamed('MOMENTUM').channels.map((c) => c.name);
+  assert.deepEqual(momentum, [
+    'momentum-announcements',
+    'momentum-chat',
+    'momentum-recordings',
+  ]);
+  for (const name of ['FOUNDATIONS', 'INNER CIRCLE']) {
+    assert.deepEqual(
+      categoryNamed(name).channels.map((c) => c.name),
+      [`${name.toLowerCase().replace(' ', '-')}-announcements`, `${name.toLowerCase().replace(' ', '-')}-chat`],
+      name
+    );
+  }
 });
 
 // Coach reaches every category, including the tier ones, but never a
@@ -294,6 +318,8 @@ test('pods are not managed by the config at all', () => {
 test('a Veteran reaches the community section and the 💪 section, and nothing else', () => {
   const reachable = CATEGORIES.filter((cat) => grantFor(cat, 'Veteran')).map((cat) => cat.name);
   assert.deepEqual(reachable.sort(), ['THE CALLED', 'VETERANS']);
+  const veterans = categoryNamed('VETERANS').channels.map((c) => c.name);
+  assert.deepEqual(veterans, ['veterans-general']);
 
   for (const name of ['THE FORGE', 'SALES & SETTING', 'FOUNDATIONS', 'MOMENTUM']) {
     assert.equal(grantFor(categoryNamed(name), 'Veteran'), undefined, name);
@@ -337,6 +363,7 @@ test('every recording channel says what it records', () => {
   assert.deepEqual(recordingChannels, [
     'bible-study-recordings',
     'masterclass-recordings',
+    'momentum-recordings',
     'training-recordings',
   ]);
 });

@@ -30,6 +30,20 @@ and reconciled onto Discord by `npm run discord-structure`. **Edit that file,
 never the server by hand** — otherwise the two drift and the next run fights
 you.
 
+Three layers of access, each answering a different question:
+
+| Layer | Who reaches it | What lives there |
+|---|---|---|
+| `WELCOME` | everyone | orientation |
+| `THE CALLED` | everyone, payers and not | community and faith |
+| `THE FORGE` | every paying tier | the shared work |
+| `SALES & SETTING` | Momentum and up | the sales curriculum |
+| `FOUNDATIONS` / `MOMENTUM` / `INNER CIRCLE` | one tier each | that tier's own |
+| `VETERANS` | past clients | somewhere to stay |
+
+THE FORGE is the layer that stops every shared work channel being duplicated
+three times across the tier categories.
+
 Two axes, deliberately separate. **Brand** says which product line someone
 bought into (`Called Coaches`, `Called Creators`, `The Called`) and is purely
 a label. **Tier** is what gates access, and what it buys is how much of the
@@ -49,7 +63,9 @@ instead of a mental note. SALES & SETTING opens at Momentum, for both brands.
 **Each tier's category is that tier's whole home** — `#<tier>-announcements`
 (staff post, clients read), `#<tier>-chat`, and that tier's private client
 channels underneath. Before this there was nowhere to tell every Momentum
-client something without messaging the whole server.
+client something without messaging the whole server. A tier can add its own
+channels via `extraChannels` in `tiers.js`: Momentum has
+`#momentum-recordings`, because the weekly call it records is Momentum-only.
 
 **Brand is a role, not a category.** Course content is delivered in each
 client's private channel, so the per-brand categories had nothing left worth
@@ -86,7 +102,7 @@ the paid tiers produce; they can't reach what produced it, or post into it.
 
 **Every channel name is unique across the server**, and a test enforces it.
 Each recording channel says what it records — `#bible-study-recordings`,
-`#masterclass-recordings`, `#training-recordings`. Warrior Huddles
+`#masterclass-recordings`, `#momentum-recordings`, `#training-recordings`. Warrior Huddles
 aren't recorded, bible study is, hence one channel in THE CALLED rather than
 a catch-all.
 
@@ -154,7 +170,8 @@ both would mean watching two places. The EOD feed already lives there too.
 both default to that channel and can be split out later if the audit log
 wants its own.
 
-The client server's `STAFF` category therefore holds only `#staff-general`.
+The client server has **no staff category at all** — staff work in the ops
+server, and a staff chat here would have been one more place to watch.
 
 ### One thing tier sync deliberately will not do
 
