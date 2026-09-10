@@ -50,7 +50,11 @@ if (missing.length > 0) {
 
 const baseId = process.env.AIRTABLE_CLIENT_SUCCESS_BASE_ID || 'appkSTSqkeXGHt6pY';
 const airtableClient = createAirtableClient(process.env.AIRTABLE_PAT);
-const client = new Client({ intents: [GatewayIntentBits.Guilds] });
+// GuildMembers only so the plan can name who a channel still grants. A count
+// is not reviewable - see the comment where the holders are resolved.
+const client = new Client({
+  intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMembers],
+});
 
 client.once('clientReady', async () => {
   console.log(`Logged in as ${client.user.tag}.`);
@@ -63,6 +67,7 @@ client.once('clientReady', async () => {
 
   const guild = await client.guilds.fetch(process.env.DISCORD_CLIENT_GUILD_ID);
   await guild.channels.fetch();
+  await guild.members.fetch();
 
   const category = [...guild.channels.cache.values()].find(
     (channel) =>
@@ -116,8 +121,18 @@ client.once('clientReady', async () => {
 
   console.log(`To sync (${plan.sync.length}):`);
   for (const channel of plan.sync) {
-    const personal = channel.overwrites.filter((overwrite) => overwrite.type === 'member').length;
-    const detail = personal > 0 ? `${personal} personal grant(s) still visible` : 'differs from category';
+    // Named, not counted. Every channel carries an overwrite for the bot from
+    // grant-bot-channel-access, so "1 personal grant" on an otherwise clean
+    // channel reads as a person who won't go away no matter how many you
+    // remove by hand - when it is the bot, and syncing is what clears it.
+    const holders = channel.overwrites
+      .filter((overwrite) => overwrite.type === 'member')
+      .map((overwrite) => {
+        if (overwrite.id === client.user.id) return 'the bot';
+        const member = guild.members.cache.get(overwrite.id);
+        return member ? `@${member.displayName}` : `user ${overwrite.id}`;
+      });
+    const detail = holders.length > 0 ? `still grants ${holders.join(', ')}` : 'differs from category';
     console.log(`  ${`#${channel.name}`.padEnd(32)} ${detail}`);
   }
 
