@@ -210,15 +210,18 @@ export const CATEGORIES = [
   // the same "empty category reads as neglect" problem RESOURCES had. Split
   // SALES back out when it has enough content to earn its own - it is a
   // five-minute change.
+  // Everything taught to the top two tiers, in one place: sales, setting, and
+  // Eddie's weekly call. Framing it as training rather than as two
+  // disciplines is what let #momentum-recordings go away - the weekly call
+  // was only in a tier category because there was nowhere else for it, and
+  // that left Inner Circle without it, breaking the rule that a higher tier
+  // reaches everything a lower one does.
   category({
-    name: 'SALES & SETTING',
+    name: 'TRAINING HUB',
     grants: [...allow(SELLING_TIERS, READ_WRITE), ...ALL_STAFF_READ_WRITE],
     channels: [
       { name: 'sales-general', type: 'text' },
       { name: 'setting-general', type: 'text' },
-      // One recordings channel for sales calls, setting calls and the reviews
-      // of both. Named "training-recordings" rather than "call-recordings" so
-      // it can't be mistaken for the coaching or bible-study ones.
       // #convo-reviews stays separate because a DM thread gets picked apart
       // line by line, which is not what a recording drop is for.
       { name: 'convo-reviews', type: 'text' },
@@ -245,11 +248,6 @@ export const CATEGORIES = [
       channels: [
         { name: `${tier.key}-announcements`, type: 'text', readOnlyFor: [tier.roleName] },
         { name: `${tier.key}-chat`, type: 'text' },
-        ...(tier.extraChannels ?? []).map((channel) => ({
-          name: channel.name,
-          type: 'text',
-          ...(channel.readOnly ? { readOnlyFor: [tier.roleName] } : {}),
-        })),
       ],
     })
   ),
@@ -280,6 +278,34 @@ export function resolveChannelOverwrites(channel) {
     return channel.readOnlyFor.map((role) => ({ role, allow: READ, deny: ['SendMessages'] }));
   }
   return [];
+}
+
+// What a member holding exactly this role can see, resolved the way Discord
+// actually does it: a channel is judged on its OWN overwrite list, never its
+// category's - the category's is only a default for channels synced to it.
+//
+// This is the question that matters before applying anything ("what will a
+// Foundations client actually see?"), and it is not answerable by reading
+// the config, because the answer depends on that resolution rule. Notably it
+// is why #wins can sit in a paid category and still be the one channel there
+// an unpaid tier reaches.
+export function visibleChannelsFor(roleName) {
+  const visible = [];
+  for (const cat of CATEGORIES) {
+    for (const channel of cat.channels) {
+      const specs = mergeOverwrites([...cat.overwrites, ...resolveChannelOverwrites(channel)]);
+      const mine = specs.find((o) => o.role === roleName);
+      const everyone = specs.find((o) => o.role === EVERYONE);
+      const source = mine ?? everyone;
+      if (!(source?.allow ?? []).includes('ViewChannel')) continue;
+      visible.push({
+        category: cat.name,
+        channel: channel.name,
+        canPost: !(source.deny ?? []).includes('SendMessages'),
+      });
+    }
+  }
+  return visible;
 }
 
 export function allRoleNames() {

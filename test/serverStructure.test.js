@@ -7,6 +7,7 @@ import {
   mergeOverwrites,
   resolveChannelOverwrites,
   findUnknownOverwriteRoles,
+  visibleChannelsFor,
   allRoleNames,
 } from '../src/discord/serverStructure.js';
 import {
@@ -84,8 +85,8 @@ test('mergeOverwrites never leaves a permission both allowed and denied', () => 
 
 // The entitlement the user called out directly: low ticket must not reach
 // Setting or Sales.
-test('SALES & SETTING is closed to Foundations and to the bible-study tier', () => {
-  for (const name of ['SALES & SETTING']) {
+test('TRAINING HUB is closed to Foundations and to the bible-study tier', () => {
+  for (const name of ['TRAINING HUB']) {
     const category = categoryNamed(name);
     assert.equal(grantFor(category, 'Tier: Foundations'), undefined, name);
     assert.equal(grantFor(category, 'Tier: The Called'), undefined, name);
@@ -178,7 +179,7 @@ test('each tier gets its own announcements and chat channel', () => {
   for (const tier of TIERS.filter((t) => t.hasPrivateChannel)) {
     const cat = categoryNamed(tier.categoryName);
     assert.deepEqual(
-      cat.channels.slice(0, 2).map((c) => c.name),
+      cat.channels.map((c) => c.name),
       [`${tier.key}-announcements`, `${tier.key}-chat`],
       tier.categoryName
     );
@@ -250,22 +251,27 @@ test('there is no staff-only category in the client server', () => {
   }
 });
 
-// Eddie's weekly call is Momentum-only, so it lives in that tier's category
-// rather than the shared work area.
-test('Momentum carries its own call recordings, and no other tier does', () => {
-  const momentum = categoryNamed('MOMENTUM').channels.map((c) => c.name);
-  assert.deepEqual(momentum, [
-    'momentum-announcements',
-    'momentum-chat',
-    'momentum-recordings',
-  ]);
-  for (const name of ['FOUNDATIONS', 'INNER CIRCLE']) {
+// Eddie's weekly call lives in TRAINING HUB, not a tier category. Putting it
+// under MOMENTUM left Inner Circle without it — the one place the ladder
+// broke, since a higher tier should reach everything a lower one does.
+test('every tier category holds exactly its announcements and chat', () => {
+  for (const tier of TIERS.filter((t) => t.hasPrivateChannel)) {
     assert.deepEqual(
-      categoryNamed(name).channels.map((c) => c.name),
-      [`${name.toLowerCase().replace(' ', '-')}-announcements`, `${name.toLowerCase().replace(' ', '-')}-chat`],
-      name
+      categoryNamed(tier.categoryName).channels.map((c) => c.name),
+      [`${tier.key}-announcements`, `${tier.key}-chat`],
+      tier.categoryName
     );
   }
+});
+
+test('the top two tiers reach the training material identically', () => {
+  const hub = categoryNamed('TRAINING HUB');
+  assert.ok(grantFor(hub, 'Tier: Momentum'));
+  assert.ok(grantFor(hub, 'Tier: Inner Circle'));
+  assert.deepEqual(
+    grantFor(hub, 'Tier: Momentum').allow,
+    grantFor(hub, 'Tier: Inner Circle').allow
+  );
 });
 
 // Coach reaches every category, including the tier ones, but never a
@@ -321,7 +327,7 @@ test('a Veteran reaches the community section and the 💪 section, and nothing 
   const veterans = categoryNamed('VETERANS').channels.map((c) => c.name);
   assert.deepEqual(veterans, ['veterans-general']);
 
-  for (const name of ['THE FORGE', 'SALES & SETTING', 'FOUNDATIONS', 'MOMENTUM']) {
+  for (const name of ['THE FORGE', 'TRAINING HUB', 'FOUNDATIONS', 'MOMENTUM']) {
     assert.equal(grantFor(categoryNamed(name), 'Veteran'), undefined, name);
   }
 });
@@ -363,7 +369,6 @@ test('every recording channel says what it records', () => {
   assert.deepEqual(recordingChannels, [
     'bible-study-recordings',
     'masterclass-recordings',
-    'momentum-recordings',
     'training-recordings',
   ]);
 });
@@ -386,10 +391,11 @@ test('THE FORGE has one shared chat, not a chat per brand', () => {
 
 // Two categories with identical permissions, one down to a single live
 // channel, is the same problem RESOURCES had.
-test('Sales and Setting are one category, sharing one recordings channel', () => {
-  assert.equal(categoryNamed('SETTING'), undefined);
-  assert.equal(categoryNamed('SALES'), undefined);
-  const merged = categoryNamed('SALES & SETTING');
+test('sales, setting and the weekly call are one training category', () => {
+  for (const gone of ['SETTING', 'SALES', 'SALES & SETTING']) {
+    assert.equal(categoryNamed(gone), undefined, gone);
+  }
+  const merged = categoryNamed('TRAINING HUB');
   const names = merged.channels.map((c) => c.name);
   // One recordings channel for both disciplines; reviews stay split because
   // a DM thread and a closing call aren't critiqued the same way.
@@ -402,4 +408,45 @@ test('Sales and Setting are one category, sharing one recordings channel', () =>
   assert.equal(grantFor(merged, 'Tier: Foundations'), undefined);
   assert.ok(merged.channels.some((c) => c.name === 'sales-general'));
   assert.ok(merged.channels.some((c) => c.name === 'setting-general'));
+});
+
+// Resolving what a role actually sees is the check that matters before
+// applying anything, and it is not answerable by reading the config alone —
+// the answer depends on Discord judging a channel by its own overwrites
+// rather than its category's.
+test('the bible-study tier reaches THE FORGE only through #wins', () => {
+  const forge = visibleChannelsFor('Tier: The Called').filter((c) => c.category === 'THE FORGE');
+  assert.deepEqual(forge, [{ category: 'THE FORGE', channel: 'wins', canPost: false }]);
+});
+
+test('a Foundations client reaches all of THE FORGE and can post in #wins', () => {
+  const forge = visibleChannelsFor('Tier: Foundations').filter((c) => c.category === 'THE FORGE');
+  assert.equal(forge.length, categoryNamed('THE FORGE').channels.length);
+  assert.equal(forge.find((c) => c.channel === 'wins').canPost, true);
+});
+
+// The ladder: every tier reaches everything the tier below it does. This was
+// broken while Eddie's weekly call sat under MOMENTUM, leaving Inner Circle
+// without it — TRAINING HUB is what fixed it.
+test('each tier reaches a superset of the tier below', () => {
+  const key = (c) => `${c.category}/${c.channel}`;
+  const ladder = ['Tier: Foundations', 'Tier: Momentum', 'Tier: Inner Circle'];
+  for (let i = 1; i < ladder.length; i += 1) {
+    const lower = new Set(
+      visibleChannelsFor(ladder[i - 1])
+        .filter((c) => !c.category.match(/^(FOUNDATIONS|MOMENTUM|INNER CIRCLE)$/))
+        .map(key)
+    );
+    const higher = new Set(visibleChannelsFor(ladder[i]).map(key));
+    for (const channel of lower) {
+      assert.ok(higher.has(channel), `${ladder[i]} must also reach ${channel}`);
+    }
+  }
+});
+
+test('nobody unpaid reaches the training material', () => {
+  for (const role of ['Tier: The Called', 'Veteran']) {
+    const hub = visibleChannelsFor(role).filter((c) => c.category === 'TRAINING HUB');
+    assert.deepEqual(hub, [], role);
+  }
 });

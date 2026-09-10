@@ -37,7 +37,7 @@ Three layers of access, each answering a different question:
 | `WELCOME` | everyone | orientation |
 | `THE CALLED` | everyone, payers and not | community and faith |
 | `THE FORGE` | every paying tier | the shared work |
-| `SALES & SETTING` | Momentum and up | the sales curriculum |
+| `TRAINING HUB` | Momentum and up | sales, setting, and the weekly call |
 | `FOUNDATIONS` / `MOMENTUM` / `INNER CIRCLE` | one tier each | that tier's own |
 | `VETERANS` | past clients | somewhere to stay |
 
@@ -58,14 +58,12 @@ team you get:
 
 Foundations deliberately excludes the CMO and Nigel — they only service the
 top two tiers, and the tier categories are what make that legible at a glance
-instead of a mental note. SALES & SETTING opens at Momentum, for both brands.
+instead of a mental note. TRAINING HUB opens at Momentum, for both brands.
 
 **Each tier's category is that tier's whole home** — `#<tier>-announcements`
 (staff post, clients read), `#<tier>-chat`, and that tier's private client
 channels underneath. Before this there was nowhere to tell every Momentum
-client something without messaging the whole server. A tier can add its own
-channels via `extraChannels` in `tiers.js`: Momentum has
-`#momentum-recordings`, because the weekly call it records is Momentum-only.
+client something without messaging the whole server.
 
 **Brand is a role, not a category.** Course content is delivered in each
 client's private channel, so the per-brand categories had nothing left worth
@@ -102,15 +100,26 @@ the paid tiers produce; they can't reach what produced it, or post into it.
 
 **Every channel name is unique across the server**, and a test enforces it.
 Each recording channel says what it records — `#bible-study-recordings`,
-`#masterclass-recordings`, `#momentum-recordings`, `#training-recordings`. Warrior Huddles
+`#masterclass-recordings`, `#training-recordings`. Warrior Huddles
 aren't recorded, bible study is, hence one channel in THE CALLED rather than
 a catch-all.
 
-Sales and Setting are **one category**: identical permissions, and Sales was
-down to a single live channel. `#training-recordings` holds sales calls,
-setting calls and the reviews of both; `#convo-reviews` stays separate,
+**TRAINING HUB** is everything taught to the top two tiers in one place:
+sales, setting, and Eddie's weekly call. Framing it as training rather than
+as two disciplines is what let a Momentum-only recordings channel go away —
+the weekly call had been sitting in a tier category for want of anywhere
+else, which left Inner Circle without it and broke the rule that a higher
+tier reaches everything a lower one does. `#convo-reviews` stays separate,
 because a DM thread gets picked apart line by line and that isn't what a
 recording drop is for.
+
+`visibleChannelsFor(role)` in the structure config answers "what will a
+Foundations client actually see?" — the check worth running before applying
+anything, and one you can't do by reading the config, since the answer turns
+on Discord judging a channel by its own overwrites rather than its
+category's. Tests use it to pin the two properties that matter: the unpaid
+tiers reach `#wins` and nothing else in THE FORGE, and every tier reaches a
+superset of the tier below it.
 
 Pods are no longer used, so the config declares nothing about them. The apply
 script never deletes, so the existing pod channels stay untouched in Discord
