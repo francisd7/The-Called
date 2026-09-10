@@ -131,16 +131,70 @@ create ~20 channels that already exist. Two causes, both fixed:
 
 Nothing was applied. This is what the dry run is for.
 
-### #5 — still open
+### What the live apply run caught
 
+- **`DiscordAPIError[50013] Missing Permissions` part-way through.** A bot can
+  only write an overwrite containing permissions it holds itself, and
+  `edit()` is a read-modify-write: it carries forward whatever large deny mask
+  the channel already had, which on a locked-down channel includes bits the
+  bot doesn't hold. Fixed the same way `grant-bot-channel-access.js`
+  documents — Administrator on the bot's role temporarily, re-run, remove it
+  after. Removed after, on 2026-09-10.
+- **The script could never report "up to date".** `overwritesMatch` demanded
+  exact equality while `applyOverwrites` uses `edit()`, which merges — so a
+  live overwrite legitimately holds bits the config never mentions, and a
+  just-configured server still reported 17 changes. Now a subset check: every
+  bit the config wants must be present and nothing it wants allowed may also
+  be denied. Anything extra is left alone. Without this the script is useless
+  as a drift detector, which is most of its long-term value.
+- **`--invites` failed with `#welcome not found`.** The emoji-tolerant match
+  had been applied to categories and channels but not to the invite lookup.
+
+### #5 — rollout state as of 2026-09-10
+
+Applied to the live server, run by the user from his own machine (the build
+environment has no Discord token):
+
+| Step | Result |
+|---|---|
+| `discord-structure --apply` | 26 changes applied |
+| `grant-bot-channel-access` | granted 20, already had 120, 1 failed |
+| `discord-migrate-roles --apply` | 87 assigned, 0 failed |
+| `discord-structure --apply --invites` | 7 invites created, map pasted into Railway |
+| Railway | branch corrected, bot live with the invite map loaded for all 7 links |
+
+**Railway was deploying the wrong branch.** The repo has no `main`, and
+Railway was pinned to `claude/automation-hub-discord-airtable-hu2pu3`, which
+predates the restructure and contains none of the invite-routing code. The
+structure was correct while the bot was not, which looks identical from
+Discord. Fixed in Settings → Source. Worth remembering: the deploy log is the
+only place that discrepancy is visible.
+
+Still open:
+
+- **The private client channels have not been moved yet.** This is the last
+  step and the one the whole restructure exists for —
+  `npm run discord-migrate-channels`, dry run first.
+- **`@everyone` → View Channel is still ON.** Deny-by-default doesn't take
+  effect until this is turned off, and it should not be turned off until the
+  by-hand list below is done — anyone missed sees only `WELCOME`.
+- **`TIER_SYNC_ENABLED` is still off** on Railway, deliberately. Turn it on
+  once the channels are in place, or the first tier change will try to move a
+  channel that isn't where it expects.
+- **By hand**: Eddie needs `Tier: Inner Circle` (correctly skipped by the role
+  migration as staff, but he is also a client); the two `Ops Team` members
+  need `Coach`, then `Ops Team` can be deleted; 20 members matched neither
+  Airtable nor a legacy client role and need a decision.
+- **`Gabe Gois` appears in both the client and veteran lists** — two Discord
+  accounts. Only one should end up with a tier role.
+- **Rotate the seven invite links.** Their codes were pasted into a chat
+  transcript during the rollout. Re-run `discord-structure --apply --invites`
+  and update `DISCORD_INVITE_ROLE_MAP` on Railway.
 - **Housekeeping** — Nick Martinez has `CSM = Unassigned`; Liam McCormack and
   Nathan Soriano have blank `Contract Value`; the `testing` record from the
   2026-09-09 onboarding test should be deleted.
 - **`SETTING MANAGER` left alone** — integration-managed, one member, staying
   as-is per the user.
-- **Nothing has been applied to the live server yet.** No Discord token was
-  available in the build environment, so the structure config is verified by
-  tests only. The first live run must be without `--apply`.
 
 ### Rename these by hand before applying
 

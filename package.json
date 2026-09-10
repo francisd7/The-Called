@@ -13,7 +13,8 @@
     "grant-bot-channel-access": "node scripts/grant-bot-channel-access.js",
     "weekly-reminder-dry-run": "node scripts/run-weekly-checkin-reminder-dry-run.js",
     "discord-structure": "node scripts/apply-discord-structure.js",
-    "discord-migrate-roles": "node scripts/migrate-discord-roles.js"
+    "discord-migrate-roles": "node scripts/migrate-discord-roles.js",
+    "discord-migrate-channels": "node scripts/migrate-client-channels.js"
   },
   "dependencies": {
     "discord.js": "^14.16.3",

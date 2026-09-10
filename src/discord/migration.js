@@ -25,7 +25,11 @@ export function clientsByDiscordId(records) {
   return map;
 }
 
-function selectName(value) {
+// Airtable returns a single-select as a bare string or as { name }, depending
+// on the field's options. Exported so channelMigration reads Package / Tier
+// exactly the same way this does - two copies of that rule is how one of them
+// silently starts returning undefined.
+export function selectName(value) {
   return typeof value === 'object' && value !== null ? value.name : value;
 }
 

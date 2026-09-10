@@ -137,9 +137,10 @@ per-brand channels — dropped from the config, left alone in Discord.
 
 ### Rolling it out
 
-Two scripts, both dry-run by default and both additive — neither ever
-deletes a role, a channel or a category, because a wrong delete costs real
-client history and there is no undo.
+Three scripts, all dry-run by default and all additive — none ever deletes a
+role, a channel or a category, because a wrong delete costs real client
+history and there is no undo. Run them in this order; each depends on the one
+before it.
 
 ```
 npm run discord-structure                 # plan the roles/categories/channels
@@ -148,6 +149,8 @@ npm run grant-bot-channel-access          # new categories lock the bot out
 npm run discord-structure -- --apply --invites   # prints the invite map
 npm run discord-migrate-roles             # plan the role assignments
 npm run discord-migrate-roles -- --apply
+npm run discord-migrate-channels          # plan the private-channel moves
+npm run discord-migrate-channels -- --apply
 ```
 
 `discord-migrate-roles` is the one-time pass that gets everyone already in
@@ -165,6 +168,28 @@ Two cases it deliberately refuses to guess: a member in Airtable with no
 `Package / Tier` recorded (demoting them to `Veteran` would strip a paying
 client; inventing a tier would fabricate a sale), and staff, who service
 clients rather than being one. Both are listed as skipped for a human.
+
+`discord-migrate-channels` is the last step, and the one that actually fixes
+the problem this restructure exists for: the private client channels sat in a
+flat list where nobody could tell which were the CMO's and Nigel's. It moves
+each active client's channel into their tier's category **and rewrites its
+permission overwrites** to that tier's staff list.
+
+Both halves are required. Dragging a channel into `MOMENTUM` by hand changes
+nothing about who can see it — a private client channel carries an overwrite
+the category cannot (the client's own access), which desyncs it by
+definition, and Discord resolves an unsynced channel against its own
+overwrite list only, never its category's. The by-hand version of this looks
+finished and leaves the CMO exactly as locked out as before.
+
+It finds a client's channel by their permission overwrite rather than by
+name — names are stale display names and a rename would strand the channel —
+and it will not touch a channel it isn't sure about. No match, two matches, a
+missing role or a missing category each leave the channel exactly as it is
+and print a line for a human. It rewrites the overwrite list outright, so the
+dry run also prints, by name, every overwrite each rewrite would drop, plus
+any undeclared channel carrying a personal grant that no active client
+claimed (mostly past clients — reported, never touched).
 
 Four things the scripts can't do, in Server Settings afterwards:
 
