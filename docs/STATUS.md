@@ -8,7 +8,7 @@ Tracks progress against the build priority in `Automation_Hub_Blueprint.md`.
 | 2 | Weekly Check-in → Discord | ✅ Live | Deployed to Railway, verified end-to-end: a real Weekly Check-in submission posted to `DISCORD_WEEKLY_CHECKIN_CHANNEL_ID` (a separate channel/server from #1, at the user's request). |
 | 3 | Discord ID field + Friday reminder DMs | ✅ Live | `WEEKLY_REMINDER_ENABLED=true` set on Railway and confirmed on 2026-09-09; deployment stable. First real send: Friday 2026-09-11, 12:00 PM ET (`America/New_York`, DST-aware). 19 of 22 active clients backfilled with a Discord ID; Wylie Hawkins, Malachi Hardware, Patric Cocos have `Skip Weekly Reminder` checked (bible-study-only clients, no personal-branding access, confirmed with the user). Message: "Hey [First Name], time for your Weekly Check-in — [link]". Dry-run path (`npm run weekly-reminder-dry-run`) still available for testing future changes without risk. |
 | 4 | New-member onboarding flow | ✅ Live | Enabled on Railway and verified end-to-end on 2026-09-09 with a real test-account join: channel creation, permissions, welcome message (mentions rendering correctly), and the no-match path were confirmed working via a real join in the client server. Design went through two iterations after that first live test: (1) no-match originally just flagged staff and waited — the user pointed out a new signup's Airtable record essentially never exists yet at join time, so that path would have fired for almost every real new member; (2) briefly fixed with a retry-on-poll-cycle mechanism, then the user clarified they actually wanted the automation to create the starter Client record itself (Name, Email, Discord ID, Start Date, Status Active) rather than wait on staff — so it does that now, and the retry mechanism was removed as unnecessary. Flag channel is a dedicated channel (`DISCORD_ONBOARDING_FLAG_CHANNEL_ID`), not the Weekly Check-in channel, per the user's request after seeing the first test flag land there. Team "new member joined" notification explicitly dropped per the user — they want a separate Whop-based notification with purchase amount instead (not built). Status `Active` on the starter record was a deliberate choice, confirmed with the user, even though it makes the client immediately eligible for automation #3's Friday reminder before a CSM is assigned. |
-| 5 | Discord restructure: roles, tier categories, invite routing | 🔨 Built, not applied | Blueprint approved. `src/discord/serverStructure.js` defines 16 roles, 9 categories and 28 declared channels; `scripts/apply-discord-structure.js` reconciles them (dry-run by default, additive only, never deletes). Invite-link routing and tier sync are wired but `TIER_SYNC_ENABLED` is off. **Nothing has been applied to the live server yet.** The Whop blocker cleared on 2026-09-09; see the decisions and open items below. |
+| 5 | Discord restructure: roles, tier categories, invite routing | 🔨 Built, not applied | Blueprint approved. `src/discord/serverStructure.js` defines 16 roles, 9 categories and 26 declared channels; `scripts/apply-discord-structure.js` reconciles them (dry-run by default, additive only, never deletes). Invite-link routing and tier sync are wired but `TIER_SYNC_ENABLED` is off. **Nothing has been applied to the live server yet.** The Whop blocker cleared on 2026-09-09; see the decisions and open items below. |
 
 ### #5 — decisions settled with the user
 
@@ -53,7 +53,13 @@ Tracks progress against the build priority in `Automation_Hub_Blueprint.md`.
   `#<tier>-announcements`, `#<tier>-chat`, and that tier's private channels.
   The announcements channel closes a real gap — there was previously no way
   to reach one tier without messaging the whole server.
-- **`RESOURCES` deleted** — it was empty, and `#links` in THE FORGE covers it.
+- **`RESOURCES` and `#links` deleted** — `RESOURCES` was empty, and the user
+  never rebuilt `#links` across two passes of curating the live server.
+- **`#wins` moved into THE FORGE**, a paid category, with the bible-study
+  tier and veterans granted on that one channel. Discord resolves a channel
+  against its own overwrites, never its category's, so an unpaid member sees
+  THE FORGE containing `#wins` alone. A test pins this both ways: they must
+  reach `#wins`, and they must reach nothing else in that category.
 - **`SETTING` and `SALES` merged** into one `SALES & SETTING` category, with
   one shared `#training-recordings` — sales calls, setting calls and the
   reviews of both, named so it can't be confused with the coaching or
@@ -79,7 +85,7 @@ Tracks progress against the build priority in `Automation_Hub_Blueprint.md`.
   Without this they would see only `WELCOME` the moment the restructure is
   applied, since access is deny-by-default.
 - **Recording channels renamed to say what they record**:
-  `#bible-study-recordings`, `#coaching-recordings`, `#training-recordings`.
+  `#bible-study-recordings`, `#masterclass-recordings`, `#training-recordings`.
   Merging the brand categories made three channels called
   `call-recordings` visible to the same client at once; a test now enforces
   that no two channel names collide anywhere in the server. Warrior Huddles

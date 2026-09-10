@@ -73,13 +73,20 @@ already exists and is integration-managed, so it can't be renamed.
 **Veterans** are past clients with lifetime community access. `Veteran` is a
 role, not a tier — nobody is paying for it, so giving them a tier role would
 make tier sync write a package onto a Completed/Cancelled record. It grants
-THE CALLED and the VETERANS section, and nothing else. Losing the paid areas is the
-point: seeing `#wins` without being able to reach what produced them is what
-brings someone back.
+THE CALLED, the VETERANS section, and read-only `#wins`. Losing the paid
+areas is the point: seeing `#wins` without being able to reach what produced
+them is what brings someone back.
+
+**`#wins` lives in THE FORGE**, a paid category, but the bible-study tier and
+veterans are granted on that one channel. This works because Discord resolves
+a channel against its *own* overwrites, never its category's — the category's
+are only a default for channels synced to it. So an unpaid member sees THE
+FORGE in their sidebar containing `#wins` and nothing else. They read what
+the paid tiers produce; they can't reach what produced it, or post into it.
 
 **Every channel name is unique across the server**, and a test enforces it.
 Each recording channel says what it records — `#bible-study-recordings`,
-`#coaching-recordings`, `#training-recordings`. Warrior Huddles
+`#masterclass-recordings`, `#training-recordings`. Warrior Huddles
 aren't recorded, bible study is, hence one channel in THE CALLED rather than
 a catch-all.
 

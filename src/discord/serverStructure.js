@@ -154,19 +154,6 @@ export const CATEGORIES = [
     ],
     channels: [
       { name: 'general-chat', type: 'text' },
-      {
-        name: 'wins',
-        type: 'text',
-        // One server-wide wins feed instead of a copy siloed inside each
-        // brand. This is the upsell surface: bible-study members and
-        // veterans can read it (and see what the paid tiers produce) but not
-        // post, and Coaches and Creators can see each other's, which is the
-        // point.
-        overwrites: [
-          { role: 'Tier: The Called', allow: READ, deny: ['SendMessages'] },
-          { role: 'Veteran', allow: READ, deny: ['SendMessages'] },
-        ],
-      },
       { name: 'bible-study', type: 'text' },
       {
         // Warrior Huddles aren't recorded, bible study is - hence one
@@ -196,10 +183,24 @@ export const CATEGORIES = [
       // happens in each tier's own #<tier>-chat; brand-specific chat was
       // dropped as an unnecessary split.
       { name: 'the-forge-chat', type: 'text' },
-      { name: 'reel-ideas', type: 'text' },
       { name: 'content-review', type: 'text' },
-      { name: 'coaching-recordings', type: 'text', readOnlyFor: PAID_TIERS },
-      { name: 'links', type: 'text', readOnlyFor: PAID_TIERS },
+      { name: 'reel-ideas', type: 'text' },
+      {
+        // The upsell surface, and the one channel in a paid category that
+        // the unpaid tiers can reach. A channel's overwrites are what
+        // Discord actually resolves against - the category's are only a
+        // default for channels synced to it - so granting the bible-study
+        // tier and veterans here shows them THE FORGE containing this
+        // channel and nothing else. They read what the paid tiers produce;
+        // they cannot reach what produced it, or post into it.
+        name: 'wins',
+        type: 'text',
+        overwrites: [
+          { role: 'Tier: The Called', allow: READ, deny: ['SendMessages'] },
+          { role: 'Veteran', allow: READ, deny: ['SendMessages'] },
+        ],
+      },
+      { name: 'masterclass-recordings', type: 'text', readOnlyFor: PAID_TIERS },
       { name: 'build session', type: 'voice', overwrites: allow(PAID_TIERS, VOICE) },
     ],
   }),

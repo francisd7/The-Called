@@ -118,10 +118,11 @@ test('THE CALLED is open to all four tiers', () => {
   }
 });
 
-// #wins is the upsell surface: bible-study members must be able to read what
-// the paid tiers produce, without being able to post into it.
+// #wins is the upsell surface: bible-study members and veterans must be able
+// to read what the paid tiers produce, without being able to reach what
+// produced it or post into it.
 test('#wins lets the bible-study tier read but not post', () => {
-  const wins = categoryNamed('THE CALLED').channels.find((c) => c.name === 'wins');
+  const wins = categoryNamed('THE FORGE').channels.find((c) => c.name === 'wins');
   const overwrites = resolveChannelOverwrites(wins);
   const theCalled = overwrites.find((o) => o.role === 'Tier: The Called');
   assert.deepEqual(theCalled.allow, ['ViewChannel', 'ReadMessageHistory']);
@@ -133,11 +134,32 @@ test('#wins lets the bible-study tier read but not post', () => {
   );
 });
 
-test('#wins is the only wins channel, and it lives in the shared section', () => {
+test('#wins is the only wins channel, and it lives in THE FORGE', () => {
   const winsLocations = CATEGORIES.filter((cat) =>
     cat.channels.some((channel) => channel.name === 'wins')
   ).map((cat) => cat.name);
-  assert.deepEqual(winsLocations, ['THE CALLED']);
+  assert.deepEqual(winsLocations, ['THE FORGE']);
+});
+
+// The mechanic this depends on: Discord resolves a channel against its OWN
+// overwrites, never its category's, so an unpaid tier granted here sees THE
+// FORGE containing #wins alone. If that ever regressed, either they'd lose
+// the upsell surface or they'd gain the whole paid work area.
+test('the unpaid tiers reach #wins without reaching the rest of THE FORGE', () => {
+  const forge = categoryNamed('THE FORGE');
+  for (const role of ['Tier: The Called', 'Veteran']) {
+    assert.equal(grantFor(forge, role), undefined, `${role} must not hold a category grant`);
+  }
+  const wins = forge.channels.find((c) => c.name === 'wins');
+  const granted = resolveChannelOverwrites(wins).map((o) => o.role);
+  assert.deepEqual(granted, ['Tier: The Called', 'Veteran']);
+
+  // Every other channel in THE FORGE stays closed to them.
+  for (const channel of forge.channels.filter((c) => c.name !== 'wins')) {
+    const roles = resolveChannelOverwrites(channel).map((o) => o.role);
+    assert.equal(roles.includes('Tier: The Called'), false, channel.name);
+    assert.equal(roles.includes('Veteran'), false, channel.name);
+  }
 });
 
 // Each tier's category is that tier's whole home: announcements, chat, and
@@ -210,7 +232,7 @@ test('there is no course-content channel anywhere', () => {
 test('THE FORGE holds the shared work channels for all paying tiers', () => {
   const forge = categoryNamed('THE FORGE');
   const names = forge.channels.map((c) => c.name);
-  for (const name of ['content-review', 'coaching-recordings', 'links']) {
+  for (const name of ['content-review', 'masterclass-recordings', 'reel-ideas']) {
     assert.ok(names.includes(name), name);
   }
 });
@@ -279,7 +301,7 @@ test('a Veteran reaches the community section and the 💪 section, and nothing 
 });
 
 test('a Veteran can read #wins but not post into it', () => {
-  const wins = categoryNamed('THE CALLED').channels.find((c) => c.name === 'wins');
+  const wins = categoryNamed('THE FORGE').channels.find((c) => c.name === 'wins');
   const veteran = resolveChannelOverwrites(wins).find((o) => o.role === 'Veteran');
   assert.deepEqual(veteran.allow, ['ViewChannel', 'ReadMessageHistory']);
   assert.deepEqual(veteran.deny, ['SendMessages']);
@@ -314,7 +336,7 @@ test('every recording channel says what it records', () => {
     .sort();
   assert.deepEqual(recordingChannels, [
     'bible-study-recordings',
-    'coaching-recordings',
+    'masterclass-recordings',
     'training-recordings',
   ]);
 });
