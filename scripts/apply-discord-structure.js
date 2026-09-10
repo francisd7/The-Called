@@ -92,14 +92,25 @@ function toEditOptions(spec) {
   return options;
 }
 
+// Subset check, not equality. applyOverwrites uses edit(), which merges into
+// whatever the overwrite already carried, so a live overwrite legitimately
+// holds bits this config never mentions. Demanding equality would report the
+// same changes on every run and the script could never read "up to date" -
+// which would make it useless as a drift detector.
 function overwritesMatch(channel, specs, roleIdByName, guild) {
   for (const spec of specs) {
     const id = idFor(spec.role, roleIdByName, guild);
     if (!id) continue;
     const existing = channel.permissionOverwrites.cache.get(id);
     if (!existing) return false;
-    if (existing.allow.bitfield !== bits(spec.allow)) return false;
-    if (existing.deny.bitfield !== bits(spec.deny)) return false;
+
+    const wantAllow = bits(spec.allow);
+    const wantDeny = bits(spec.deny);
+    if ((existing.allow.bitfield & wantAllow) !== wantAllow) return false;
+    if ((existing.deny.bitfield & wantDeny) !== wantDeny) return false;
+    // Something we want allowed must not also be denied - denies win in
+    // Discord, so that would silently be the opposite of what we asked for.
+    if ((existing.deny.bitfield & wantAllow) !== 0n) return false;
   }
   return true;
 }
@@ -233,8 +244,12 @@ client.once('clientReady', async () => {
   // --- Invites ------------------------------------------------------------
   if (withInvites) {
     console.log('\nInvites:');
+    // Normalized, like every other channel lookup here - the live channel is
+    // "\u{1F310}\u2502welcome", not "welcome".
     const welcome = guild.channels.cache.find(
-      (channel) => channel.name === 'welcome' && channel.type === ChannelType.GuildText
+      (channel) =>
+        channel.type === ChannelType.GuildText &&
+        normalizeChannelName(channel.name) === normalizeChannelName('welcome')
     );
     if (!welcome) {
       console.log('  #welcome not found — create the structure first, then re-run with --invites.');
