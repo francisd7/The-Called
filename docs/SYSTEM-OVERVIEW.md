@@ -166,6 +166,9 @@ between "code exists" and "real people get real messages".
 | 4 | New-member onboarding | `guildMemberAdd` | `NEW_MEMBER_ONBOARDING_ENABLED` | Roles, a private channel, an Airtable record |
 | 5 | Tier sync | `guildMemberUpdate` | `TIER_SYNC_ENABLED` | Airtable write, channel move, audit log |
 
+**All five are live** as of 2026-09-10 — every gate above is set to `true` on
+Railway. Assume an automation is running unless something says otherwise.
+
 **#3** skips anyone with `Skip Weekly Reminder` checked, and only targets
 records where `Status = 'Active'`.
 
