@@ -262,9 +262,9 @@ test('resolveChannelOverwrites expands the readOnlyFor shorthand', () => {
   assert.deepEqual(resolveChannelOverwrites({ name: 'x' }), []);
 });
 
-// A Momentum client can see four different recording channels at once.
-// Three of them called "call-recordings" is the confusion this restructure
-// exists to remove, so every one is named for what is actually in it.
+// Merging the brand categories put three channels called "call-recordings"
+// in front of the same client - the confusion this restructure exists to
+// remove - so every one is named for what is actually in it.
 test('no two channels visible to the same client share a name', () => {
   const names = CATEGORIES.flatMap((cat) => cat.channels).map((c) => c.name);
   assert.equal(new Set(names).size, names.length, `duplicate channel name in: ${names.join(', ')}`);
@@ -277,7 +277,6 @@ test('every recording channel says what it records', () => {
     .sort();
   assert.deepEqual(recordingChannels, [
     'coaching-recordings',
-    'huddle-recordings',
     'sales-recordings',
     'setting-recordings',
   ]);

@@ -147,18 +147,8 @@ export const CATEGORIES = [
         ],
       },
       { name: 'bible-study', type: 'text' },
-      {
-        // Named for what is in it, not just "recordings". Four different
-        // recording channels are visible to a Momentum client at once, and
-        // three of them called the same thing is the exact confusion this
-        // restructure exists to remove.
-        name: 'huddle-recordings',
-        type: 'text',
-        overwrites: allow([...TIER_ROLE_NAMES, 'Veteran'], READ).map((o) => ({
-          ...o,
-          deny: ['SendMessages'],
-        })),
-      },
+      // No recordings channel here - huddles and bible study aren't
+      // recorded. The paid tiers' coaching calls are, in THE FORGE.
       { name: 'Warrior Huddle', type: 'voice' },
     ],
   }),

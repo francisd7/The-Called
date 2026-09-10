@@ -66,10 +66,11 @@ point: seeing `#wins` without being able to reach what produced them is what
 brings someone back.
 
 **Every channel name is unique across the server**, and a test enforces it.
-A Momentum client can see four different recording channels at once, so each
-says what it records: `#huddle-recordings`, `#coaching-recordings`,
-`#setting-recordings`, `#sales-recordings`. Three channels called
-`call-recordings` is the confusion this restructure exists to remove.
+A Momentum client can see three different recording channels at once, so each
+says what it records: `#coaching-recordings`, `#setting-recordings`,
+`#sales-recordings`. Three channels called `call-recordings` is the confusion
+this restructure exists to remove. Warrior Huddles and bible study aren't
+recorded, so THE CALLED has no recordings channel at all.
 
 Pods are no longer used, so the config declares nothing about them. The apply
 script never deletes, so the existing pod channels stay untouched in Discord
