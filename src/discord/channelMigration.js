@@ -1,5 +1,6 @@
 import { getTierByAirtableValue } from './tiers.js';
 import { selectName } from './migration.js';
+import { normalizeChannelName } from './serverStructure.js';
 
 // The last piece of the restructure: getting the 19 private client channels
 // out of the flat list at the top of the server and into their tier's
@@ -24,6 +25,19 @@ export const AMBIGUOUS = 'ambiguous';
 export const NO_CATEGORY = 'no-category';
 export const MISSING_ROLE = 'missing-role';
 export const UNEXPECTED_CHANNEL = 'unexpected-channel';
+
+// Several clients hold a personal grant on a retired pod channel or a stray
+// #links as well as on their own channel, so the overwrite test alone leaves
+// them ambiguous. Among candidates that already passed that test, exactly one
+// named after the client is two independent signals agreeing - not the
+// name-matching this deliberately avoids, which would have been the only
+// signal. No name match, or several, and it stays a human's call.
+function narrowByName(candidates, clientName) {
+  const wanted = normalizeChannelName(clientName);
+  if (!wanted) return candidates;
+  const named = candidates.filter((channel) => normalizeChannelName(channel.name) === wanted);
+  return named.length === 1 ? named : candidates;
+}
 
 // Matched on the member's own permission overwrite, not on the channel name.
 // Names here are display names that change, and several are already stale -
@@ -56,6 +70,7 @@ export function planClientChannelMoves({
 }) {
   const moves = [];
   const problems = [];
+  const noChannelByDesign = [];
   const claimed = new Set();
 
   const flag = (kind, entry) => problems.push({ kind, ...entry });
@@ -63,7 +78,8 @@ export function planClientChannelMoves({
   for (const [memberId, fields] of clients) {
     const clientName = fields['Client Name'] ?? memberId;
     const tier = getTierByAirtableValue(selectName(fields['Package / Tier']));
-    const candidates = candidateChannelsFor(channels, memberId, declaredChannelIds);
+    const matched = candidateChannelsFor(channels, memberId, declaredChannelIds);
+    const candidates = matched.length > 1 ? narrowByName(matched, clientName) : matched;
     const names = candidates.map((channel) => `#${channel.name}`).join(', ');
 
     if (!tier) {
@@ -88,6 +104,12 @@ export function planClientChannelMoves({
           tierName: tier.name,
           detail: `${tier.name} gets no private channel, but ${names} grants them access. Left alone.`,
         });
+      } else {
+        // Reported rather than skipped in silence. Without a line here these
+        // clients are simply absent from the output, and the only way to
+        // notice is to check the totals against Airtable by hand - which is
+        // exactly the sort of thing nobody does twice.
+        noChannelByDesign.push({ memberId, clientName, tierName: tier.name });
       }
       continue;
     }
@@ -160,6 +182,10 @@ export function planClientChannelMoves({
       staffRoleNames: tier.staffRoleNames,
       desiredIds,
       parentAlreadyCorrect: channel.parentId === toCategoryId,
+      // Marked so the summary can single these out. They are the only moves
+      // resting on more than the member's own overwrite, so they are the ones
+      // worth a second look before applying.
+      narrowedByName: matched.length > 1,
       // The overwrites a rewrite would remove. Surfaced because the rewrite
       // replaces the list outright: anyone granted individually who does not
       // also hold one of the tier's staff roles loses access here, and that
@@ -182,7 +208,7 @@ export function planClientChannelMoves({
       (channel.overwrites ?? []).some((overwrite) => overwrite.type === 'member')
   );
 
-  return { moves, problems, unclaimed };
+  return { moves, problems, noChannelByDesign, unclaimed };
 }
 
 export function formatChannelPlan(plan, { categoryNameById = new Map() } = {}) {
@@ -199,12 +225,33 @@ export function formatChannelPlan(plan, { categoryNameById = new Map() } = {}) {
       const from = move.parentAlreadyCorrect
         ? 'already in place'
         : `from ${categoryNameById.get(move.fromParentId) ?? 'no category'}`;
-      lines.push(`  ${`#${move.channelName}`.padEnd(30)} ${move.clientName.padEnd(22)} ${from}`);
+      const mark = move.narrowedByName ? ' *' : '';
+      lines.push(
+        `  ${`#${move.channelName}`.padEnd(30)} ${move.clientName.padEnd(22)} ${from}${mark}`
+      );
       if (move.droppedOverwrites.length > 0) {
         lines.push(`  ${''.padEnd(30)} drops ${move.droppedOverwrites.length} overwrite(s)`);
       }
     }
     lines.push('');
+  }
+
+  const narrowed = plan.moves.filter((move) => move.narrowedByName);
+  if (narrowed.length > 0) {
+    lines.push(
+      `* ${narrowed.length} matched more than one channel and were narrowed by name — ` +
+        'they also hold a personal grant on a retired pod or #links channel. ' +
+        'Those other channels are left alone.'
+    );
+    lines.push('');
+  }
+
+  if (plan.noChannelByDesign.length > 0) {
+    const names = plan.noChannelByDesign.map((entry) => entry.clientName).join(', ');
+    lines.push(
+      `No private channel by design (${plan.noChannelByDesign.length}): ${names}`,
+      ''
+    );
   }
 
   if (plan.problems.length > 0) {

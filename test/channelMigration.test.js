@@ -104,18 +104,72 @@ test('declared structure channels are never candidates', () => {
   assert.equal(result.problems[0].kind, NO_CHANNEL);
 });
 
-test('two candidate channels flag rather than guess, and neither is touched', () => {
+test('several candidates with no name match flag rather than guess', () => {
   const result = plan({
     clients: clientsMap([['m1', 'A', { name: 'Momentum (Mid)' }]]),
     channels: [
       channel('c1', 'a-old', { overwrites: [member('m1')] }),
-      channel('c2', 'a', { overwrites: [member('m1')] }),
+      channel('c2', 'a-older', { overwrites: [member('m1')] }),
     ],
   });
   assert.equal(result.moves.length, 0);
   assert.equal(result.problems[0].kind, AMBIGUOUS);
   // Claimed, so they don't also show up as unclaimed leftovers.
   assert.equal(result.unclaimed.length, 0);
+});
+
+test('a personal grant on a retired pod channel is narrowed away by name', () => {
+  // The live shape: seven clients hold a grant on a dead pod channel and on
+  // #links as well as on their own, and the overwrite test alone can't tell
+  // them apart.
+  const result = plan({
+    clients: clientsMap([['m1', 'Luke Buscher', { name: 'Momentum (Mid)' }]]),
+    channels: [
+      channel('c1', 'luke-buscher', { overwrites: [member('m1')] }),
+      channel('c2', 'pod-2-chat', { overwrites: [member('m1')] }),
+      channel('c3', 'links', { overwrites: [member('m1')] }),
+    ],
+  });
+  assert.equal(result.moves.length, 1);
+  assert.equal(result.moves[0].channelId, 'c1');
+  assert.equal(result.moves[0].narrowedByName, true);
+  // The pod and links channels are not theirs, so they stay untouched and
+  // surface as leftovers rather than being quietly claimed.
+  assert.deepEqual(result.unclaimed.map((channel) => channel.id), ['c2', 'c3']);
+});
+
+test('two channels both named after the client stay ambiguous', () => {
+  const result = plan({
+    clients: clientsMap([['m1', 'Gabe Gois', { name: 'Momentum (Mid)' }]]),
+    channels: [
+      channel('c1', 'gabe-gois', { overwrites: [member('m1')] }),
+      channel('c2', 'Gabe Gois', { overwrites: [member('m1')] }),
+    ],
+  });
+  assert.equal(result.moves.length, 0);
+  assert.equal(result.problems[0].kind, AMBIGUOUS);
+});
+
+test('a single candidate is never narrowed, even when the name does not match', () => {
+  // Display names go stale - "Will Pelayo" owns "#william-pelayo". The name is
+  // only ever a tiebreaker, never a requirement.
+  const result = plan({
+    clients: clientsMap([['m1', 'Will Pelayo', { name: 'Foundations (Entry)' }]]),
+    channels: [channel('c1', 'william-pelayo', { overwrites: [member('m1')] })],
+  });
+  assert.equal(result.moves.length, 1);
+  assert.equal(result.moves[0].channelId, 'c1');
+  assert.equal(result.moves[0].narrowedByName, false);
+});
+
+test('bible-study clients with no channel are reported, not silently absent', () => {
+  const result = plan({
+    clients: clientsMap([['m1', 'A', { name: 'The Called (Bible Study & Warrior Huddles)' }]]),
+    channels: [],
+  });
+  assert.equal(result.problems.length, 0);
+  assert.deepEqual(result.noChannelByDesign.map((entry) => entry.clientName), ['A']);
+  assert.match(formatChannelPlan(result), /No private channel by design \(1\): A/);
 });
 
 test('a client with no recognizable tier is flagged and their channel left alone', () => {
