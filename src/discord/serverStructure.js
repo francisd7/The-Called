@@ -260,7 +260,7 @@ export const CATEGORIES = [
   category({
     name: 'VETERANS',
     grants: [{ role: 'Veteran', allow: READ_WRITE }, ...ALL_STAFF_READ_WRITE],
-    channels: [{ name: 'veterans-general', type: 'text' }],
+    channels: [{ name: 'veterans-chat', type: 'text' }],
   }),
 
   // Bot output - tier-change audit lines, onboarding flags, the EOD and

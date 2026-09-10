@@ -64,8 +64,8 @@ Tracks progress against the build priority in `Automation_Hub_Blueprint.md`.
   Discord's real rule that a channel is judged on its own overwrites rather
   than its category's. Tests use it to pin the unpaid tiers to `#wins` alone
   within THE FORGE.
-- **`#💪-chat` is now `#veterans-general`**, and the category is plain
-  `VETERANS`.
+- **`#💪-chat` is now `#veterans-chat`**, matching the tier chats, and the
+  category is plain `VETERANS`.
 - **`RESOURCES` and `#links` deleted** — `RESOURCES` was empty, and the user
   never rebuilt `#links` across two passes of curating the live server.
 - **`#wins` moved into THE FORGE**, a paid category, with the bible-study

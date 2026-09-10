@@ -326,7 +326,7 @@ test('a Veteran reaches the community section and the 💪 section, and nothing 
   const reachable = CATEGORIES.filter((cat) => grantFor(cat, 'Veteran')).map((cat) => cat.name);
   assert.deepEqual(reachable.sort(), ['THE CALLED', 'VETERANS']);
   const veterans = categoryNamed('VETERANS').channels.map((c) => c.name);
-  assert.deepEqual(veterans, ['veterans-general']);
+  assert.deepEqual(veterans, ['veterans-chat']);
 
   for (const name of ['THE FORGE', 'TRAINING HUB', 'FOUNDATIONS', 'MOMENTUM']) {
     assert.equal(grantFor(categoryNamed(name), 'Veteran'), undefined, name);
