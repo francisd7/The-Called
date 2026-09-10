@@ -9,7 +9,7 @@ import {
   findUnknownOverwriteRoles,
   allRoleNames,
 } from '../src/discord/serverStructure.js';
-import { TIER_ROLE_NAMES, resolveTierFromRoleNames } from '../src/discord/tiers.js';
+import { TIERS, TIER_ROLE_NAMES, resolveTierFromRoleNames } from '../src/discord/tiers.js';
 
 function categoryNamed(name) {
   return CATEGORIES.find((cat) => cat.name === name);
@@ -135,36 +135,81 @@ test('#wins is the only wins channel, and it lives in the shared section', () =>
   assert.deepEqual(winsLocations, ['THE CALLED']);
 });
 
-test('each brand category is gated on its own brand role alone', () => {
-  const coaches = categoryNamed('CALLED COACHES');
-  assert.ok(grantFor(coaches, 'Called Coaches'));
-  assert.equal(grantFor(coaches, 'Called Creators'), undefined);
-  assert.equal(grantFor(coaches, 'Tier: Foundations'), undefined, 'brand gates it, not tier');
+// Each tier's category is that tier's whole home: announcements, chat, and
+// its private client channels underneath.
+test('every tier with private channels has its own category', () => {
+  const names = CATEGORIES.map((cat) => cat.name);
+  for (const tier of TIERS.filter((t) => t.hasPrivateChannel)) {
+    assert.ok(names.includes(tier.categoryName), tier.categoryName);
+  }
+  assert.equal(names.includes('CLIENTS · MOMENTUM'), false, 'the old prefix is gone');
 });
 
-test('a client tier category exists for every tier with private channels', () => {
-  const clientCategories = CATEGORIES.filter((cat) => cat.name.startsWith('CLIENTS · '));
-  assert.deepEqual(
-    clientCategories.map((cat) => cat.name),
-    ['CLIENTS · FOUNDATIONS', 'CLIENTS · MOMENTUM', 'CLIENTS · INNER CIRCLE']
-  );
-  assert.deepEqual(
-    clientCategories.map((cat) => cat.channels.length),
-    [0, 0, 0],
-    'client channels are created per member, never declared here'
-  );
+// The gap this closes: before, there was nowhere to tell every Momentum
+// client something without messaging the whole server.
+test('each tier gets its own announcements and chat channel', () => {
+  for (const tier of TIERS.filter((t) => t.hasPrivateChannel)) {
+    const cat = categoryNamed(tier.categoryName);
+    assert.deepEqual(
+      cat.channels.map((c) => c.name),
+      [`${tier.key}-announcements`, `${tier.key}-chat`],
+      tier.categoryName
+    );
+    // Announcements are staff-to-tier, so clients read but don't post.
+    const announce = resolveChannelOverwrites(cat.channels[0]).find(
+      (o) => o.role === tier.roleName
+    );
+    assert.deepEqual(announce.deny, ['SendMessages'], tier.categoryName);
+  }
 });
 
-test('CLIENTS · FOUNDATIONS excludes the CMO and Founder', () => {
-  const foundations = categoryNamed('CLIENTS · FOUNDATIONS');
+test('a tier category is visible to its own tier and to nobody else’s', () => {
+  const momentum = categoryNamed('MOMENTUM');
+  assert.ok(grantFor(momentum, 'Tier: Momentum'));
+  assert.equal(grantFor(momentum, 'Tier: Foundations'), undefined);
+  assert.equal(grantFor(momentum, 'Tier: Inner Circle'), undefined);
+});
+
+test('FOUNDATIONS excludes the CMO and Founder', () => {
+  const foundations = categoryNamed('FOUNDATIONS');
   assert.ok(grantFor(foundations, 'CSM'));
   assert.ok(grantFor(foundations, 'COO'));
   assert.equal(grantFor(foundations, 'CMO'), undefined);
   assert.equal(grantFor(foundations, 'Founder'), undefined);
 
-  const momentum = categoryNamed('CLIENTS · MOMENTUM');
+  const momentum = categoryNamed('MOMENTUM');
   assert.ok(grantFor(momentum, 'CMO'));
   assert.ok(grantFor(momentum, 'Founder'));
+});
+
+// Course content is delivered in each client's private channel, so the
+// per-brand categories had nothing left worth splitting. Brand is now a
+// label and an @-mention target that gates nothing.
+test('brand roles exist but gate no category', () => {
+  for (const brandRole of ['Called Coaches', 'Called Creators']) {
+    assert.ok(ROLES.find((r) => r.name === brandRole), brandRole);
+    const gated = CATEGORIES.filter((cat) => grantFor(cat, brandRole));
+    assert.deepEqual(gated, [], `${brandRole} should gate nothing`);
+  }
+  assert.equal(categoryNamed('CALLED COACHES'), undefined);
+  assert.equal(categoryNamed('CALLED CREATORS'), undefined);
+});
+
+test('there is no course-content channel anywhere', () => {
+  const found = CATEGORIES.flatMap((cat) => cat.channels).filter(
+    (c) => c.name === 'course-content'
+  );
+  assert.deepEqual(found, []);
+});
+
+// The work channels the brand categories used to hold now live in one place
+// open to every paying tier.
+test('THE FORGE holds the shared work channels for all paying tiers', () => {
+  const forge = categoryNamed('THE FORGE');
+  const names = forge.channels.map((c) => c.name);
+  for (const name of ['content-review', 'coaching-recordings', 'links']) {
+    assert.ok(names.includes(name), name);
+  }
 });
 
 test('STAFF is staff-only', () => {
@@ -191,7 +236,7 @@ test('a Veteran reaches the community section and the 💪 section, and nothing 
   const reachable = CATEGORIES.filter((cat) => grantFor(cat, 'Veteran')).map((cat) => cat.name);
   assert.deepEqual(reachable.sort(), ['THE CALLED', 'VETERANS · 💪']);
 
-  for (const name of ['THE FORGE', 'SETTING', 'SALES', 'CALLED COACHES', 'CALLED CREATORS']) {
+  for (const name of ['THE FORGE', 'SETTING', 'SALES', 'FOUNDATIONS', 'MOMENTUM']) {
     assert.equal(grantFor(categoryNamed(name), 'Veteran'), undefined, name);
   }
 });
@@ -215,4 +260,32 @@ test('resolveChannelOverwrites expands the readOnlyFor shorthand', () => {
     { role: 'CSM', allow: ['ViewChannel', 'ReadMessageHistory'], deny: ['SendMessages'] },
   ]);
   assert.deepEqual(resolveChannelOverwrites({ name: 'x' }), []);
+});
+
+// A Momentum client can see four different recording channels at once.
+// Three of them called "call-recordings" is the confusion this restructure
+// exists to remove, so every one is named for what is actually in it.
+test('no two channels visible to the same client share a name', () => {
+  const names = CATEGORIES.flatMap((cat) => cat.channels).map((c) => c.name);
+  assert.equal(new Set(names).size, names.length, `duplicate channel name in: ${names.join(', ')}`);
+});
+
+test('every recording channel says what it records', () => {
+  const recordingChannels = CATEGORIES.flatMap((cat) => cat.channels)
+    .map((c) => c.name)
+    .filter((name) => name.includes('recordings'))
+    .sort();
+  assert.deepEqual(recordingChannels, [
+    'coaching-recordings',
+    'huddle-recordings',
+    'sales-recordings',
+    'setting-recordings',
+  ]);
+});
+
+// An empty category reads as a neglected server. #links in THE FORGE covers
+// what RESOURCES was going to hold.
+test('no category is declared empty', () => {
+  const empty = CATEGORIES.filter((cat) => cat.channels.length === 0).map((cat) => cat.name);
+  assert.deepEqual(empty, []);
 });

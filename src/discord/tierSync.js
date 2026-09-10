@@ -1,5 +1,10 @@
 import { CLIENTS_TABLE_ID } from '../reminders/weeklyCheckinReminder.js';
-import { TIER_ROLE_NAMES, resolveTierFromRoleNames, tierRank } from './tiers.js';
+import {
+  TIER_ROLE_NAMES,
+  TIER_CATEGORY_NAMES,
+  resolveTierFromRoleNames,
+  tierRank,
+} from './tiers.js';
 import { buildClientChannelOverwrites, resolveRoleIdsByName } from './clientChannel.js';
 
 // Discord leads, Airtable follows. The tier role is what actually gates
@@ -160,7 +165,7 @@ async function moveClientChannel({ discord, member, change, log }) {
     const guild = member.guild;
     const channels = [...guild.channels.cache.values()];
     const tierCategoryIds = channels
-      .filter((channel) => String(channel.name).startsWith('CLIENTS · '))
+      .filter((channel) => TIER_CATEGORY_NAMES.includes(String(channel.name)))
       .map((channel) => channel.id);
 
     const clientChannel = pickClientChannel(channels, member.id, tierCategoryIds);
@@ -186,7 +191,7 @@ async function moveClientChannel({ discord, member, change, log }) {
     // Re-parenting alone changes nothing about access: an unsynced channel's
     // permissions come from its own overwrites, never from its category. So
     // the staff list has to be rewritten here or an upsell would move the
-    // channel under CLIENTS · MOMENTUM while Andrew and Nigel still can't
+    // channel under MOMENTUM while Andrew and Nigel still can't
     // see it - exactly the bug this whole restructure exists to fix.
     const { ids: staffRoleIds, missing } = resolveRoleIdsByName(guild, change.to.staffRoleNames);
     await clientChannel.permissionOverwrites.set(

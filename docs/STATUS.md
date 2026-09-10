@@ -8,7 +8,7 @@ Tracks progress against the build priority in `Automation_Hub_Blueprint.md`.
 | 2 | Weekly Check-in → Discord | ✅ Live | Deployed to Railway, verified end-to-end: a real Weekly Check-in submission posted to `DISCORD_WEEKLY_CHECKIN_CHANNEL_ID` (a separate channel/server from #1, at the user's request). |
 | 3 | Discord ID field + Friday reminder DMs | ✅ Live | `WEEKLY_REMINDER_ENABLED=true` set on Railway and confirmed on 2026-09-09; deployment stable. First real send: Friday 2026-09-11, 12:00 PM ET (`America/New_York`, DST-aware). 19 of 22 active clients backfilled with a Discord ID; Wylie Hawkins, Malachi Hardware, Patric Cocos have `Skip Weekly Reminder` checked (bible-study-only clients, no personal-branding access, confirmed with the user). Message: "Hey [First Name], time for your Weekly Check-in — [link]". Dry-run path (`npm run weekly-reminder-dry-run`) still available for testing future changes without risk. |
 | 4 | New-member onboarding flow | ✅ Live | Enabled on Railway and verified end-to-end on 2026-09-09 with a real test-account join: channel creation, permissions, welcome message (mentions rendering correctly), and the no-match path were confirmed working via a real join in the client server. Design went through two iterations after that first live test: (1) no-match originally just flagged staff and waited — the user pointed out a new signup's Airtable record essentially never exists yet at join time, so that path would have fired for almost every real new member; (2) briefly fixed with a retry-on-poll-cycle mechanism, then the user clarified they actually wanted the automation to create the starter Client record itself (Name, Email, Discord ID, Start Date, Status Active) rather than wait on staff — so it does that now, and the retry mechanism was removed as unnecessary. Flag channel is a dedicated channel (`DISCORD_ONBOARDING_FLAG_CHANNEL_ID`), not the Weekly Check-in channel, per the user's request after seeing the first test flag land there. Team "new member joined" notification explicitly dropped per the user — they want a separate Whop-based notification with purchase amount instead (not built). Status `Active` on the starter record was a deliberate choice, confirmed with the user, even though it makes the client immediately eligible for automation #3's Friday reminder before a CSM is assigned. |
-| 5 | Discord restructure: roles, tier categories, invite routing | 🔨 Built, not applied | Blueprint approved. `src/discord/serverStructure.js` defines 15 roles, 13 categories and 36 channels; `scripts/apply-discord-structure.js` reconciles them (dry-run by default, additive only, never deletes). Invite-link routing and tier sync are wired but `TIER_SYNC_ENABLED` is off. **Nothing has been applied to the live server yet.** The Whop blocker cleared on 2026-09-09; see the decisions and open items below. |
+| 5 | Discord restructure: roles, tier categories, invite routing | 🔨 Built, not applied | Blueprint approved. `src/discord/serverStructure.js` defines 15 roles, 10 categories and 31 declared channels; `scripts/apply-discord-structure.js` reconciles them (dry-run by default, additive only, never deletes). Invite-link routing and tier sync are wired but `TIER_SYNC_ENABLED` is off. **Nothing has been applied to the live server yet.** The Whop blocker cleared on 2026-09-09; see the decisions and open items below. |
 
 ### #5 — decisions settled with the user
 
@@ -39,10 +39,26 @@ Tracks progress against the build priority in `Automation_Hub_Blueprint.md`.
   sync write a package onto a Completed/Cancelled record. `#wins` is
   read-only for them, which is the whole re-enrolment mechanic — they see
   what is happening and cannot reach what produced it.
-- **Brand duplication stays.** `course-content`, `recordings`, `links` and
-  `content-review` remain per brand: a client only ever sees their own
-  brand's category, so nobody encounters two `#recordings`.
 - **SETTING and SALES open at Momentum, for both brands** — not coaches-only.
+- **Course content is dropped entirely** — it hadn't been used in a while and
+  clients get their material in their private channels. That removed the only
+  reason the per-brand categories existed, so `CALLED COACHES` and
+  `CALLED CREATORS` are gone and their work channels moved into THE FORGE.
+- **Brand is now a role, not a category.** `Called Coaches` / `Called
+  Creators` stay hoisted and colored so staff can tell who is who in a mixed
+  channel, and they are the @-mention target for a brand-wide announcement,
+  but they gate nothing.
+- **Three tier categories, each that tier's whole home**: `FOUNDATIONS`,
+  `MOMENTUM`, `INNER CIRCLE` (the `CLIENTS · ` prefix is gone), each with
+  `#<tier>-announcements`, `#<tier>-chat`, and that tier's private channels.
+  The announcements channel closes a real gap — there was previously no way
+  to reach one tier without messaging the whole server.
+- **`RESOURCES` deleted** — it was empty, and `#links` in THE FORGE covers it.
+- **Recording channels renamed to say what they record**:
+  `#huddle-recordings`, `#coaching-recordings`, `#setting-recordings`,
+  `#sales-recordings`. Merging the brand categories made three channels called
+  `call-recordings` visible to the same client at once; a test now enforces
+  that no two channel names collide anywhere in the server.
 
 - **Bot output lives in the ops server.** The EOD feed is already there, and
   onboarding flags plus the tier-change audit log now go to

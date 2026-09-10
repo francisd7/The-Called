@@ -75,7 +75,7 @@ test('the audit line names the person, the move, and where the channel went', ()
   assert.match(message, /<@123>/);
   assert.match(message, /Foundations → Momentum/);
   assert.match(message, /<#456>/);
-  assert.match(message, /CLIENTS · MOMENTUM/);
+  assert.match(message, /MOMENTUM/);
   assert.equal(message.includes('⚠️'), false);
 });
 

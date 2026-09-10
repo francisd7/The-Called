@@ -34,7 +34,7 @@ export const TIERS = [
     airtableValue: 'Foundations (Entry)',
     roleName: 'Tier: Foundations',
     hasPrivateChannel: true,
-    categoryName: 'CLIENTS · FOUNDATIONS',
+    categoryName: 'FOUNDATIONS',
     // The whole point of the tier categories: Andrew (CMO) and Nigel only
     // service the top two tiers, so they are deliberately absent here.
     staffRoleNames: ['CSM', 'COO'],
@@ -45,7 +45,7 @@ export const TIERS = [
     airtableValue: 'Momentum (Mid)',
     roleName: 'Tier: Momentum',
     hasPrivateChannel: true,
-    categoryName: 'CLIENTS · MOMENTUM',
+    categoryName: 'MOMENTUM',
     staffRoleNames: ['CSM', 'CMO', 'Founder', 'COO'],
   },
   {
@@ -54,12 +54,20 @@ export const TIERS = [
     airtableValue: 'Inner Circle (High)',
     roleName: 'Tier: Inner Circle',
     hasPrivateChannel: true,
-    categoryName: 'CLIENTS · INNER CIRCLE',
+    categoryName: 'INNER CIRCLE',
     staffRoleNames: ['CSM', 'CMO', 'Founder', 'COO'],
   },
 ];
 
 export const TIER_ROLE_NAMES = TIERS.map((tier) => tier.roleName);
+
+// The categories that hold private client channels. tierSync uses this to
+// find a client's own channel, so it must be derived from the tier list
+// rather than matched on a name prefix - a prefix check silently stops
+// working the day a category is renamed.
+export const TIER_CATEGORY_NAMES = TIERS.filter((tier) => tier.hasPrivateChannel).map(
+  (tier) => tier.categoryName
+);
 
 export function getTierByKey(key) {
   return TIERS.find((tier) => tier.key === key) ?? null;

@@ -1,5 +1,4 @@
 import { TIERS, TIER_ROLE_NAMES, tierRoleNamesAtOrAbove } from './tiers.js';
-import { BRANDS } from './brands.js';
 
 // The whole client-facing server as data: roles, categories, channels, and
 // the permission overwrites on each. `scripts/apply-discord-structure.js`
@@ -149,7 +148,11 @@ export const CATEGORIES = [
       },
       { name: 'bible-study', type: 'text' },
       {
-        name: 'recordings',
+        // Named for what is in it, not just "recordings". Four different
+        // recording channels are visible to a Momentum client at once, and
+        // three of them called the same thing is the exact confusion this
+        // restructure exists to remove.
+        name: 'huddle-recordings',
         type: 'text',
         overwrites: allow([...TIER_ROLE_NAMES, 'Veteran'], READ).map((o) => ({
           ...o,
@@ -160,31 +163,22 @@ export const CATEGORIES = [
     ],
   }),
 
+  // The shared work area for every paying client, both brands. Course
+  // content used to live in per-brand categories; it is delivered in each
+  // client's private channel instead, so those categories had nothing left
+  // worth splitting and the work channels moved here. Brand is now purely a
+  // role - a label and an @-mention target - and gates no category at all.
   category({
     name: 'THE FORGE',
     grants: [...allow(PAID_TIERS, READ_WRITE), ...ALL_STAFF_READ_WRITE],
     channels: [
       { name: 'the-forge-chat', type: 'text' },
+      { name: 'content-review', type: 'text' },
+      { name: 'coaching-recordings', type: 'text', readOnlyFor: PAID_TIERS },
+      { name: 'links', type: 'text', readOnlyFor: PAID_TIERS },
       { name: 'build session', type: 'voice', overwrites: allow(PAID_TIERS, VOICE) },
     ],
   }),
-
-  ...BRANDS.filter((brand) => brand.categoryName).map((brand) =>
-    category({
-      name: brand.categoryName,
-      // Gated on brand alone, not brand + tier: every paying client sees the
-      // course content for the line they bought into. Tier decides how much
-      // of the team they get, not whether they get the material.
-      grants: [{ role: brand.roleName, allow: READ_WRITE }, ...ALL_STAFF_READ_WRITE],
-      channels: [
-        { name: `${brand.key === 'coaches' ? 'coaches' : 'creators'}-general`, type: 'text' },
-        { name: 'course-content', type: 'text', readOnlyFor: [brand.roleName] },
-        { name: 'content-review', type: 'text' },
-        { name: 'recordings', type: 'text', readOnlyFor: [brand.roleName] },
-        { name: 'links', type: 'text', readOnlyFor: [brand.roleName] },
-      ],
-    })
-  ),
 
   category({
     name: 'SETTING',
@@ -194,7 +188,7 @@ export const CATEGORIES = [
       { name: 'setting-faq', type: 'text', readOnlyFor: SELLING_TIERS },
       { name: 'convo-reviews', type: 'text' },
       { name: 'tips', type: 'text' },
-      { name: 'call-recordings', type: 'text', readOnlyFor: SELLING_TIERS },
+      { name: 'setting-recordings', type: 'text', readOnlyFor: SELLING_TIERS },
     ],
   }),
 
@@ -204,27 +198,28 @@ export const CATEGORIES = [
     channels: [
       { name: 'sales-general', type: 'text' },
       { name: 'call-reviews', type: 'text' },
-      { name: 'call-recordings', type: 'text', readOnlyFor: SELLING_TIERS },
+      { name: 'sales-recordings', type: 'text', readOnlyFor: SELLING_TIERS },
       { name: 'Mock Calls', type: 'voice', overwrites: allow(SELLING_TIERS, VOICE) },
     ],
   }),
 
-  category({
-    name: 'RESOURCES',
-    note: 'Empty today. Fill it or delete it - an empty category reads as neglect.',
-    grants: [...allow(PAID_TIERS, READ), ...ALL_STAFF_READ_WRITE],
-    channels: [],
-  }),
-
-  // One category per tier that has private channels. Staff grants live here
-  // rather than on each channel, so an upsell is a single channel move and
-  // the new tier's staff list follows automatically. Each client channel
-  // adds exactly one overwrite of its own - the client's access.
+  // One category per tier, and it is that tier's whole home: somewhere to
+  // announce to just them, somewhere for them to talk to each other, and
+  // their private client channels underneath. Before this there was nowhere
+  // to tell every Momentum client something without messaging the whole
+  // server.
+  //
+  // The tier role is granted here so clients see the two shared channels;
+  // their private channel carries its own overwrite on top, which is what
+  // keeps it private and what makes an upsell a single channel move.
   ...TIERS.filter((tier) => tier.hasPrivateChannel).map((tier) =>
     category({
       name: tier.categoryName,
-      grants: allow(tier.staffRoleNames, READ_WRITE),
-      channels: [],
+      grants: [{ role: tier.roleName, allow: READ_WRITE }, ...allow(tier.staffRoleNames, READ_WRITE)],
+      channels: [
+        { name: `${tier.key}-announcements`, type: 'text', readOnlyFor: [tier.roleName] },
+        { name: `${tier.key}-chat`, type: 'text' },
+      ],
     })
   ),
 

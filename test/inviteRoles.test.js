@@ -90,7 +90,7 @@ test('resolveInvite turns a code into the brand, tier and roles to assign', () =
   const resolved = resolveInvite('aBcD1234', map);
   assert.equal(resolved.brand.name, 'Called Creators');
   assert.equal(resolved.tier.name, 'Inner Circle');
-  assert.equal(resolved.tier.categoryName, 'CLIENTS · INNER CIRCLE');
+  assert.equal(resolved.tier.categoryName, 'INNER CIRCLE');
   assert.deepEqual(resolved.roleNames, ['Called Creators', 'Tier: Inner Circle']);
 });
 

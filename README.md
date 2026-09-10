@@ -45,6 +45,18 @@ Foundations deliberately excludes the CMO and Founder — they only service the
 top two tiers, and the tier categories are what make that legible at a glance
 instead of a mental note. SETTING and SALES open at Momentum, for both brands.
 
+**Each tier's category is that tier's whole home** — `#<tier>-announcements`
+(staff post, clients read), `#<tier>-chat`, and that tier's private client
+channels underneath. Before this there was nowhere to tell every Momentum
+client something without messaging the whole server.
+
+**Brand is a role, not a category.** Course content is delivered in each
+client's private channel, so the per-brand categories had nothing left worth
+splitting and their work channels moved into THE FORGE. `Called Coaches` and
+`Called Creators` still exist as hoisted, colored roles — they identify who
+someone is in a mixed channel, and they're the @-mention target for a
+brand-wide announcement — but they gate no category.
+
 **Veterans** are past clients with lifetime community access. `Veteran` is a
 role, not a tier — nobody is paying for it, so giving them a tier role would
 make tier sync write a package onto a Completed/Cancelled record. It grants
@@ -52,14 +64,16 @@ THE CALLED and the 💪 section, and nothing else. Losing the paid areas is the
 point: seeing `#wins` without being able to reach what produced them is what
 brings someone back.
 
-Course content, recordings and links stay duplicated per brand on purpose. A
-client only ever sees their own brand's category, so nobody encounters two
-`#recordings` — and a coach wading through personal-brand call recordings is
-worse than a duplicated channel name.
+**Every channel name is unique across the server**, and a test enforces it.
+A Momentum client can see four different recording channels at once, so each
+says what it records: `#huddle-recordings`, `#coaching-recordings`,
+`#setting-recordings`, `#sales-recordings`. Three channels called
+`call-recordings` is the confusion this restructure exists to remove.
 
 Pods are no longer used, so the config declares nothing about them. The apply
 script never deletes, so the existing pod channels stay untouched in Discord
-until someone archives them by hand.
+until someone archives them by hand. Same for the old `#course-content` and
+per-brand channels — dropped from the config, left alone in Discord.
 
 ### Where the bot's output goes
 
