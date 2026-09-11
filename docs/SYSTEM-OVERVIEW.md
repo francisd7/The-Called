@@ -172,12 +172,21 @@ Railway. Assume an automation is running unless something says otherwise.
 **#3** skips anyone with `Skip Weekly Reminder` checked, and only targets
 records where `Status = 'Active'`.
 
-**#4, invite routing.** Discord has no native invite→role mapping. Seven
-permanent invite links exist — 2 brands × 3 paid tiers, plus one for The
-Called. The bot caches every invite's use count and, on a join, finds which
-one incremented. `DISCORD_INVITE_ROLE_MAP` holds `code=slot` pairs. That map
-lives in an environment variable, not on disk, because losing it would
-silently drop every new joiner to no tier.
+**#4, invite routing.** Discord has no native invite→role mapping. **Four**
+permanent invite links exist, one per tier. The bot caches every invite's use
+count and, on a join, finds which one incremented.
+`DISCORD_INVITE_ROLE_MAP` holds `code=slot` pairs. That map lives in an
+environment variable, not on disk, because losing it would silently drop every
+new joiner to no tier.
+
+It was seven — each paid tier crossed with each brand — until 2026-09-11.
+Brand gates nothing since the brand categories were deleted, so routing on it
+doubled the list the team picks from for no entitlement, and with seven rows a
+mis-pick could land on the wrong **tier**, which does gate access and does
+touch billing. A paid client's `Called Coaches` / `Called Creators` role is now
+assigned by hand, and `Brand` is left blank on the starter record for the CSM
+to fill. The bible-study link still carries its brand, because that tier has
+exactly one.
 
 Every ambiguous case grants nothing and flags a human — a join while the bot
 was down, two simultaneous joins, a vanity URL. It never guesses upward.
@@ -250,7 +259,7 @@ category. Run in this order; each depends on the one before.
 ```
 npm run discord-structure          # reconcile roles/categories/channels
 npm run grant-bot-channel-access   # new categories lock the bot out
-npm run discord-structure -- --apply --invites   # creates the 7 invites
+npm run discord-structure -- --apply --invites   # creates the 4 invites
 npm run discord-migrate-roles      # brand + tier roles from Airtable (one time)
 npm run discord-migrate-channels   # client channels into tier categories
 npm run discord-sync-retired       # make retiring a channel actually hide it

@@ -8,7 +8,7 @@ Tracks progress against the build priority in `Automation_Hub_Blueprint.md`.
 | 2 | Weekly Check-in → Discord | ✅ Live | Deployed to Railway, verified end-to-end: a real Weekly Check-in submission posted to `DISCORD_WEEKLY_CHECKIN_CHANNEL_ID` (a separate channel/server from #1, at the user's request). |
 | 3 | Discord ID field + Friday reminder DMs | ✅ Live | `WEEKLY_REMINDER_ENABLED=true` set on Railway and confirmed on 2026-09-09; deployment stable. First real send: Friday 2026-09-11, 12:00 PM ET (`America/New_York`, DST-aware). 19 of 22 active clients backfilled with a Discord ID; Wylie Hawkins, Malachi Hardware, Patric Cocos have `Skip Weekly Reminder` checked (bible-study-only clients, no personal-branding access, confirmed with the user). Message: "Hey [First Name], time for your Weekly Check-in — [link]". Dry-run path (`npm run weekly-reminder-dry-run`) still available for testing future changes without risk. |
 | 4 | New-member onboarding flow | ✅ Live | Enabled on Railway and verified end-to-end on 2026-09-09 with a real test-account join: channel creation, permissions, welcome message (mentions rendering correctly), and the no-match path were confirmed working via a real join in the client server. Design went through two iterations after that first live test: (1) no-match originally just flagged staff and waited — the user pointed out a new signup's Airtable record essentially never exists yet at join time, so that path would have fired for almost every real new member; (2) briefly fixed with a retry-on-poll-cycle mechanism, then the user clarified they actually wanted the automation to create the starter Client record itself (Name, Email, Discord ID, Start Date, Status Active) rather than wait on staff — so it does that now, and the retry mechanism was removed as unnecessary. Flag channel is a dedicated channel (`DISCORD_ONBOARDING_FLAG_CHANNEL_ID`), not the Weekly Check-in channel, per the user's request after seeing the first test flag land there. Team "new member joined" notification explicitly dropped per the user — they want a separate Whop-based notification with purchase amount instead (not built). Status `Active` on the starter record was a deliberate choice, confirmed with the user, even though it makes the client immediately eligible for automation #3's Friday reminder before a CSM is assigned. |
-| 5 | Discord restructure: roles, tier categories, invite routing | 🔨 Built, not applied | Blueprint approved. `src/discord/serverStructure.js` defines 16 roles, 8 categories and 24 declared channels; `scripts/apply-discord-structure.js` reconciles them (dry-run by default, additive only, never deletes). Invite-link routing and tier sync are wired but `TIER_SYNC_ENABLED` is off. **Nothing has been applied to the live server yet.** The Whop blocker cleared on 2026-09-09; see the decisions and open items below. |
+| 5 | Discord restructure: roles, tier categories, invite routing | ✅ Live | Applied to the live server on 2026-09-10. 16 roles, 8 categories and 25 declared channels; all 19 private client channels moved into their tier categories with that tier's staff written onto each; `@everyone` → View Channels off, so the server is deny-by-default; `TIER_SYNC_ENABLED=true`. Invite links cut from seven to four on 2026-09-11 — one per tier, brand assigned by hand. See the rollout table and open items below. |
 
 ### #5 — decisions settled with the user
 
@@ -188,9 +188,16 @@ Still open:
 - **`TIER_SYNC_ENABLED`** — being turned on now that the channels are in
   place. Until the first real upsell fires it, the end-to-end write has only
   been smoke-tested.
-- **Rotate the seven invite links.** Their codes were pasted into a chat
-  transcript during the rollout. Re-run `discord-structure --apply --invites`
-  and update `DISCORD_INVITE_ROLE_MAP` on Railway.
+- **Regenerate the invite links as four.** Two reasons at once: the original
+  seven codes were pasted into a chat transcript during the rollout, and on
+  2026-09-11 the slots were cut from seven to four (one per tier, brand
+  assigned by hand). The stale seven-slot map no longer parses, so the boot log
+  warns until it is replaced. Re-run `discord-structure --apply --invites` and
+  update `DISCORD_INVITE_ROLE_MAP` on Railway.
+- **The old links are live and in use.** A new member joined on one on
+  2026-09-10, could not be resolved to a tier, and landed with no roles —
+  exactly the failure the flagging is for. Replace the links at the source
+  (Whop, email sequences) before deleting the old invites.
 - **Housekeeping** — Nick Martinez has `CSM = Unassigned`; Liam McCormack and
   Nathan Soriano have blank `Contract Value`; the `testing` record from the
   2026-09-09 onboarding test should be deleted (it is the one thing the

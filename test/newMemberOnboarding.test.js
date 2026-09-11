@@ -266,17 +266,20 @@ test('messageCreate: ignores messages from someone other than the pending member
 });
 
 const INVITE_MAP = parseInviteRoleMap(
-  'coachMid=coaches:momentum,creatorLow=creators:foundations,bible=the-called:the-called'
+  'mid=momentum,low=foundations,bible=the-called'
 ).map;
 
-test('a resolved invite decides the brand, the tier, and the roles to grant', () => {
+test('a resolved invite decides the tier and the roles to grant', () => {
   const plan = buildJoinPlan({
-    resolution: { code: 'coachMid', reason: RESOLVED },
+    resolution: { code: 'mid', reason: RESOLVED },
     inviteRoleMap: INVITE_MAP,
   });
-  assert.deepEqual(plan.roleNames, ['Called Coaches', 'Tier: Momentum']);
+  // Tier only. Brand gates nothing since the brand categories were deleted,
+  // so it is assigned by hand rather than doubling the list of links the team
+  // picks from - where a mis-pick could land on the wrong tier.
+  assert.deepEqual(plan.roleNames, ['Tier: Momentum']);
   assert.equal(plan.tier.key, 'momentum');
-  assert.equal(plan.brand.name, 'Called Coaches');
+  assert.equal(plan.brand, null);
   assert.equal(plan.flagReason, null);
 });
 
@@ -322,6 +325,8 @@ test('the bible-study link grants its roles but maps to no private channel', () 
     resolution: { code: 'bible', reason: RESOLVED },
     inviteRoleMap: INVITE_MAP,
   });
+  // The one link that still carries a brand: that tier has exactly one, so
+  // nothing is being guessed.
   assert.deepEqual(plan.roleNames, ['The Called', 'Tier: The Called']);
   assert.equal(plan.tier.hasPrivateChannel, false);
 });

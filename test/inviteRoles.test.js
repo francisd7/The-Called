@@ -10,32 +10,30 @@ import {
   resolveInvite,
 } from '../src/discord/inviteRoles.js';
 
-test('there is one link per sellable package — seven in total', () => {
-  assert.equal(INVITE_SLOTS.length, 7);
+test('there is one link per tier — four, not one per brand-and-tier', () => {
+  // Brand gates nothing since the brand categories were deleted, so routing an
+  // invite on it doubled the list the team picks from for no entitlement. With
+  // seven rows a mis-pick could land on the wrong TIER, which does gate access.
+  assert.equal(INVITE_SLOTS.length, 4);
   assert.deepEqual(INVITE_SLOT_KEYS, [
-    'the-called:the-called',
-    'coaches:foundations',
-    'creators:foundations',
-    'coaches:momentum',
-    'creators:momentum',
-    'coaches:inner-circle',
-    'creators:inner-circle',
+    'the-called',
+    'foundations',
+    'momentum',
+    'inner-circle',
   ]);
 });
 
-test('the bible-study package has no brand split', () => {
-  const slots = INVITE_SLOTS.filter((slot) => slot.tierKey === 'the-called');
-  assert.equal(slots.length, 1);
-  assert.equal(slots[0].brandKey, 'the-called');
+test('a paid link grants the tier only — brand is assigned by hand', () => {
+  assert.deepEqual(roleNamesForSlot('momentum'), ['Tier: Momentum']);
+  assert.deepEqual(roleNamesForSlot('inner-circle'), ['Tier: Inner Circle']);
 });
 
-test('a slot grants exactly a brand role and a tier role', () => {
-  assert.deepEqual(roleNamesForSlot('coaches:momentum'), ['Called Coaches', 'Tier: Momentum']);
-  assert.deepEqual(roleNamesForSlot('creators:inner-circle'), [
-    'Called Creators',
-    'Tier: Inner Circle',
-  ]);
-  assert.deepEqual(roleNamesForSlot('the-called:the-called'), ['The Called', 'Tier: The Called']);
+test('the bible-study link still grants its brand, which is not a choice', () => {
+  // That tier has exactly one possible brand - there is no Coaches/Creators
+  // split for those members - so nothing is being guessed.
+  const slot = getInviteSlot('the-called');
+  assert.equal(slot.brandKey, 'the-called');
+  assert.deepEqual(roleNamesForSlot('the-called'), ['The Called', 'Tier: The Called']);
 });
 
 test('an invite never grants a staff or achievement role', () => {
@@ -55,18 +53,16 @@ test('an unknown slot yields no roles rather than throwing', () => {
 });
 
 test('parseInviteRoleMap reads code=slot pairs and tolerates loose whitespace', () => {
-  const { map, unknownSlots } = parseInviteRoleMap(
-    ' aBcD1234=coaches:momentum , eFgH5678=creators:foundations '
-  );
-  assert.equal(map.get('aBcD1234'), 'coaches:momentum');
-  assert.equal(map.get('eFgH5678'), 'creators:foundations');
+  const { map, unknownSlots } = parseInviteRoleMap(' aBcD1234=momentum , eFgH5678=foundations ');
+  assert.equal(map.get('aBcD1234'), 'momentum');
+  assert.equal(map.get('eFgH5678'), 'foundations');
   assert.deepEqual(unknownSlots, []);
 });
 
 test('parseInviteRoleMap reports malformed entries instead of dropping them silently', () => {
-  const { map, unknownSlots } = parseInviteRoleMap('good=coaches:momentum,bad=nope:nope,noequals');
+  const { map, unknownSlots } = parseInviteRoleMap('good=momentum,bad=nope,noequals');
   assert.equal(map.size, 1);
-  assert.deepEqual(unknownSlots, ['bad=nope:nope', 'noequals']);
+  assert.deepEqual(unknownSlots, ['bad=nope', 'noequals']);
 });
 
 test('parseInviteRoleMap handles empty and missing input', () => {
@@ -78,23 +74,25 @@ test('parseInviteRoleMap handles empty and missing input', () => {
 // A package with no mapped link silently downgrades every buyer of it to no
 // tier, so this is surfaced at startup rather than discovered by a client.
 test('findUnmappedSlots names the packages with no working link yet', () => {
-  const { map } = parseInviteRoleMap('a=coaches:momentum');
+  const { map } = parseInviteRoleMap('a=momentum');
   const unmapped = findUnmappedSlots(map);
-  assert.equal(unmapped.length, 6);
-  assert.ok(!unmapped.includes('coaches:momentum'));
-  assert.ok(unmapped.includes('creators:inner-circle'));
+  assert.equal(unmapped.length, 3);
+  assert.ok(!unmapped.includes('momentum'));
+  assert.ok(unmapped.includes('inner-circle'));
 });
 
-test('resolveInvite turns a code into the brand, tier and roles to assign', () => {
-  const { map } = parseInviteRoleMap('aBcD1234=creators:inner-circle');
+test('resolveInvite turns a code into the tier and roles to assign', () => {
+  const { map } = parseInviteRoleMap('aBcD1234=inner-circle');
   const resolved = resolveInvite('aBcD1234', map);
-  assert.equal(resolved.brand.name, 'Called Creators');
+  // No brand on a paid link, so the starter Airtable record has no Brand
+  // either - it joins CSM and Contract Value on the CSM's review list.
+  assert.equal(resolved.brand, null);
   assert.equal(resolved.tier.name, 'Inner Circle');
   assert.equal(resolved.tier.categoryName, 'INNER CIRCLE');
-  assert.deepEqual(resolved.roleNames, ['Called Creators', 'Tier: Inner Circle']);
+  assert.deepEqual(resolved.roleNames, ['Tier: Inner Circle']);
 });
 
 test('resolveInvite returns null for a code nobody mapped', () => {
-  const { map } = parseInviteRoleMap('aBcD1234=creators:inner-circle');
+  const { map } = parseInviteRoleMap('aBcD1234=inner-circle');
   assert.equal(resolveInvite('unknown', map), null);
 });

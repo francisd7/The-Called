@@ -37,9 +37,11 @@ export async function findClientByEmail(airtableClient, baseId, email) {
 // A brand-new signup almost never has an Airtable Client record yet at the
 // moment they join Discord - staff logs the sale by hand, often afterward.
 // So instead of waiting on that, a no-match creates a starter record right
-// away that staff then fills in the rest of. The invite link now supplies
-// Brand and Package / Tier too, so the record starts far more complete than
-// it used to: only CSM and Contract Value are left blank.
+// away that staff then fills in the rest of. The invite link supplies
+// Package / Tier, which is the field worth getting right automatically - it
+// gates access and it is what an upsell moves. Brand, CSM and Contract Value
+// are left for the CSM's review, Brand because the links are one per tier
+// rather than one per brand-and-tier: see inviteRoles.js for why.
 export function buildNewClientFields({
   displayName,
   email,

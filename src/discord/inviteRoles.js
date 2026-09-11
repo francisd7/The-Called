@@ -6,28 +6,29 @@ import { BRANDS, getBrandByKey } from './brands.js';
 // count went up when someone joined decides the roles they land with. See
 // inviteTracker.js for the counting side - this file is only the map.
 //
-// Seven slots: one for bible-study members (who have no brand split), plus
-// each paid tier crossed with each of the two product lines. Generated
-// rather than hand-listed so adding a tier or a brand can't leave a package
-// without a link.
-export const INVITE_SLOTS = TIERS.flatMap((tier) => {
-  if (!tier.hasPrivateChannel) {
-    return [
-      {
-        key: `the-called:${tier.key}`,
-        label: tier.name,
-        brandKey: 'the-called',
-        tierKey: tier.key,
-      },
-    ];
-  }
-  return BRANDS.filter((brand) => brand.categoryName).map((brand) => ({
-    key: `${brand.key}:${tier.key}`,
-    label: `${brand.name} · ${tier.name}`,
-    brandKey: brand.key,
-    tierKey: tier.key,
-  }));
-});
+// One slot per tier, and deliberately not one per brand-and-tier.
+//
+// This used to be seven: each paid tier crossed with each product line. That
+// made sense when `CALLED COACHES` and `CALLED CREATORS` were real categories
+// holding course content. They were deleted in the restructure - course
+// content is delivered in each client's private channel - so brand now gates
+// nothing at all. It is a label and an @-mention target.
+//
+// Routing an invite on a dimension that gates nothing, at the cost of doubling
+// the list the team picks from, is a bad trade. Worse: with seven rows to
+// choose from, a mis-pick can land on the wrong TIER, which is the dimension
+// that does gate access and does touch billing. Four links make the
+// high-stakes choice unambiguous, and the brand role is assigned by hand.
+//
+// The bible-study tier keeps its brand, because that tier has exactly one
+// possible brand - there is no Coaches/Creators split for those members, so
+// nothing is being guessed.
+export const INVITE_SLOTS = TIERS.map((tier) => ({
+  key: tier.key,
+  label: tier.name,
+  brandKey: tier.hasPrivateChannel ? null : 'the-called',
+  tierKey: tier.key,
+}));
 
 export const INVITE_SLOT_KEYS = INVITE_SLOTS.map((slot) => slot.key);
 
@@ -35,9 +36,11 @@ export function getInviteSlot(key) {
   return INVITE_SLOTS.find((slot) => slot.key === key) ?? null;
 }
 
-// The roles a joiner gets from a slot: their product line and their tier.
-// Nothing else - achievement roles are earned later, and staff roles are
-// never handed out by an invite.
+// The roles a joiner gets from a slot: their tier, plus their product line on
+// the one tier where it isn't a choice. Nothing else - achievement roles are
+// earned later, and staff roles are never handed out by an invite. A paid
+// client's `Called Coaches` / `Called Creators` role is added by hand, and
+// gates nothing if it is forgotten.
 export function roleNamesForSlot(slotKey) {
   const slot = getInviteSlot(slotKey);
   if (!slot) return [];
