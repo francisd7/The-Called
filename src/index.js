@@ -32,9 +32,6 @@ async function main() {
     );
   }
 
-  // Tier sync rewrites a billing field in Airtable off a Discord role click,
-  // so it refuses to start without somewhere to log those writes - an
-  // unlogged mis-click is exactly the failure this design has to avoid.
   // The reminder posts into each client's private channel, so it needs to know
   // which guild to look in. Failing at boot beats discovering it as twenty
   // "no private channel found" lines on a Friday afternoon.
@@ -42,6 +39,9 @@ async function main() {
     throw new Error('WEEKLY_REMINDER_ENABLED is true but DISCORD_CLIENT_GUILD_ID is missing');
   }
 
+  // Tier sync rewrites a billing field in Airtable off a Discord role click,
+  // so it refuses to start without somewhere to log those writes - an
+  // unlogged mis-click is exactly the failure this design has to avoid.
   if (config.tierSyncEnabled && (!config.clientGuildId || !config.tierChangesChannelId)) {
     throw new Error(
       'TIER_SYNC_ENABLED is true but DISCORD_CLIENT_GUILD_ID or DISCORD_TIER_CHANGES_CHANNEL_ID is missing'
@@ -66,18 +66,6 @@ async function main() {
 
   const state = await loadState(config.stateFilePath);
   const saveState = (s) => persistState(config.stateFilePath, s);
-
-  // Clears the stamp only - it does not bypass the weekday or the hour. So a
-  // forced run still cannot fire outside Friday afternoon, and leaving the
-  // variable set costs one extra send per deploy rather than one per minute.
-  if (config.weeklyReminderForceRun && state[WEEKLY_REMINDER_STATE_KEY]) {
-    console.log(
-      `WEEKLY_REMINDER_FORCE_RUN is set — clearing the "${state[WEEKLY_REMINDER_STATE_KEY]}" stamp ` +
-        'so the reminder can run again today.'
-    );
-    delete state[WEEKLY_REMINDER_STATE_KEY];
-    await saveState(state);
-  }
 
   const poller = createPoller({ airtableClient, discord, state, saveState });
 
