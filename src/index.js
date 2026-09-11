@@ -264,6 +264,23 @@ async function main() {
   });
 }
 
+// Node exits on an unhandled rejection by default, so one stray failed
+// promise anywhere - a rate-limited DM, a socket hiccup inside a library -
+// takes down every automation in this process. For an always-on hub that
+// trade is backwards: the cost of carrying on is a logged error, the cost of
+// exiting is a whole week's reminder never being sent, silently.
+process.on('unhandledRejection', (reason) => {
+  console.error('Unhandled promise rejection (continuing):', reason);
+});
+
+// An uncaught exception is different: the process may be in a state nobody
+// reasoned about, so it is logged and handed back to Railway to restart
+// cleanly rather than left running in an unknown condition.
+process.on('uncaughtException', (err) => {
+  console.error('Uncaught exception, restarting:', err);
+  process.exit(1);
+});
+
 main().catch((err) => {
   console.error('Fatal error starting automation hub:', err);
   process.exit(1);

@@ -18,6 +18,21 @@ export function createDiscordClient(botToken, { extraIntents = [] } = {}) {
     client.once('error', reject);
   });
 
+  // A standing listener, separate from the one-shot above. `once` removes
+  // itself after firing, and discord.js Client is an EventEmitter - an
+  // 'error' event with no listener THROWS, so the second gateway error after
+  // boot would take the whole service down. On a bot that stays up for days,
+  // reconnects and socket blips are routine, not exceptional.
+  //
+  // Logging and carrying on is right here: discord.js reconnects on its own,
+  // and a dropped websocket is not a reason to stop polling Airtable.
+  client.on('error', (err) => {
+    console.error('[discord] client error (recovering):', err?.message ?? err);
+  });
+  client.on('shardError', (err) => {
+    console.error('[discord] shard error (recovering):', err?.message ?? err);
+  });
+
   client.login(botToken);
 
   async function sendToChannel(channelId, message) {
