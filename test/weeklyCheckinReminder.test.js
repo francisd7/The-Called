@@ -51,7 +51,12 @@ test('buildReminderPlan splits clients with and without a Discord ID', () => {
   assert.equal(plan.toSend.length, 1);
   assert.equal(plan.toSend[0].clientName, 'Has Id');
   assert.equal(plan.toSend[0].discordId, '123456789012345678');
-  assert.match(plan.toSend[0].message, /^Hey Has, time for your Weekly Check-in/);
+  // Mentioned, not named. The reminder is posted into the client's own
+  // channel now, and a mention is the part that actually notifies them.
+  assert.match(
+    plan.toSend[0].message,
+    /^Hey <@123456789012345678>, time for your Weekly Check-in/
+  );
 
   assert.deepEqual(
     plan.skipped.map((s) => ({ clientName: s.clientName, reason: s.reason })),
@@ -86,4 +91,13 @@ test('formatDryRunSummary lists all three groups, with a "(none)" fallback', () 
   assert.match(summary, /Would send \(0\):\n {2}\(none\)/);
   assert.match(summary, /no Discord ID on file \(0\):\n {2}\(none\)/);
   assert.match(summary, /opted out \(Skip Weekly Reminder checked\) \(0\):\n {2}\(none\)/);
+});
+
+test('formatReminderMessage still falls back to a first name without a mention', () => {
+  const fields = { 'Client Name': 'Jane Doe', 'Weekly Check-in Link': 'https://x' };
+  assert.equal(formatReminderMessage(fields), 'Hey Jane, time for your Weekly Check-in — https://x');
+  assert.equal(
+    formatReminderMessage(fields, { mention: '<@9>' }),
+    'Hey <@9>, time for your Weekly Check-in — https://x'
+  );
 });

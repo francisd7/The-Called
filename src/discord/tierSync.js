@@ -79,12 +79,27 @@ export async function findClientByDiscordId(airtableClient, baseId, discordUserI
 // own channel behind. Only channels already parented to a tier category
 // count, so a member's overwrite on some shared channel can't be mistaken
 // for their private one.
+// discord.js hands back a PermissionOverwriteManager, not an array, and that
+// manager does NOT forward Collection methods - `.some()` on it is undefined,
+// so calling it throws. This used to call it directly, which meant the lookup
+// threw on every real channel and only worked in tests, where plain arrays
+// were passed in. The failure was invisible: moveClientChannel catches it and
+// logs "Failed to move the private channel", so a client's first upsell would
+// have written the new tier to Airtable and left their channel behind.
+export function overwriteTargetIds(channel) {
+  const overwrites = channel?.permissionOverwrites;
+  if (!overwrites) return [];
+  if (Array.isArray(overwrites)) return overwrites.map((overwrite) => overwrite.id);
+  if (overwrites.cache) return [...overwrites.cache.keys()];
+  return [];
+}
+
 export function pickClientChannel(channels, memberId, tierCategoryIds) {
   return (
     channels.find(
       (channel) =>
         tierCategoryIds.includes(channel.parentId) &&
-        channel.permissionOverwrites?.some((overwrite) => overwrite.id === memberId)
+        overwriteTargetIds(channel).includes(memberId)
     ) ?? null
   );
 }

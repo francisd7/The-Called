@@ -8,10 +8,12 @@ export function firstNameOf(fullName) {
   return trimmed.split(/\s+/)[0];
 }
 
-export function formatReminderMessage(fields) {
-  const firstName = firstNameOf(fields['Client Name']);
+// A mention replaces the first name when this is posted into a channel: it
+// reads the same and it actually notifies them, which a plain name does not.
+export function formatReminderMessage(fields, { mention } = {}) {
+  const who = mention || firstNameOf(fields['Client Name']);
   const link = fields['Weekly Check-in Link'] ?? '';
-  return `Hey ${firstName}, time for your Weekly Check-in — ${link}`;
+  return `Hey ${who}, time for your Weekly Check-in — ${link}`;
 }
 
 // Splits active clients into who'd get a DM and who'd be skipped - matches
@@ -39,7 +41,11 @@ export function buildReminderPlan(records) {
       continue;
     }
 
-    toSend.push({ clientName, discordId, message: formatReminderMessage(fields) });
+    toSend.push({
+      clientName,
+      discordId,
+      message: formatReminderMessage(fields, { mention: `<@${discordId}>` }),
+    });
   }
 
   return { toSend, skipped };

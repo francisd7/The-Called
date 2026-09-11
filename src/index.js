@@ -35,6 +35,13 @@ async function main() {
   // Tier sync rewrites a billing field in Airtable off a Discord role click,
   // so it refuses to start without somewhere to log those writes - an
   // unlogged mis-click is exactly the failure this design has to avoid.
+  // The reminder posts into each client's private channel, so it needs to know
+  // which guild to look in. Failing at boot beats discovering it as twenty
+  // "no private channel found" lines on a Friday afternoon.
+  if (config.weeklyReminderEnabled && !config.clientGuildId) {
+    throw new Error('WEEKLY_REMINDER_ENABLED is true but DISCORD_CLIENT_GUILD_ID is missing');
+  }
+
   if (config.tierSyncEnabled && (!config.clientGuildId || !config.tierChangesChannelId)) {
     throw new Error(
       'TIER_SYNC_ENABLED is true but DISCORD_CLIENT_GUILD_ID or DISCORD_TIER_CHANGES_CHANNEL_ID is missing'
@@ -164,6 +171,7 @@ async function main() {
         airtableClient,
         discord,
         baseId: config.clientSuccessBaseId,
+        clientGuildId: config.clientGuildId,
         logChannelId: config.discordWeeklyCheckinChannelId,
       });
       console.log('Weekly Check-in reminder send complete.');

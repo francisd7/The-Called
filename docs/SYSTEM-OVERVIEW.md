@@ -162,7 +162,7 @@ between "code exists" and "real people get real messages".
 |---|---|---|---|---|
 | 1 | Setter EOD → Discord | Polls Airtable every 60s | always on | `DISCORD_SETTER_EOD_CHANNEL_ID` |
 | 2 | Weekly Check-in → Discord | Polls Airtable every 60s | always on | `DISCORD_WEEKLY_CHECKIN_CHANNEL_ID` |
-| 3 | Weekly Check-in reminder DMs | Scheduled, noon ET by default | `WEEKLY_REMINDER_ENABLED` | DMs to active clients |
+| 3 | Weekly Check-in reminder | Scheduled, Friday noon ET | `WEEKLY_REMINDER_ENABLED` | A post in each client's own private channel |
 | 4 | New-member onboarding | `guildMemberAdd` | `NEW_MEMBER_ONBOARDING_ENABLED` | Roles, a private channel, an Airtable record |
 | 5 | Tier sync | `guildMemberUpdate` | `TIER_SYNC_ENABLED` | Airtable write, channel move, audit log |
 | 6 | Weekly Check-in missing report | Scheduled, Saturday noon ET | `WEEKLY_REPORT_ENABLED` | Staff channel post naming who didn't check in |
@@ -172,8 +172,15 @@ between "code exists" and "real people get real messages".
 verified end-to-end with a test record that posted and was then deleted.
 **#6 is built but off** until `WEEKLY_REPORT_ENABLED` is set.
 
-**#3** skips anyone with `Skip Weekly Reminder` checked, and only targets
-records where `Status = 'Active'`.
+**#3** posts into each client's private channel rather than DMing them —
+changed 2026-09-11 after the first live run, where 20 DMs sent successfully and
+nobody noticed, because a DM lands in an inbox nobody opens and the CSM never
+sees it. The client's channel is where their coaching already happens, it is
+private to them and their CSM, and Noah can tell at a glance who was asked.
+The client is mentioned rather than named, so they still get the notification
+the DM gave them. A client with no private channel is reported, never quietly
+DMed instead — that fallback would hide the gap worth fixing. It skips anyone
+with `Skip Weekly Reminder` checked, and only targets `Status = 'Active'`.
 
 **#7** posts the outcome of a sales call as soon as a closer logs it. Unlike
 the EOD automations, which announce that a daily summary was submitted, this

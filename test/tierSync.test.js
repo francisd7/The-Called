@@ -231,3 +231,32 @@ test('a change in another guild is ignored', async () => {
   assert.deepEqual(h.updates, []);
   assert.deepEqual(h.sent, []);
 });
+
+test('the client-channel lookup works with a real discord.js overwrite manager', () => {
+  // PermissionOverwriteManager does NOT forward Collection methods - `.some()`
+  // on it is undefined, so calling it throws. This used to do exactly that,
+  // which meant the lookup only ever worked in tests, where plain arrays were
+  // passed. moveClientChannel catches the throw and logs "Failed to move the
+  // private channel", so a client's first upsell would have written the new
+  // tier to Airtable and left their channel under the old category.
+  const managerShaped = {
+    id: 'chan1',
+    parentId: 'cat-momentum',
+    permissionOverwrites: { cache: new Map([['member1', {}], ['role1', {}]]) },
+  };
+  assert.equal(pickClientChannel([managerShaped], 'member1', ['cat-momentum'])?.id, 'chan1');
+  assert.equal(pickClientChannel([managerShaped], 'nobody', ['cat-momentum']), null);
+});
+
+test('the lookup still accepts a plain overwrite array', () => {
+  const arrayShaped = {
+    id: 'chan1',
+    parentId: 'cat-momentum',
+    permissionOverwrites: [{ id: 'member1' }],
+  };
+  assert.equal(pickClientChannel([arrayShaped], 'member1', ['cat-momentum'])?.id, 'chan1');
+});
+
+test('a channel with no overwrites at all does not throw', () => {
+  assert.equal(pickClientChannel([{ id: 'c', parentId: 'cat-momentum' }], 'm', ['cat-momentum']), null);
+});
