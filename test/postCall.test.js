@@ -1,6 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { formatMessage } from '../src/automations/postCall.js';
+import { TIERS } from '../src/discord/tiers.js';
 
 function record(fields) {
   return { fields };
@@ -112,7 +113,18 @@ test('"No Close" as a tier is suppressed, like it is as a payment method', () =>
 
 test('a tier arriving as an object resolves to its name', () => {
   const message = formatMessage(
-    record({ 'Call Outcome': 'Closed', Tier: { id: 'sel1', name: 'Foundation' } })
+    record({ 'Call Outcome': 'Closed', Tier: { id: 'sel1', name: 'Foundations' } })
   );
-  assert.match(message, /\*\*Foundation\*\*/);
+  assert.match(message, /\*\*Foundations\*\*/);
+});
+
+test('the four sellable tiers match the ladder the rest of the system uses', () => {
+  // The Post Call form is the one place a tier is typed by hand rather than
+  // resolved from tiers.js, so it can drift silently - it said "Foundation"
+  // for a day. Nothing joins the two today, but anything that ever compares
+  // what was sold against what a client holds would quietly find no match.
+  for (const tier of TIERS) {
+    const message = formatMessage(record({ 'Call Outcome': 'Closed', Tier: tier.name }));
+    assert.match(message, new RegExp(`\\*\\*${tier.name}\\*\\*`), tier.name);
+  }
 });
