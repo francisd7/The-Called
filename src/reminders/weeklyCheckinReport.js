@@ -33,9 +33,17 @@ function submittedRecordIds(checkinRecords, cutoffIso) {
   return { ids, names };
 }
 
-export function buildMissingReport({ clientRecords, checkinRecords, cutoffIso }) {
+// `startedAfterDate` is a plain YYYY-MM-DD boundary rather than a timestamp,
+// because Start Date is a date-only field - comparing it as a string avoids
+// inventing a time of day and then arguing with a timezone about it.
+export function buildMissingReport({
+  clientRecords,
+  checkinRecords,
+  cutoffIso,
+  startedAfterDate,
+}) {
   const submitted = submittedRecordIds(checkinRecords, cutoffIso);
-  const report = { submitted: [], missing: [], notExpected: [] };
+  const report = { submitted: [], missing: [], notExpected: [], tooNew: [] };
 
   for (const record of clientRecords) {
     const fields = record.fields ?? {};
@@ -55,6 +63,18 @@ export function buildMissingReport({ clientRecords, checkinRecords, cutoffIso })
 
     if (didSubmit) {
       report.submitted.push({ recordId: record.id, clientName });
+      continue;
+    }
+
+    // Someone who started three days ago has not missed a weekly check-in;
+    // they have not had a week. Chasing them for it is how a report earns a
+    // reputation for crying wolf. Still listed, separately, so the team can
+    // see the new client exists without them landing on a CSM's to-do list.
+    // A missing Start Date does not exempt anyone - it would be a silent way
+    // to disappear from the report entirely.
+    const startDate = fields['Start Date'];
+    if (startedAfterDate && typeof startDate === 'string' && startDate > startedAfterDate) {
+      report.tooNew.push({ recordId: record.id, clientName, startDate });
       continue;
     }
 
@@ -87,34 +107,44 @@ export function formatMissingReport(report, { weekLabel } = {}) {
     ? `📋 **Weekly Check-in — who hasn't submitted** (week ending ${weekLabel})`
     : "📋 **Weekly Check-in — who hasn't submitted**";
 
-  if (report.expectedCount === 0) {
-    return `${heading}\n\nNo active clients are expected to check in.`;
-  }
+  const lines = [heading, ''];
 
+  // The three tails below are appended on every path, including the quiet
+  // ones. An early return that skipped them meant a week whose only clients
+  // were brand new reported "nobody is expected to check in" while saying
+  // nothing about the new clients - the report going quiet exactly when
+  // someone needed to know a name.
   if (report.missing.length === 0) {
-    return `${heading}\n\n✅ All ${report.expectedCount} checked in. Nothing to chase.`;
-  }
-
-  const lines = [
-    heading,
-    '',
-    `**${report.missing.length} of ${report.expectedCount} haven't submitted.**`,
-    '',
-  ];
-
-  for (const [csm, entries] of byCsm(report.missing)) {
-    lines.push(`**${csm}** (${entries.length})`);
-    for (const entry of entries) {
-      const note = entry.hasDiscordId ? '' : ' — no Discord ID, never got the reminder';
-      lines.push(`• ${entry.clientName}${note}`);
-    }
-    lines.push('');
-  }
-
-  if (report.submitted.length > 0) {
     lines.push(
-      `✅ Submitted (${report.submitted.length}): ${report.submitted
-        .map((entry) => entry.clientName)
+      report.expectedCount === 0
+        ? 'No check-ins were expected this week.'
+        : `✅ All ${report.expectedCount} checked in. Nothing to chase.`
+    );
+  } else {
+    lines.push(`**${report.missing.length} of ${report.expectedCount} haven't submitted.**`, '');
+
+    for (const [csm, entries] of byCsm(report.missing)) {
+      lines.push(`**${csm}** (${entries.length})`);
+      for (const entry of entries) {
+        const note = entry.hasDiscordId ? '' : ' — no Discord ID, never got the reminder';
+        lines.push(`• ${entry.clientName}${note}`);
+      }
+      lines.push('');
+    }
+
+    if (report.submitted.length > 0) {
+      lines.push(
+        `✅ Submitted (${report.submitted.length}): ${report.submitted
+          .map((entry) => entry.clientName)
+          .join(', ')}`
+      );
+    }
+  }
+
+  if (report.tooNew.length > 0) {
+    lines.push(
+      `🆕 Too new to expect one (${report.tooNew.length}): ${report.tooNew
+        .map((entry) => `${entry.clientName} — started ${entry.startDate}`)
         .join(', ')}`
     );
   }

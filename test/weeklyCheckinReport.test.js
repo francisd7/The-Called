@@ -123,3 +123,53 @@ test('the week label appears in the heading when given', () => {
   const report = buildMissingReport({ clientRecords: [], checkinRecords: [], cutoffIso: CUTOFF });
   assert.match(formatMissingReport(report, { weekLabel: '2026-09-12' }), /week ending 2026-09-12/);
 });
+
+test('a client who started this week is too new to be a miss', () => {
+  const report = buildMissingReport({
+    clientRecords: [client('rec1', 'Gavin OBrien', { 'Start Date': '2026-09-11' })],
+    checkinRecords: [],
+    cutoffIso: CUTOFF,
+    startedAfterDate: '2026-09-05',
+  });
+  assert.equal(report.missing.length, 0);
+  assert.deepEqual(report.tooNew.map((e) => e.clientName), ['Gavin OBrien']);
+  // Not counted against the total either - 0 of 0, not 0 of 1.
+  assert.equal(report.expectedCount, 0);
+  assert.match(formatMissingReport(report), /Too new to expect one \(1\): Gavin OBrien/);
+});
+
+test('the same client is expected the following week, with no human action', () => {
+  // The grace is a rolling comparison against Start Date, not a flag someone
+  // has to remember to clear - which is the failure mode of using Skip Weekly
+  // Reminder for this.
+  const report = buildMissingReport({
+    clientRecords: [client('rec1', 'Gavin OBrien', { 'Start Date': '2026-09-11' })],
+    checkinRecords: [],
+    cutoffIso: CUTOFF,
+    startedAfterDate: '2026-09-12',
+  });
+  assert.equal(report.tooNew.length, 0);
+  assert.deepEqual(report.missing.map((e) => e.clientName), ['Gavin OBrien']);
+});
+
+test('a client starting exactly on the boundary is expected, not excused', () => {
+  const report = buildMissingReport({
+    clientRecords: [client('rec1', 'A', { 'Start Date': '2026-09-05' })],
+    checkinRecords: [],
+    cutoffIso: CUTOFF,
+    startedAfterDate: '2026-09-05',
+  });
+  assert.equal(report.missing.length, 1);
+});
+
+test('a missing Start Date does not excuse anyone', () => {
+  // Otherwise a blank field is a silent way to disappear from the report.
+  const report = buildMissingReport({
+    clientRecords: [client('rec1', 'No Date', { 'Start Date': undefined })],
+    checkinRecords: [],
+    cutoffIso: CUTOFF,
+    startedAfterDate: '2026-09-05',
+  });
+  assert.equal(report.tooNew.length, 0);
+  assert.equal(report.missing.length, 1);
+});

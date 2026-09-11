@@ -14,7 +14,10 @@ import { CLIENTS_TABLE_ID, ACTIVE_CLIENTS_FORMULA } from '../src/reminders/weekl
 import { tableId as CHECKIN_TABLE_ID } from '../src/automations/weeklyCheckin.js';
 import { buildMissingReport, formatMissingReport } from '../src/reminders/weeklyCheckinReport.js';
 import { getLocalDateString } from '../src/reminders/schedule.js';
-import { DEFAULT_LOOKBACK_DAYS } from '../src/reminders/sendWeeklyCheckinReport.js';
+import {
+  DEFAULT_LOOKBACK_DAYS,
+  DEFAULT_GRACE_DAYS,
+} from '../src/reminders/sendWeeklyCheckinReport.js';
 
 const daysFlag = process.argv.indexOf('--days');
 const lookbackDays =
@@ -31,6 +34,10 @@ const timeZone = 'America/New_York';
 
 const now = new Date();
 const cutoffIso = new Date(now.getTime() - lookbackDays * 24 * 60 * 60 * 1000).toISOString();
+const startedAfterDate = getLocalDateString(
+  new Date(now.getTime() - DEFAULT_GRACE_DAYS * 24 * 60 * 60 * 1000),
+  timeZone
+);
 
 const [clientRecords, checkinRecords] = await Promise.all([
   airtableClient.listRecords(baseId, CLIENTS_TABLE_ID, { filterByFormula: ACTIVE_CLIENTS_FORMULA }),
@@ -40,10 +47,11 @@ const [clientRecords, checkinRecords] = await Promise.all([
 console.log(
   `DRY RUN — nothing will be posted.\n` +
     `${clientRecords.length} active clients, ${checkinRecords.length} check-ins on file.\n` +
-    `Counting check-ins created since ${cutoffIso} (${lookbackDays} days).\n`
+    `Counting check-ins created since ${cutoffIso} (${lookbackDays} days).\n` +
+    `Clients who started after ${startedAfterDate} are too new to expect one.\n`
 );
 
-const report = buildMissingReport({ clientRecords, checkinRecords, cutoffIso });
+const report = buildMissingReport({ clientRecords, checkinRecords, cutoffIso, startedAfterDate });
 
 console.log('--- message as it would be posted ---\n');
 console.log(formatMissingReport(report, { weekLabel: getLocalDateString(now, timeZone) }));

@@ -11,6 +11,11 @@ import { getLocalDateString } from './schedule.js';
 // be asked.
 export const DEFAULT_LOOKBACK_DAYS = 7;
 
+// A client gets one full week before a missed check-in counts against them.
+// Same length as the lookback on purpose: the window we measure and the grace
+// we give are the same week.
+export const DEFAULT_GRACE_DAYS = 7;
+
 export async function sendWeeklyCheckinReport({
   airtableClient,
   discord,
@@ -18,10 +23,15 @@ export async function sendWeeklyCheckinReport({
   channelId,
   now = new Date(),
   lookbackDays = DEFAULT_LOOKBACK_DAYS,
+  graceDays = DEFAULT_GRACE_DAYS,
   timeZone = 'America/New_York',
   log = console,
 }) {
   const cutoffIso = new Date(now.getTime() - lookbackDays * 24 * 60 * 60 * 1000).toISOString();
+  const startedAfterDate = getLocalDateString(
+    new Date(now.getTime() - graceDays * 24 * 60 * 60 * 1000),
+    timeZone
+  );
 
   const [clientRecords, checkinRecords] = await Promise.all([
     airtableClient.listRecords(baseId, CLIENTS_TABLE_ID, {
@@ -34,7 +44,7 @@ export async function sendWeeklyCheckinReport({
     airtableClient.listRecords(baseId, CHECKIN_TABLE_ID),
   ]);
 
-  const report = buildMissingReport({ clientRecords, checkinRecords, cutoffIso });
+  const report = buildMissingReport({ clientRecords, checkinRecords, cutoffIso, startedAfterDate });
   const message = formatMissingReport(report, {
     weekLabel: getLocalDateString(now, timeZone),
   });

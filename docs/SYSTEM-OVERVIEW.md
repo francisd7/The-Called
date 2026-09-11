@@ -182,6 +182,13 @@ since the DM: people submit before being asked, and both check-ins on file when
 this was built arrived the evening before that week's reminder. Matching is on
 the check-in's linked record ID, so a renamed client is never a false miss.
 
+A client who started within the last week is listed separately as too new
+rather than counted as a miss - they have not had a week yet, and chasing them
+for it is how a report earns a reputation for crying wolf. That grace is a
+rolling comparison against `Start Date`, so they appear in the miss list the
+following week on their own. Do **not** use `Skip Weekly Reminder` for this:
+that flag is permanent until a human clears it, and nobody ever does.
+
 **#4, invite routing.** Discord has no native invite→role mapping. **Four**
 permanent invite links exist, one per tier. The bot caches every invite's use
 count and, on a join, finds which one incremented.
