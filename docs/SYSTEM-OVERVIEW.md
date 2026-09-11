@@ -168,8 +168,9 @@ between "code exists" and "real people get real messages".
 | 6 | Weekly Check-in missing report | Scheduled, Saturday noon ET | `WEEKLY_REPORT_ENABLED` | Staff channel post naming who didn't check in |
 | 7 | Post Call → Discord | Polls Airtable every 60s | `DISCORD_POST_CALL_CHANNEL_ID` set | Full call outcome, attribution, money and recording |
 
-**#1–#5 are live** as of 2026-09-10 — those gates are all `true` on Railway.
-**#6 was added 2026-09-11 and is off** until `WEEKLY_REPORT_ENABLED` is set.
+**#1–#5 and #7 are live.** #1–#5 since 2026-09-10; #7 since 2026-09-11,
+verified end-to-end with a test record that posted and was then deleted.
+**#6 is built but off** until `WEEKLY_REPORT_ENABLED` is set.
 
 **#3** skips anyone with `Skip Weekly Reminder` checked, and only targets
 records where `Status = 'Active'`.

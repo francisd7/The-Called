@@ -10,7 +10,14 @@ left is A, E and F.
 
 ---
 
-## A. Make the watermark survive deploys
+## A. ~~Make the watermark survive deploys~~ — done
+
+A volume is mounted and `STATE_FILE_PATH` is set, confirmed 2026-09-11: the
+deploy log now mounts the volume and the `[setterEod]` / `[weeklyCheckin]`
+"no prior watermark" lines are gone, which is the only proof that counts —
+they survived a restart.
+
+<details><summary>original</summary>
 
 **The problem.** Each polling automation keeps a watermark — the `createdTime`
 of the last Airtable record it posted — so it never re-posts. It lives in
@@ -49,6 +56,7 @@ build put there. A separate path can't collide.
 that's expected, the volume is empty on its first boot. Deploy a *second*
 time. On that one the "no prior watermark" lines should be **gone**. That's
 the proof it persisted; the first deploy alone proves nothing.
+</details>
 
 ---
 
@@ -166,12 +174,12 @@ safeguard on the "Discord wins" design.
 
 ---
 
-## G. Turn on Post Call posting
+## G. ~~Turn on Post Call posting~~ — done
 
-Built and deployed 2026-09-11, off until a channel is named. Railway →
-Variables → `DISCORD_POST_CALL_CHANNEL_ID`. There is no boolean gate; the
-channel id is the switch, and the boot log says `Post Call posting is off`
-until it is set.
+Live in channel `1543023553233031228` since 2026-09-11 and verified
+end-to-end: a test record was created, posted within one poll cycle, and both
+the record and its message were cleaned up. The next real call Nigel or Andrew
+logs posts on its own.
 
 ---
 
