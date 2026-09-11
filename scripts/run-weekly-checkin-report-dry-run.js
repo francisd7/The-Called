@@ -13,7 +13,7 @@ import { createAirtableClient } from '../src/airtableClient.js';
 import { CLIENTS_TABLE_ID, ACTIVE_CLIENTS_FORMULA } from '../src/reminders/weeklyCheckinReminder.js';
 import { tableId as CHECKIN_TABLE_ID } from '../src/automations/weeklyCheckin.js';
 import { buildMissingReport, formatMissingReport } from '../src/reminders/weeklyCheckinReport.js';
-import { getLocalDateString } from '../src/reminders/schedule.js';
+import { getLocalDateString, BUSINESS_TIMEZONE } from '../src/reminders/schedule.js';
 import {
   DEFAULT_LOOKBACK_DAYS,
   DEFAULT_GRACE_DAYS,
@@ -30,7 +30,7 @@ if (!process.env.AIRTABLE_PAT) {
 
 const baseId = process.env.AIRTABLE_CLIENT_SUCCESS_BASE_ID || 'appkSTSqkeXGHt6pY';
 const airtableClient = createAirtableClient(process.env.AIRTABLE_PAT);
-const timeZone = 'America/New_York';
+const timeZone = BUSINESS_TIMEZONE;
 
 const now = new Date();
 const cutoffIso = new Date(now.getTime() - lookbackDays * 24 * 60 * 60 * 1000).toISOString();

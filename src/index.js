@@ -7,7 +7,7 @@ import { createPoller } from './poller.js';
 import { loadState, saveState as persistState } from './state.js';
 import * as setterEod from './automations/setterEod.js';
 import * as weeklyCheckin from './automations/weeklyCheckin.js';
-import { isTargetMinute, getLocalDateString } from './reminders/schedule.js';
+import { isTargetMinute, getLocalDateString, BUSINESS_TIMEZONE } from './reminders/schedule.js';
 import { sendWeeklyCheckinReminders } from './reminders/sendWeeklyCheckinReminders.js';
 import { sendWeeklyCheckinReport } from './reminders/sendWeeklyCheckinReport.js';
 import { registerNewMemberOnboarding } from './onboarding/newMemberOnboarding.js';
@@ -15,9 +15,6 @@ import { createInviteTracker } from './discord/inviteTracker.js';
 import { parseInviteRoleMap, findUnmappedSlots, getInviteSlot } from './discord/inviteRoles.js';
 import { registerTierSync } from './discord/tierSync.js';
 
-// America/New_York rather than a fixed offset: the user says "EST", but half
-// the year it is EDT, and Intl handles the switch on its own.
-const WEEKLY_REMINDER_TIMEZONE = 'America/New_York';
 const WEEKLY_REMINDER_WEEKDAY = 'Fri';
 const WEEKLY_REMINDER_STATE_KEY = 'weeklyCheckinReminderLastRunDate';
 
@@ -103,14 +100,14 @@ async function main() {
     isCheckingReminderSchedule = true;
     try {
       const now = new Date();
-      const todayEt = getLocalDateString(now, WEEKLY_REMINDER_TIMEZONE);
+      const todayEt = getLocalDateString(now, BUSINESS_TIMEZONE);
       if (state[WEEKLY_REMINDER_STATE_KEY] === todayEt) return;
 
       const isFireTime = isTargetMinute(now, {
         weekday: WEEKLY_REMINDER_WEEKDAY,
         hour: config.weeklyReminderHourEt,
         minute: config.weeklyReminderMinuteEt,
-        timeZone: WEEKLY_REMINDER_TIMEZONE,
+        timeZone: BUSINESS_TIMEZONE,
       });
       if (!isFireTime) return;
 
@@ -144,14 +141,14 @@ async function main() {
     isCheckingReportSchedule = true;
     try {
       const now = new Date();
-      const todayEt = getLocalDateString(now, WEEKLY_REMINDER_TIMEZONE);
+      const todayEt = getLocalDateString(now, BUSINESS_TIMEZONE);
       if (state[WEEKLY_REPORT_STATE_KEY] === todayEt) return;
 
       const isFireTime = isTargetMinute(now, {
         weekday: WEEKLY_REPORT_WEEKDAY,
         hour: config.weeklyReportHourEt,
         minute: config.weeklyReportMinuteEt,
-        timeZone: WEEKLY_REMINDER_TIMEZONE,
+        timeZone: BUSINESS_TIMEZONE,
       });
       if (!isFireTime) return;
 
@@ -166,7 +163,7 @@ async function main() {
         channelId: config.weeklyReportChannelId,
         graceDays: config.weeklyReportGraceDays,
         now,
-        timeZone: WEEKLY_REMINDER_TIMEZONE,
+        timeZone: BUSINESS_TIMEZONE,
       });
       console.log('Weekly Check-in missing report complete.');
     } catch (err) {

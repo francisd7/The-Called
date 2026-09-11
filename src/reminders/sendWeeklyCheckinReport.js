@@ -1,7 +1,7 @@
 import { CLIENTS_TABLE_ID, ACTIVE_CLIENTS_FORMULA } from './weeklyCheckinReminder.js';
 import { tableId as CHECKIN_TABLE_ID } from '../automations/weeklyCheckin.js';
 import { buildMissingReport, formatMissingReport } from './weeklyCheckinReport.js';
-import { getLocalDateString } from './schedule.js';
+import { getLocalDateString, BUSINESS_TIMEZONE } from './schedule.js';
 
 // A whole week, not the hours since Friday's DM. The two check-ins on file
 // when this was built both arrived on Thursday evening, before that week's
@@ -29,7 +29,7 @@ export async function sendWeeklyCheckinReport({
   now = new Date(),
   lookbackDays = DEFAULT_LOOKBACK_DAYS,
   graceDays = DEFAULT_GRACE_DAYS,
-  timeZone = 'America/New_York',
+  timeZone = BUSINESS_TIMEZONE,
   log = console,
 }) {
   const cutoffIso = new Date(now.getTime() - lookbackDays * 24 * 60 * 60 * 1000).toISOString();
