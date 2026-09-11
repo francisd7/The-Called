@@ -17,9 +17,10 @@ const OUTCOME_ICONS = {
   'Follow Up Scheduled': '🔁',
 };
 
-// Payment Method carries "No Close" as a choice, which is an outcome wearing
-// a payment method's clothes. Printing "paid via No Close" would be nonsense.
-const NOT_A_PAYMENT = 'No Close';
+// Both Payment Method and Tier carry "No Close" as a choice - an outcome
+// wearing another field's clothes. "via No Close" and "Closed · No Close"
+// are each nonsense, and the outcome line already says it.
+const NOT_SOLD = 'No Close';
 
 const MAX_NOTE = 400;
 
@@ -56,7 +57,13 @@ export function formatMessage(record) {
   const icon = OUTCOME_ICONS[outcome] ?? '📞';
   const leadName = String(fields['Lead Name'] ?? '').trim() || 'Unnamed lead';
 
-  const lines = [`${icon} **${outcome}** — ${leadName}`];
+  // Tier sits in the headline rather than down with the money: "what did we
+  // just sell" is the second thing you want after "did it close", and on a
+  // call that didn't close it still says what they were pitched.
+  const tier = selectName(fields.Tier);
+  const headline = [`${icon} **${outcome}** — ${leadName}`];
+  if (tier && tier !== NOT_SOLD) headline.push(`**${tier}**`);
+  const lines = [headline.join(' · ')];
 
   // Who ran it and who fed it. Attribution is half the reason this gets
   // posted: the setter finds out their booking closed without asking.
@@ -79,7 +86,7 @@ export function formatMessage(record) {
     const parts = [
       cash ? `${cash} collected` : null,
       revenue ? `${revenue} revenue` : null,
-      payment && payment !== NOT_A_PAYMENT ? `via ${payment}` : null,
+      payment && payment !== NOT_SOLD ? `via ${payment}` : null,
     ].filter(Boolean);
     lines.push(`💰 ${parts.join(' · ')}`);
   }

@@ -84,3 +84,35 @@ test('partial attribution still reads correctly', () => {
   const message = formatMessage(record({ 'Call Outcome': 'Closed', 'Setter Booked': 'Loui' }));
   assert.match(message, /^🎉 \*\*Closed\*\* — Unnamed lead\nbooked by Loui$/);
 });
+
+test('the tier sold sits in the headline', () => {
+  // "What did we just sell" is the second thing you want after "did it close".
+  const message = formatMessage(
+    record({ 'Lead Name': 'Marcus Webb', 'Call Outcome': 'Closed', Tier: 'Momentum' })
+  );
+  assert.match(message, /^🎉 \*\*Closed\*\* — Marcus Webb · \*\*Momentum\*\*$/m);
+});
+
+test('a tier still shows on a call that did not close', () => {
+  // What they were pitched is worth knowing on a miss.
+  const message = formatMessage(
+    record({ 'Lead Name': 'Devon Hart', 'Call Outcome': 'No Show', Tier: 'Inner Circle' })
+  );
+  assert.match(message, /👻 \*\*No Show\*\* — Devon Hart · \*\*Inner Circle\*\*/);
+});
+
+test('"No Close" as a tier is suppressed, like it is as a payment method', () => {
+  // Same sentinel in both fields - an outcome wearing another field's
+  // clothes. "Closed · No Close" is nonsense and the outcome already said it.
+  const message = formatMessage(
+    record({ 'Lead Name': 'Devon Hart', 'Call Outcome': 'No Close', Tier: 'No Close' })
+  );
+  assert.match(message, /^❌ \*\*No Close\*\* — Devon Hart$/m);
+});
+
+test('a tier arriving as an object resolves to its name', () => {
+  const message = formatMessage(
+    record({ 'Call Outcome': 'Closed', Tier: { id: 'sel1', name: 'Foundation' } })
+  );
+  assert.match(message, /\*\*Foundation\*\*/);
+});
