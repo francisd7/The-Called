@@ -15,46 +15,63 @@ than any other channel here.
 
 ## `#start-here`
 
-> Welcome in. You paid to be here, so let's not waste your first ten minutes.
+Read by all four tiers *and* by veterans *and* by brand-new buyers who have no
+tier role yet — five audiences seeing between 4 and 20 channels. So it never
+says "you have X". It says "your sidebar shows what's yours", which is true for
+every one of them at once, and lets Discord do the sorting it is already doing.
 
-**First, go find your own channel.**
+> Welcome in. Ten minutes here saves you a month of poking around.
 
-Look down the sidebar for a channel with your name on it. That's yours — you,
-your coach, and nobody else. It's where your calls get booked, your work gets
-reviewed, and your material gets delivered. If you only ever use one channel
-in this server, use that one.
+**Your sidebar is the map.**
 
-**What everything else is:**
+It only shows what your package includes, so it looks different to you than to
+the guy next to you. If a section named below isn't in yours, nothing is
+broken — it just isn't part of your package yet.
 
-**THE CALLED** — the part everybody shares. Bible study, the Warrior Huddles,
-and general conversation. This is the brotherhood, not the business.
+And if the sidebar looks short on your first day, give it a few minutes. Your
+access gets switched on shortly after you join.
+
+**Start with your own channel.**
+
+Look down the sidebar for a channel with your name on it — you, your coach,
+nobody else. Your welcome message is already sitting in it with your first
+tasks. If you only ever use one channel in this server, use that one.
+
+No channel with your name on it? Then `#general-chat` is your room, and that's
+where to ask anything.
+
+**Everything else, top to bottom:**
+
+**THE CALLED** — what everybody shares, at every level. `#bible-study`, the
+Warrior Huddle voice room, `#general-chat`. This is the brotherhood, not the
+business.
 
 **THE FORGE** — where the work happens. Post what you're building in
-`#content-review`, pull ideas from `#reel-ideas`, and put your results in
-`#wins`. Read `#wins` even when you have nothing to post. It's the fastest
-way to see what's actually working right now.
+`#content-review`, pull angles out of `#reel-ideas`, put results in `#wins`.
+Read `#wins` even with nothing to post — it's the fastest read in the server on
+what's working, and everyone can see it.
 
-**TRAINING HUB** — sales and setting training, call reviews, and recordings.
+**TRAINING HUB** — sales and setting training, conversation reviews, call
+recordings.
 
-**Your tier's section** — announcements meant only for people on your package,
-and a chat with the guys at the same stage as you.
+**Your package's section** — announcements for people on your package only, and
+a chat with the guys at exactly your stage.
 
 **Three things to do today:**
 
-1. Say hello in your own channel so your coach knows you're in.
+1. Say hello in your own channel — or `#general-chat` if you don't have one.
 2. Read the last ten posts in `#wins`.
-3. Book your first call in `#book-1-1`.
+3. Open your welcome message and start on task one.
 
 **Who's who:**
 
 - **Nigel** — founder
-- **Francis** — operations, and the person to ask when something is broken
+- **Francis** — operations. Ask me when something's broken.
 - **Andrew** — marketing
 - **Noah** — client success, and most likely the name in your channel
 - **Eddie** — runs the weekly call
 
-Stuck, confused, or something isn't working? Post in your own channel. Someone
-will answer.
+Stuck on anything, post it. Someone will answer.
 
 ---
 
@@ -133,11 +150,41 @@ Start here: what's the single biggest constraint on your business right now?
 ## Notes on posting these
 
 - **`#start-here` first**, before anyone new joins through an invite link.
-- Two names in `#start-here` need checking — that Noah is the CSM a new client
-  actually meets, and that Eddie's weekly call is still running. Both were
-  true at the time of the restructure.
+- **`#start-here` is 1,944 characters — Discord's single-message limit is
+  2,000.** It has about one sentence of headroom. Re-count before adding
+  anything, or it silently refuses to send.
+- Channel names are left in backticks rather than as real `#` mentions.
+  Mentions would be clickable, but each costs ~5 more characters against that
+  limit, and one pointing at a channel the reader can't see renders greyed out.
+  Not worth it here.
+- **One name needs checking** — that Eddie's weekly call is still running. Noah
+  as CSM is confirmed: the onboarding bot already introduces him by name in
+  every welcome message.
+- `#start-here` names sections some readers can't see — TRAINING HUB to a
+  Foundations client, "your package's section" to a bible-study member. That is
+  deliberate. "It just isn't part of your package **yet**" does the upsell
+  quietly, without ever ranking anyone. Cut the word "yet" to turn it off.
 - The tier chats open with a question on purpose. An empty channel with a
   greeting in it stays empty; one with a question in it gets an answer.
 - These deliberately avoid naming prices or tier positions. A client knows
   what they bought, and a chat that reads as a ranking discourages the people
   at the bottom of it from posting.
+
+## What each audience actually sees
+
+Regenerate with
+`node -e "import('./src/discord/serverStructure.js').then(m=>console.log(m.visibleChannelsFor('Tier: Foundations')))"`.
+This is why `#start-here` never says "you have X":
+
+| Audience | Channels | Private channel |
+|---|---|---|
+| New buyer, no tier role yet | 4, all read-only, + their own | ✓ |
+| Tier: The Called | 9 | ✗ |
+| Veteran | 10 | ✗ |
+| Tier: Foundations | 16 | ✓ |
+| Tier: Momentum | 20 | ✓ |
+| Tier: Inner Circle | 20 | ✓ |
+
+The first row is the one that bites today: until Whop is split into per-tier
+products, every new buyer sits in that state until someone assigns their tier
+role by hand.
