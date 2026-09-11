@@ -15,11 +15,10 @@ test('firstNameOf takes just the first word, with sensible fallbacks', () => {
   assert.equal(firstNameOf(undefined), 'there');
 });
 
-test('the reminder carries a prefilled form link when one is configured', () => {
-  const fields = { 'Client Name': 'Jane Doe' };
+test('the reminder carries the configured form link', () => {
   assert.equal(
-    formatReminderMessage(fields, { formUrl: 'https://airtable.com/form' }),
-    'Hey Jane, time for your Weekly Check-in — https://airtable.com/form?prefill_Client=Jane%20Doe'
+    formatReminderMessage({ 'Client Name': 'Jane Doe' }, { formUrl: 'https://airtable.com/form' }),
+    'Hey Jane, time for your Weekly Check-in — https://airtable.com/form'
   );
 });
 
@@ -30,13 +29,6 @@ test('no configured form means no dangling dash', () => {
   assert.equal(
     formatReminderMessage({ 'Client Name': 'Jane Doe' }),
     'Hey Jane, time for your Weekly Check-in.'
-  );
-});
-
-test('the prefill is appended correctly to a URL that already has a query', () => {
-  assert.match(
-    formatReminderMessage({ 'Client Name': 'Jane Doe' }, { formUrl: 'https://x/form?a=1' }),
-    /\?a=1&prefill_Client=Jane%20Doe$/
   );
 });
 
@@ -111,8 +103,8 @@ test('a mention replaces the first name, and the link is unaffected', () => {
   const fields = { 'Client Name': 'Jane Doe' };
   const opts = { formUrl: 'https://x/form' };
   assert.match(formatReminderMessage(fields, opts), /^Hey Jane,/);
-  assert.match(
+  assert.equal(
     formatReminderMessage(fields, { ...opts, mention: '<@9>' }),
-    /^Hey <@9>, time for your Weekly Check-in — https:\/\/x\/form\?prefill_Client=Jane%20Doe$/
+    'Hey <@9>, time for your Weekly Check-in — https://x/form'
   );
 });

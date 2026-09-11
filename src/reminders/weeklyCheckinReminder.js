@@ -8,32 +8,20 @@ export function firstNameOf(fullName) {
   return trimmed.split(/\s+/)[0];
 }
 
-// The form is one shared URL, not a per-client field. This used to read a
+// One shared form URL for every client, from config. This used to read a
 // `Weekly Check-in Link` field off the Client record; no such field has ever
-// existed on that table, so every reminder ever sent ended in a dangling em
-// dash with nothing after it - including the twenty DMs on 2026-09-11.
+// existed on that table, so the lookup always returned empty and every
+// reminder ever sent ended in a dangling em dash with nothing after it -
+// including the twenty DMs on 2026-09-11.
 //
-// The client's name is prefilled into the form so they don't have to find
-// themselves in a dropdown. That is not cosmetic: the check-in links back to
-// their Client record, and a check-in submitted without that link cannot be
-// matched, so it counts as missing in Saturday's report no matter what they
-// wrote.
-export function buildCheckinLink(formUrl, clientName) {
-  if (!formUrl) return '';
-  if (!clientName) return formUrl;
-  const separator = formUrl.includes('?') ? '&' : '?';
-  return `${formUrl}${separator}prefill_Client=${encodeURIComponent(clientName)}`;
-}
-
 // A mention replaces the first name when this is posted into a channel: it
 // reads the same and it actually notifies them, which a plain name does not.
 export function formatReminderMessage(fields, { mention, formUrl } = {}) {
   const who = mention || firstNameOf(fields['Client Name']);
-  const link = buildCheckinLink(formUrl, fields['Client Name']);
-  // No link means no trailing dash. A sentence that ends in "—" and nothing
-  // else reads as broken, which is exactly how it read.
-  return link
-    ? `Hey ${who}, time for your Weekly Check-in — ${link}`
+  // No link configured means no trailing dash. A sentence ending in "—" and
+  // nothing else reads as broken, which is exactly how it read.
+  return formUrl
+    ? `Hey ${who}, time for your Weekly Check-in — ${formUrl}`
     : `Hey ${who}, time for your Weekly Check-in.`;
 }
 

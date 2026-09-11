@@ -30,10 +30,9 @@ export const config = {
   // same choice means a crashed send is indistinguishable from a finished one,
   // and the week is simply lost. Setting this clears the stamp once at boot.
   weeklyReminderForceRun: process.env.WEEKLY_REMINDER_FORCE_RUN === 'true',
-  // The shared Airtable form URL for the Weekly Check-in. One link for
-  // everyone; the client's name is prefilled onto it per person. Unset means
-  // the reminder still goes out, just without a link - it never produces a
-  // sentence ending in a dangling dash.
+  // The single Airtable form URL every client uses for their Weekly Check-in.
+  // Unset means the reminder still goes out, just without a link - it never
+  // produces a sentence ending in a dangling dash.
   weeklyCheckinFormUrl: process.env.WEEKLY_CHECKIN_FORM_URL || '',
   // The accountability half: Saturday's "who ignored Friday's DM" report.
   // Same off-by-default gate, though this one only ever posts to a staff
