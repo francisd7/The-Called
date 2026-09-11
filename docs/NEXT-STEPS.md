@@ -185,6 +185,21 @@ logs posts on its own.
 
 ## Not built, deliberately
 
+**Whop → Discord payment notification.** Considered and dropped on 2026-09-11:
+Post Call already posts the outcome, the tier and the cash as soon as a closer
+logs the call, which is most of what a payment webhook would have said. Worth
+knowing what it does *not* cover, if that ever changes — a purchase with no
+call behind it, such as a self-serve checkout or an upsell closed over DM.
+
+Two things to know before picking it back up. Whop's developer docs are
+blocked by this environment's egress proxy, so the event names, payload shape
+and signing scheme have to come from the Whop dashboard rather than be looked
+up. And the hard part is not the webhook, it is deciding what counts as a *new*
+client: if Whop marks initial versus renewal in the payload, use that; if it
+only gives a membership id, the fallback is treating the first payment ever
+seen from that id as new, which needs a warmup or it reads every existing
+subscriber as a new sale on day one.
+
 Two tables in the EOD Reports base are being filled in and read by nothing.
 Both are the same shape as the Post Call automation — roughly fifteen minutes
 each — and were left out on 2026-09-11 to keep the day's scope tight:
