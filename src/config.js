@@ -24,6 +24,12 @@ export const config = {
   weeklyReminderEnabled: process.env.WEEKLY_REMINDER_ENABLED === 'true',
   weeklyReminderHourEt: numberOrDefault(process.env.WEEKLY_REMINDER_HOUR_ET, 12),
   weeklyReminderMinuteEt: numberOrDefault(process.env.WEEKLY_REMINDER_MINUTE_ET, 0),
+  // Escape hatch for the one failure the date stamp cannot recover from: a run
+  // that marked itself done and then died before sending. The stamp is written
+  // BEFORE sending on purpose, so a crashed tick can't double-send - but that
+  // same choice means a crashed send is indistinguishable from a finished one,
+  // and the week is simply lost. Setting this clears the stamp once at boot.
+  weeklyReminderForceRun: process.env.WEEKLY_REMINDER_FORCE_RUN === 'true',
   // The accountability half: Saturday's "who ignored Friday's DM" report.
   // Same off-by-default gate, though this one only ever posts to a staff
   // channel - no client ever sees it.

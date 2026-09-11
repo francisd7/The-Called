@@ -60,6 +60,18 @@ async function main() {
   const state = await loadState(config.stateFilePath);
   const saveState = (s) => persistState(config.stateFilePath, s);
 
+  // Clears the stamp only - it does not bypass the weekday or the hour. So a
+  // forced run still cannot fire outside Friday afternoon, and leaving the
+  // variable set costs one extra send per deploy rather than one per minute.
+  if (config.weeklyReminderForceRun && state[WEEKLY_REMINDER_STATE_KEY]) {
+    console.log(
+      `WEEKLY_REMINDER_FORCE_RUN is set — clearing the "${state[WEEKLY_REMINDER_STATE_KEY]}" stamp ` +
+        'so the reminder can run again today.'
+    );
+    delete state[WEEKLY_REMINDER_STATE_KEY];
+    await saveState(state);
+  }
+
   const poller = createPoller({ airtableClient, discord, state, saveState });
 
   const automations = [
