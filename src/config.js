@@ -10,6 +10,10 @@ export const config = {
   discordBotToken: process.env.DISCORD_BOT_TOKEN,
   discordSetterEodChannelId: process.env.DISCORD_SETTER_EOD_CHANNEL_ID,
   discordWeeklyCheckinChannelId: process.env.DISCORD_WEEKLY_CHECKIN_CHANNEL_ID,
+  // No separate on/off flag: the channel id is the switch. Unset means the
+  // automation simply isn't registered, which is one less thing that can be
+  // half-configured than a boolean plus an id that disagree with each other.
+  discordPostCallChannelId: process.env.DISCORD_POST_CALL_CHANNEL_ID,
   airtablePat: process.env.AIRTABLE_PAT,
   eodReportsBaseId: process.env.AIRTABLE_EOD_BASE_ID || 'appO76t48mwkC3j80',
   clientSuccessBaseId: process.env.AIRTABLE_CLIENT_SUCCESS_BASE_ID || 'appkSTSqkeXGHt6pY',

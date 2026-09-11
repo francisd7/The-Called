@@ -166,12 +166,22 @@ between "code exists" and "real people get real messages".
 | 4 | New-member onboarding | `guildMemberAdd` | `NEW_MEMBER_ONBOARDING_ENABLED` | Roles, a private channel, an Airtable record |
 | 5 | Tier sync | `guildMemberUpdate` | `TIER_SYNC_ENABLED` | Airtable write, channel move, audit log |
 | 6 | Weekly Check-in missing report | Scheduled, Saturday noon ET | `WEEKLY_REPORT_ENABLED` | Staff channel post naming who didn't check in |
+| 7 | Post Call → Discord | Polls Airtable every 60s | `DISCORD_POST_CALL_CHANNEL_ID` set | Full call outcome, attribution, money and recording |
 
 **#1–#5 are live** as of 2026-09-10 — those gates are all `true` on Railway.
 **#6 was added 2026-09-11 and is off** until `WEEKLY_REPORT_ENABLED` is set.
 
 **#3** skips anyone with `Skip Weekly Reminder` checked, and only targets
 records where `Status = 'Active'`.
+
+**#7** posts the outcome of a sales call as soon as a closer logs it. Unlike
+the EOD automations, which announce that a daily summary was submitted, this
+carries the whole record — outcome, who closed it, which setter booked it,
+cash and revenue, notes and the Fathom link — because the call *is* the event.
+The outcome leads with its own icon so a channel of these reads at a glance,
+and the money line is omitted when a call produced none: a row of "$0
+collected" teaches people to skip the line that matters. It has no boolean
+gate; the channel id is the switch.
 
 **#6** is the accountability half of #3. The Friday DM used to go out and
 nothing followed, so a client could quietly stop checking in for a month and
@@ -256,8 +266,10 @@ Base `appkSTSqkeXGHt6pY` (Client Success), table `Clients` /
 `Package / Tier`, `CSM`, `Status`, `Contract Value`, `Journey Stage`,
 `Skip Weekly Reminder`, `Email`.
 
-Other tables: Weekly Check-in `tblj04VfjlFxoXzL6` (same base), Setter EOD
-`tblAOPJioGyBRliH4` in base `appO76t48mwkC3j80`.
+Other tables: Weekly Check-in `tblj04VfjlFxoXzL6` (same base). In the EOD
+Reports base `appO76t48mwkC3j80`: Setter EOD `tblAOPJioGyBRliH4`, Post Call
+`tblbMVKMdrdgy9RZq`, and two that nothing reads yet — Dialler EOD
+`tbluLQ0gHGTxy73o4` and CSM EOD `tbli3kSDQR06MsKKC`.
 
 `Package / Tier` options currently keep the old name in parentheses —
 `Momentum (Mid)`, `Foundations (Entry)`, and so on. Reads ignore the

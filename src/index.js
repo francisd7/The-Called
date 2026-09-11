@@ -7,6 +7,7 @@ import { createPoller } from './poller.js';
 import { loadState, saveState as persistState } from './state.js';
 import * as setterEod from './automations/setterEod.js';
 import * as weeklyCheckin from './automations/weeklyCheckin.js';
+import * as postCall from './automations/postCall.js';
 import { isTargetMinute, getLocalDateString, BUSINESS_TIMEZONE } from './reminders/schedule.js';
 import { sendWeeklyCheckinReminders } from './reminders/sendWeeklyCheckinReminders.js';
 import { sendWeeklyCheckinReport } from './reminders/sendWeeklyCheckinReport.js';
@@ -77,6 +78,18 @@ async function main() {
       discordChannelId: config.discordWeeklyCheckinChannelId,
     },
   ];
+
+  if (config.discordPostCallChannelId) {
+    automations.push({
+      key: postCall.key,
+      baseId: config.eodReportsBaseId,
+      tableId: postCall.tableId,
+      formatMessage: postCall.formatMessage,
+      discordChannelId: config.discordPostCallChannelId,
+    });
+  } else {
+    console.log('Post Call posting is off — set DISCORD_POST_CALL_CHANNEL_ID to enable it.');
+  }
 
   await discord.ready;
   console.log(`Discord bot logged in as ${discord.client.user.tag}`);
