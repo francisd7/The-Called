@@ -23,13 +23,14 @@ export async function sendWeeklyCheckinReminders({
   baseId,
   clientGuildId,
   logChannelId,
+  formUrl,
   log = console,
 }) {
   const records = await airtableClient.listRecords(baseId, CLIENTS_TABLE_ID, {
     filterByFormula: ACTIVE_CLIENTS_FORMULA,
   });
 
-  const plan = buildReminderPlan(records);
+  const plan = buildReminderPlan(records, { formUrl });
   const failures = [];
   const noChannel = [];
   let sentCount = 0;

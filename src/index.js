@@ -173,6 +173,7 @@ async function main() {
         baseId: config.clientSuccessBaseId,
         clientGuildId: config.clientGuildId,
         logChannelId: config.discordWeeklyCheckinChannelId,
+        formUrl: config.weeklyCheckinFormUrl,
       });
       console.log('Weekly Check-in reminder send complete.');
     } catch (err) {

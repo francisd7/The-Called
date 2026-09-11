@@ -15,14 +15,28 @@ test('firstNameOf takes just the first word, with sensible fallbacks', () => {
   assert.equal(firstNameOf(undefined), 'there');
 });
 
-test('formats the reminder message using only the first name', () => {
-  const fields = {
-    'Client Name': 'Jane Doe',
-    'Weekly Check-in Link': 'https://airtable.com/example',
-  };
+test('the reminder carries a prefilled form link when one is configured', () => {
+  const fields = { 'Client Name': 'Jane Doe' };
   assert.equal(
-    formatReminderMessage(fields),
-    'Hey Jane, time for your Weekly Check-in — https://airtable.com/example'
+    formatReminderMessage(fields, { formUrl: 'https://airtable.com/form' }),
+    'Hey Jane, time for your Weekly Check-in — https://airtable.com/form?prefill_Client=Jane%20Doe'
+  );
+});
+
+test('no configured form means no dangling dash', () => {
+  // The old message read a `Weekly Check-in Link` field that has never existed
+  // on the Clients table, so every reminder ever sent ended in "—" and
+  // nothing.
+  assert.equal(
+    formatReminderMessage({ 'Client Name': 'Jane Doe' }),
+    'Hey Jane, time for your Weekly Check-in.'
+  );
+});
+
+test('the prefill is appended correctly to a URL that already has a query', () => {
+  assert.match(
+    formatReminderMessage({ 'Client Name': 'Jane Doe' }, { formUrl: 'https://x/form?a=1' }),
+    /\?a=1&prefill_Client=Jane%20Doe$/
   );
 });
 
@@ -93,11 +107,12 @@ test('formatDryRunSummary lists all three groups, with a "(none)" fallback', () 
   assert.match(summary, /opted out \(Skip Weekly Reminder checked\) \(0\):\n {2}\(none\)/);
 });
 
-test('formatReminderMessage still falls back to a first name without a mention', () => {
-  const fields = { 'Client Name': 'Jane Doe', 'Weekly Check-in Link': 'https://x' };
-  assert.equal(formatReminderMessage(fields), 'Hey Jane, time for your Weekly Check-in — https://x');
-  assert.equal(
-    formatReminderMessage(fields, { mention: '<@9>' }),
-    'Hey <@9>, time for your Weekly Check-in — https://x'
+test('a mention replaces the first name, and the link is unaffected', () => {
+  const fields = { 'Client Name': 'Jane Doe' };
+  const opts = { formUrl: 'https://x/form' };
+  assert.match(formatReminderMessage(fields, opts), /^Hey Jane,/);
+  assert.match(
+    formatReminderMessage(fields, { ...opts, mention: '<@9>' }),
+    /^Hey <@9>, time for your Weekly Check-in — https:\/\/x\/form\?prefill_Client=Jane%20Doe$/
   );
 });

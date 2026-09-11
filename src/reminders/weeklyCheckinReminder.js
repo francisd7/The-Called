@@ -8,12 +8,33 @@ export function firstNameOf(fullName) {
   return trimmed.split(/\s+/)[0];
 }
 
+// The form is one shared URL, not a per-client field. This used to read a
+// `Weekly Check-in Link` field off the Client record; no such field has ever
+// existed on that table, so every reminder ever sent ended in a dangling em
+// dash with nothing after it - including the twenty DMs on 2026-09-11.
+//
+// The client's name is prefilled into the form so they don't have to find
+// themselves in a dropdown. That is not cosmetic: the check-in links back to
+// their Client record, and a check-in submitted without that link cannot be
+// matched, so it counts as missing in Saturday's report no matter what they
+// wrote.
+export function buildCheckinLink(formUrl, clientName) {
+  if (!formUrl) return '';
+  if (!clientName) return formUrl;
+  const separator = formUrl.includes('?') ? '&' : '?';
+  return `${formUrl}${separator}prefill_Client=${encodeURIComponent(clientName)}`;
+}
+
 // A mention replaces the first name when this is posted into a channel: it
 // reads the same and it actually notifies them, which a plain name does not.
-export function formatReminderMessage(fields, { mention } = {}) {
+export function formatReminderMessage(fields, { mention, formUrl } = {}) {
   const who = mention || firstNameOf(fields['Client Name']);
-  const link = fields['Weekly Check-in Link'] ?? '';
-  return `Hey ${who}, time for your Weekly Check-in — ${link}`;
+  const link = buildCheckinLink(formUrl, fields['Client Name']);
+  // No link means no trailing dash. A sentence that ends in "—" and nothing
+  // else reads as broken, which is exactly how it read.
+  return link
+    ? `Hey ${who}, time for your Weekly Check-in — ${link}`
+    : `Hey ${who}, time for your Weekly Check-in.`;
 }
 
 // Splits active clients into who'd get a DM and who'd be skipped - matches
@@ -22,7 +43,7 @@ export function formatReminderMessage(fields, { mention } = {}) {
 // checked (an explicit, permanent opt-out that wins even if a Discord ID is
 // on file - e.g. once auto-populated by the future new-member onboarding
 // automation), or there's simply no Discord ID on file yet.
-export function buildReminderPlan(records) {
+export function buildReminderPlan(records, { formUrl } = {}) {
   const toSend = [];
   const skipped = [];
 
@@ -44,7 +65,7 @@ export function buildReminderPlan(records) {
     toSend.push({
       clientName,
       discordId,
-      message: formatReminderMessage(fields, { mention: `<@${discordId}>` }),
+      message: formatReminderMessage(fields, { mention: `<@${discordId}>`, formUrl }),
     });
   }
 
