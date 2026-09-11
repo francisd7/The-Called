@@ -91,6 +91,22 @@ async function main() {
     console.log('Post Call posting is off — set DISCORD_POST_CALL_CHANNEL_ID to enable it.');
   }
 
+  // Started BEFORE awaiting Discord, deliberately. Railway decides a deploy is
+  // healthy by hitting this server, and on 2026-09-11 a TLS handshake failure
+  // against Discord left `ready` pending forever - so listen() was never
+  // reached, the healthcheck got nothing, and Railway killed a deploy whose
+  // only actual problem was that one connection. The health endpoint must not
+  // depend on the thing most likely to be broken.
+  const app = express();
+  app.get('/', (req, res) => res.send('The Called — Automation Hub is running.'));
+  app.get('/health', (req, res) => res.json({ status: 'ok' }));
+  app.listen(config.port, () => {
+    console.log(`Server listening on port ${config.port}`);
+  });
+
+  // Everything below needs a live gateway, so it waits. Login retries with
+  // backoff in the background; the process stays up and serves health while
+  // it does, which is what lets a weekly job catch up once Discord returns.
   await discord.ready;
   console.log(`Discord bot logged in as ${discord.client.user.tag}`);
 
@@ -249,13 +265,6 @@ async function main() {
     });
     console.log('Tier sync registered (Discord role -> Airtable Package / Tier).');
   }
-
-  const app = express();
-  app.get('/', (req, res) => res.send('The Called — Automation Hub is running.'));
-  app.get('/health', (req, res) => res.json({ status: 'ok' }));
-  app.listen(config.port, () => {
-    console.log(`Server listening on port ${config.port}`);
-  });
 
   process.on('SIGTERM', () => {
     console.log('SIGTERM received, shutting down');

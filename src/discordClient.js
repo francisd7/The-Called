@@ -13,9 +13,12 @@ export function createDiscordClient(botToken, { extraIntents = [] } = {}) {
 
   const client = new Client({ intents: [GatewayIntentBits.Guilds, ...extraIntents] });
 
-  const ready = new Promise((resolve, reject) => {
+  // Resolves when the gateway connects, and never rejects. Login is retried
+  // instead of failing once: a TLS handshake failure against Discord
+  // (ERR_SSL_SSLV3_ALERT_HANDSHAKE_FAILURE, seen on 2026-09-11) used to leave
+  // this promise pending forever, and everything awaiting it stopped there.
+  const ready = new Promise((resolve) => {
     client.once('clientReady', () => resolve());
-    client.once('error', reject);
   });
 
   // A standing listener, separate from the one-shot above. `once` removes
@@ -33,7 +36,23 @@ export function createDiscordClient(botToken, { extraIntents = [] } = {}) {
     console.error('[discord] shard error (recovering):', err?.message ?? err);
   });
 
-  client.login(botToken);
+  // Exponential backoff, capped, forever. A transient network or TLS problem
+  // between Railway and Discord is not a reason to give up for good - the
+  // process staying alive and retrying is what lets a weekly job catch up
+  // once the connection comes back.
+  async function loginWithRetry(attempt = 1) {
+    try {
+      await client.login(botToken);
+    } catch (err) {
+      const delay = Math.min(30_000, 2 ** attempt * 1000);
+      console.error(
+        `[discord] login attempt ${attempt} failed, retrying in ${delay / 1000}s:`,
+        err?.message ?? err
+      );
+      setTimeout(() => loginWithRetry(attempt + 1), delay);
+    }
+  }
+  loginWithRetry();
 
   async function sendToChannel(channelId, message) {
     const channel = await client.channels.fetch(channelId);
