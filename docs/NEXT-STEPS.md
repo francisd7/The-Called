@@ -5,8 +5,8 @@ structural is done: the 19 private client channels are in their tier
 categories with the right staff on each, roles are assigned, `@everyone` no
 longer sees the server by default, and tier sync is writing Discord → Airtable.
 
-Six things left, in the order they should be done. A and C are the only ones
-with a real deadline attached — the rest can slip.
+Updated 2026-09-11. Struck through below is what has since been done. What is
+left is A, E and F.
 
 ---
 
@@ -52,7 +52,17 @@ the proof it persisted; the first deploy alone proves nothing.
 
 ---
 
-## B. Check whether anything was lost today
+## B. ~~Check whether anything was lost today~~ — done
+
+Checked 2026-09-11 against the live EOD table: the most recent submission was
+`2026-09-10 08:12 UTC`, hours before any of that day's deploys. Nothing landed
+in a blind window.
+
+Worth keeping, though: **the setters submit between roughly 00:40 and 08:10
+UTC — 8:40pm to 4am Eastern.** That is the only time of day the deploy gap is
+real. Deploy in the afternoon and the risk is near zero.
+
+<details><summary>original</summary>
 
 Several deploys went out on 2026-09-10 — the branch switch, the invite map,
 and `TIER_SYNC_ENABLED`. Each had a blind window. Probably nothing landed in
@@ -70,10 +80,18 @@ appears in its Discord channel:
 Anything in Airtable with no matching Discord post got dropped in a gap. Post
 it by hand — there's no replay mechanism, and adding one for a handful of
 records isn't worth the code.
+</details>
 
 ---
 
-## C. Finish the invite rotation
+## C. ~~Finish the invite rotation~~ — done
+
+Regenerated as **four** links (one per tier, brand assigned by hand), the map
+is on Railway, and the old seven are deleted. One client — Gavin — got in on a
+stale link before that finished and landed with no tier, which is exactly the
+failure the ordering below exists to prevent.
+
+<details><summary>original</summary>
 
 The seven original invite codes went through a chat transcript, so they were
 regenerated and the new `DISCORD_INVITE_ROLE_MAP` is already on Railway. Two
@@ -86,28 +104,37 @@ steps remain, **in this order**:
 Reversing the order breaks anyone mid-purchase. Leaving step 2 undone means a
 buyer on a stale link still gets into the server but receives no tier role,
 and lands in the onboarding flags channel instead of their tier.
+</details>
 
 ---
 
-## D. Airtable housekeeping
+## D. Airtable housekeeping — mostly done
 
-- Delete the **`testing`** record from the 2026-09-09 onboarding test. It is
-  the only thing `discord-migrate-channels` still reports as needing a human.
+Done: the `testing` record is deleted, and `Contract Value` is filled for both
+Liam McCormack and Nathan Soriano. Two junk rows were also removed from the
+Setter EOD table (one all-"Test", one with only a date).
+
+Still open:
+
 - **Nick Martinez** has `CSM = Unassigned`.
-- **Liam McCormack** and **Nathan Soriano** have blank `Contract Value`.
+- **Gavin OBrien** needs a `CSM` and a `Brand` — the four-link invites set tier
+  only, so brand is now always a manual step on a new client.
 - **Wylie Hawkins** should carry a note marking him 1:1-only, so he isn't
   later mistaken for a missing Inner Circle member. He is $20k fully
   collected, serviced outside Discord entirely, with no Discord ID.
 
 ---
 
-## E. Post the channel content
+## E. Post the channel content — do this one first
+
+Four live invite links now point new buyers straight at `#start-here`, and it
+is still blank. Every client who buys from here on reads that page about
+thirty seconds after paying.
 
 Copy is drafted in `docs/channel-content.md` for `#start-here`, the three
 `#<tier>-announcements`, `#foundations-chat` and `#inner-circle-chat`.
 
-`#start-here` first — a new client arrives through their package's invite link
-and reads it within about thirty seconds of paying. Pin each one.
+Pin each one.
 
 Two facts in the copy need checking before it goes up: that **Noah** is the
 CSM a new client actually meets, and that **Eddie's weekly call** is still
