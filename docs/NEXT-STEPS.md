@@ -166,6 +166,31 @@ safeguard on the "Discord wins" design.
 
 ---
 
+## G. Turn on Post Call posting
+
+Built and deployed 2026-09-11, off until a channel is named. Railway →
+Variables → `DISCORD_POST_CALL_CHANNEL_ID`. There is no boolean gate; the
+channel id is the switch, and the boot log says `Post Call posting is off`
+until it is set.
+
+---
+
+## Not built, deliberately
+
+Two tables in the EOD Reports base are being filled in and read by nothing.
+Both are the same shape as the Post Call automation — roughly fifteen minutes
+each — and were left out on 2026-09-11 to keep the day's scope tight:
+
+- **Dialler EOD** (`tbluLQ0gHGTxy73o4`) — dials, pickups, talk time, calls
+  pitched and booked.
+- **CSM EOD** (`tbli3kSDQR06MsKKC`) — clients onboarded, check-ins completed,
+  renewals and upsells closed, cancellations handled, support tickets, revenue
+  from renewals, and **clients flagged at risk**. That last field is the one
+  worth wiring up first: a client being flagged at risk is exactly the sort of
+  thing that should be interrupting someone rather than sitting in a table.
+
+---
+
 ## Rules this rollout kept re-learning
 
 Both cost a wasted round trip each time they were forgotten:
