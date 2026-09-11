@@ -167,8 +167,8 @@ between "code exists" and "real people get real messages".
 | 5 | Tier sync | `guildMemberUpdate` | `TIER_SYNC_ENABLED` | Airtable write, channel move, audit log |
 | 6 | Weekly Check-in missing report | Scheduled, Saturday noon ET | `WEEKLY_REPORT_ENABLED` | Staff channel post naming who didn't check in |
 
-**All five are live** as of 2026-09-10 — every gate above is set to `true` on
-Railway. Assume an automation is running unless something says otherwise.
+**#1–#5 are live** as of 2026-09-10 — those gates are all `true` on Railway.
+**#6 was added 2026-09-11 and is off** until `WEEKLY_REPORT_ENABLED` is set.
 
 **#3** skips anyone with `Skip Weekly Reminder` checked, and only targets
 records where `Status = 'Active'`.
