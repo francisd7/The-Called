@@ -1,6 +1,11 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { getLocalTimeParts, isTargetMinute, getLocalDateString } from '../src/reminders/schedule.js';
+import {
+  getLocalTimeParts,
+  isTargetMinute,
+  getLocalDateString,
+  BUSINESS_TIMEZONE,
+} from '../src/reminders/schedule.js';
 
 test('getLocalTimeParts reads weekday/hour/minute in a given timezone', () => {
   // 2026-09-11 is a Friday. 16:00 UTC on that date is 12:00 EDT (America/New_York, DST).
@@ -30,4 +35,20 @@ test('isTargetMinute handles the DST boundary correctly (EST vs EDT)', () => {
 test('getLocalDateString returns YYYY-MM-DD in the given timezone', () => {
   // 2026-09-12T03:30:00Z is still 2026-09-11 (11:30pm) in America/New_York.
   assert.equal(getLocalDateString(new Date('2026-09-12T03:30:00Z'), 'America/New_York'), '2026-09-11');
+});
+
+test('a calendar date in the business timezone does not roll over at 8pm local', () => {
+  // The bug this exists to stop: Start Date was formatted with toISOString(),
+  // which is UTC and rolls over at 8pm Eastern - prime signup hours. A client
+  // who joined at 8:04pm was stamped with the next day's date and then read as
+  // "hasn't started yet" for a day.
+  const eveningSignup = new Date('2026-09-11T00:04:19.000Z'); // 8:04pm Sep 10 ET
+  assert.equal(eveningSignup.toISOString().slice(0, 10), '2026-09-11');
+  assert.equal(getLocalDateString(eveningSignup, BUSINESS_TIMEZONE), '2026-09-10');
+});
+
+test('the business timezone tracks DST rather than a fixed offset', () => {
+  // Same wall-clock hour, six months apart: EDT in September, EST in January.
+  assert.equal(getLocalDateString(new Date('2026-09-11T03:30:00.000Z'), BUSINESS_TIMEZONE), '2026-09-10');
+  assert.equal(getLocalDateString(new Date('2026-01-11T03:30:00.000Z'), BUSINESS_TIMEZONE), '2026-01-10');
 });

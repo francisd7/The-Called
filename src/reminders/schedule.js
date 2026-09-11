@@ -2,6 +2,13 @@
 // single "fire once a week" job. Intl's timeZone support handles DST
 // transitions correctly on its own (e.g. America/New_York flipping between
 // EST/EDT), which a fixed UTC offset would get wrong for half the year.
+// The business runs on Eastern time: calls, reminders and "what day is it"
+// are all judged there. Anything that records a calendar DATE has to be
+// formatted in this zone - a UTC date rolls over at 8pm locally, which is
+// prime signup hours, and stamps the next day onto an evening customer.
+// Instants (a watermark, a cutoff) stay UTC and are unaffected.
+export const BUSINESS_TIMEZONE = 'America/New_York';
+
 const formatterCache = new Map();
 
 function getWeekdayHourMinuteFormatter(timeZone) {

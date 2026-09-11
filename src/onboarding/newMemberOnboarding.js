@@ -10,6 +10,7 @@ import {
 import { resolveInvite } from '../discord/inviteRoles.js';
 import { getTierByAirtableValue, getTierByKey } from '../discord/tiers.js';
 import { RESOLVED, AMBIGUOUS } from '../discord/inviteTracker.js';
+import { getLocalDateString, BUSINESS_TIMEZONE } from '../reminders/schedule.js';
 
 const PENDING_STATE_KEY = 'newMemberOnboardingPending';
 
@@ -112,8 +113,12 @@ export function detectTierMismatch({ inviteTier, clientRecord }) {
   return `Joined on the **${inviteTier.name}** link, but their Airtable record says **${recordedTier.name}**. Possible shared link — check before leaving the higher access in place.`;
 }
 
+// Eastern, not UTC. toISOString() rolls over at 8pm local, which is prime
+// signup hours - Gavin joined at 8:04pm and was stamped with the next day's
+// date, which then read as "hasn't started yet" for a day. Start Date is a
+// calendar date in the business's own timezone, not an instant.
 function todayDateString() {
-  return new Date().toISOString().slice(0, 10);
+  return getLocalDateString(new Date(), BUSINESS_TIMEZONE);
 }
 
 export function registerNewMemberOnboarding({
