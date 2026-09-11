@@ -191,6 +191,31 @@ dry run also prints, by name, every overwrite each rewrite would drop, plus
 any undeclared channel carrying a personal grant that no active client
 claimed (mostly past clients — reported, never touched).
 
+### Catching what tier sync missed
+
+Tier sync listens on `guildMemberUpdate` and nothing else. If the bot is down
+or mid-deploy when someone clicks a tier role, that event is gone — no retry,
+no queue — and Airtable silently stops matching Discord. That happened on
+2026-09-10 during a redeploy and nothing surfaced it; the mismatch was found
+by reading the table for an unrelated reason. Silent is the problem, not rare.
+
+```
+npm run tier-reconcile              # plan
+npm run tier-reconcile -- --apply
+```
+
+Run it after a deploy, or monthly. It only ever writes Airtable — Discord is
+the source of truth for tier, so a disagreement is always Airtable being
+wrong, never a reason to change someone's roles. It never blanks
+`Package / Tier` either: someone holding no tier role is reported, not erased.
+
+It also catches the reverse — a tier role held by someone who isn't an active
+client, which is how a veteran keeps reaching the paid areas without anything
+ever mentioning it.
+
+A change that skipped tier sync skipped the channel move too, so run
+`discord-migrate-channels` after any run that writes.
+
 ### Retiring a channel
 
 Dragging a channel into a locked category does not hide it. Any channel

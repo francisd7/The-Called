@@ -187,6 +187,11 @@ bot to write `Package / Tier` to their Airtable record, move their private
 channel into the new tier's category, rewrite that channel's overwrites to the
 new staff list, and post the change to the ops channel.
 
+**Tier sync has no catch-up.** It listens on that one event and nothing else,
+so a role clicked while the bot is down or redeploying is lost permanently —
+no retry, no queue. This happened on 2026-09-10 and nothing surfaced it.
+`npm run tier-reconcile` is the manual catch-up; run it after a deploy.
+
 One deliberate exception: **removing** a tier role writes nothing to Airtable.
 Losing the role means losing access, not un-buying the program — a client
 finishing and becoming a Veteran is the normal path. Blanking `Package / Tier`
@@ -249,6 +254,7 @@ npm run discord-structure -- --apply --invites   # creates the 7 invites
 npm run discord-migrate-roles      # brand + tier roles from Airtable (one time)
 npm run discord-migrate-channels   # client channels into tier categories
 npm run discord-sync-retired       # make retiring a channel actually hide it
+npm run tier-reconcile             # catch tier changes tier sync missed
 npm run weekly-reminder-dry-run
 ```
 

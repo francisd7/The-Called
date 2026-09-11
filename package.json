@@ -15,7 +15,8 @@
     "discord-structure": "node scripts/apply-discord-structure.js",
     "discord-migrate-roles": "node scripts/migrate-discord-roles.js",
     "discord-migrate-channels": "node scripts/migrate-client-channels.js",
-    "discord-sync-retired": "node scripts/sync-retired-channels.js"
+    "discord-sync-retired": "node scripts/sync-retired-channels.js",
+    "tier-reconcile": "node scripts/reconcile-tiers.js"
   },
   "dependencies": {
     "discord.js": "^14.16.3",
