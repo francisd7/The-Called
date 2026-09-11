@@ -171,6 +171,18 @@ async function main() {
     }
   }
   setInterval(runWeeklyReminderCheckCycle, 60_000);
+  // Said out loud at boot. Neither weekly job announced itself, so the only
+  // way to tell "it is switched off" from "it should have fired and didn't"
+  // was to wait for the day and then go digging - which is exactly how
+  // 2026-09-11 was spent.
+  console.log(
+    config.weeklyReminderEnabled
+      ? `Weekly Check-in reminder armed for ${WEEKLY_REMINDER_WEEKDAY} ${String(
+          config.weeklyReminderHourEt
+        ).padStart(2, '0')}:${String(config.weeklyReminderMinuteEt).padStart(2, '0')} ET` +
+          `${config.weeklyCheckinFormUrl ? '' : ' (no form URL set — the message will have no link)'}`
+      : 'Weekly Check-in reminder is off — set WEEKLY_REMINDER_ENABLED=true to arm it.'
+  );
 
   // Same shape as the reminder cycle above, deliberately: one date-stamped
   // state key so a tick that overlaps a slow run can't post the report twice
@@ -215,6 +227,15 @@ async function main() {
     }
   }
   setInterval(runWeeklyReportCheckCycle, 60_000);
+  console.log(
+    config.weeklyReportEnabled
+      ? `Weekly Check-in missing report armed for ${WEEKLY_REPORT_WEEKDAY} ${String(
+          config.weeklyReportHourEt
+        ).padStart(2, '0')}:${String(config.weeklyReportMinuteEt).padStart(2, '0')} ET, posting to ${
+          config.weeklyReportChannelId
+        }`
+      : 'Weekly Check-in missing report is off — set WEEKLY_REPORT_ENABLED=true to arm it.'
+  );
 
   if (config.newMemberOnboardingEnabled) {
     const { map: inviteRoleMap, unknownSlots } = parseInviteRoleMap(config.inviteRoleMap);
