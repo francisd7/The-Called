@@ -188,3 +188,68 @@ test('a channel outside the tier categories is not mistaken for a private one', 
   assert.equal(result.sentCount, 0);
   assert.equal(result.noChannel.length, 1);
 });
+
+test('a run that died part-way resumes instead of re-sending', async () => {
+  // The 2026-09-11 failure: a crash mid-run lost the whole week and nothing
+  // surfaced it. Each successful post is now recorded before the next is
+  // attempted, so the next tick picks up exactly where it stopped.
+  const guild = fakeGuild([
+    categoryChannel('cat-momentum', 'MOMENTUM'),
+    clientChannel('chan-a', 'client-a', 'cat-momentum', ['111']),
+    clientChannel('chan-b', 'client-b', 'cat-momentum', ['222']),
+  ]);
+  const posted = [];
+
+  const result = await sendWeeklyCheckinReminders({
+    airtableClient: {
+      listRecords: async () => [
+        makeRecord('rec1', { 'Client Name': 'Already Done', 'Discord ID': '111' }),
+        makeRecord('rec2', { 'Client Name': 'Still Waiting', 'Discord ID': '222' }),
+      ],
+    },
+    discord: discordDouble(guild, posted),
+    baseId: 'appXXX',
+    clientGuildId: 'guild1',
+    logChannelId: 'chan1',
+    alreadySent: new Set(['111']),
+    log: { info: () => {}, warn: () => {}, error: () => {} },
+  });
+
+  assert.equal(result.sentCount, 1);
+  assert.equal(result.resumed, 1);
+  assert.ok(!posted.some((entry) => entry.channelId === 'chan-a'), 'did not re-send');
+  assert.ok(posted.some((entry) => entry.channelId === 'chan-b'), 'sent the remainder');
+  const summary = posted.find((entry) => entry.channelId === 'chan1');
+  assert.match(summary.message, /1 were already sent before an earlier run stopped/);
+});
+
+test('each client is recorded as sent before the next is attempted', async () => {
+  // Recording after the whole loop would lose everything on a crash, which is
+  // the bug this exists to prevent.
+  const guild = fakeGuild([
+    categoryChannel('cat-momentum', 'MOMENTUM'),
+    clientChannel('chan-a', 'client-a', 'cat-momentum', ['111']),
+    clientChannel('chan-b', 'client-b', 'cat-momentum', ['222']),
+  ]);
+  const posted = [];
+  const marked = [];
+
+  await sendWeeklyCheckinReminders({
+    airtableClient: {
+      listRecords: async () => [
+        makeRecord('rec1', { 'Client Name': 'A', 'Discord ID': '111' }),
+        makeRecord('rec2', { 'Client Name': 'B', 'Discord ID': '222' }),
+      ],
+    },
+    discord: discordDouble(guild, posted, { failOn: 'chan-b' }),
+    baseId: 'appXXX',
+    clientGuildId: 'guild1',
+    logChannelId: 'chan1',
+    markSent: async (id) => marked.push(id),
+    log: { info: () => {}, warn: () => {}, error: () => {} },
+  });
+
+  // The one that succeeded is recorded; the one that threw is not, so it is
+  // retried rather than skipped.
+  assert.deepEqual(marked, ['111']);
+});

@@ -18,6 +18,10 @@ import { registerTierSync } from './discord/tierSync.js';
 
 const WEEKLY_REMINDER_WEEKDAY = 'Fri';
 const WEEKLY_REMINDER_STATE_KEY = 'weeklyCheckinReminderLastRunDate';
+// Which clients this week's run has already reached. Recorded per client as
+// it goes, so a run that dies part-way resumes rather than losing the rest of
+// the week - the failure that went unnoticed on 2026-09-11.
+const WEEKLY_REMINDER_PROGRESS_KEY = 'weeklyCheckinReminderProgress';
 
 // The day after the reminder, so clients have had a full day to act on it.
 const WEEKLY_REPORT_WEEKDAY = 'Sat';
@@ -149,9 +153,17 @@ async function main() {
         return;
       }
 
-      // Mark as run before sending, so an overlapping tick mid-send (or a
-      // send that takes over a minute) can't double-fire.
-      state[WEEKLY_REMINDER_STATE_KEY] = todayEt;
+      // Progress is per client and saved as each post lands, so a crash costs
+      // only the client in flight. The "ran today" stamp is written at the
+      // END now, not the start: writing it first is what let a crashed run
+      // look like a finished one and lose a whole week in silence. A second
+      // tick during a slow run is held off by isCheckingReminderSchedule, and
+      // across a restart the progress record is what prevents a double-send.
+      const progress =
+        state[WEEKLY_REMINDER_PROGRESS_KEY]?.date === todayEt
+          ? state[WEEKLY_REMINDER_PROGRESS_KEY]
+          : { date: todayEt, sent: [] };
+      state[WEEKLY_REMINDER_PROGRESS_KEY] = progress;
       await saveState(state);
 
       console.log('Running Weekly Check-in reminder send...');
@@ -162,10 +174,27 @@ async function main() {
         clientGuildId: config.clientGuildId,
         logChannelId: config.discordWeeklyCheckinChannelId,
         formUrl: config.weeklyCheckinFormUrl,
+        alreadySent: new Set(progress.sent),
+        markSent: async (discordId) => {
+          progress.sent.push(discordId);
+          await saveState(state);
+        },
       });
+
+      state[WEEKLY_REMINDER_STATE_KEY] = todayEt;
+      await saveState(state);
       console.log('Weekly Check-in reminder send complete.');
     } catch (err) {
       console.error('Weekly Check-in reminder run failed:', err);
+      // Said out loud in Discord, not just the console. A run that fails
+      // quietly is indistinguishable from one that was never due, which is
+      // how a missed week goes unnoticed until someone thinks to ask.
+      await discord
+        .sendToChannel(
+          config.opsNotificationsChannelId,
+          `⚠️ **Weekly Check-in reminder run failed** — ${err?.message ?? err}\nIt will retry on the next check and resume where it stopped.`
+        )
+        .catch(() => {});
     } finally {
       isCheckingReminderSchedule = false;
     }

@@ -24,6 +24,8 @@ export async function sendWeeklyCheckinReminders({
   clientGuildId,
   logChannelId,
   formUrl,
+  alreadySent = new Set(),
+  markSent = async () => {},
   log = console,
 }) {
   const records = await airtableClient.listRecords(baseId, CLIENTS_TABLE_ID, {
@@ -51,7 +53,18 @@ export async function sendWeeklyCheckinReminders({
     )
     .map((channel) => channel.id);
 
+  let resumed = 0;
   for (const item of plan.toSend) {
+    // Resuming a run that died part-way. Each successful post is recorded
+    // before the next is attempted, so a crash costs the remainder of that
+    // tick and nothing more - the next one picks up exactly where it stopped,
+    // with no duplicates and no silent gap. On 2026-09-11 a crash mid-run lost
+    // the whole week's reminders and nothing surfaced it.
+    if (alreadySent.has(item.discordId)) {
+      resumed += 1;
+      continue;
+    }
+
     // Found by the client's own permission overwrite, not by channel name -
     // display names go stale and a renamed client would otherwise be skipped.
     const channel = pickClientChannel(channels, item.discordId, tierCategoryIds);
@@ -67,6 +80,7 @@ export async function sendWeeklyCheckinReminders({
 
     try {
       await discord.sendToChannel(channel.id, item.message);
+      await markSent(item.discordId);
       sentCount += 1;
       log.info(`[weeklyCheckinReminder] posted for ${item.clientName} in #${channel.name}`);
     } catch (err) {
@@ -81,6 +95,9 @@ export async function sendWeeklyCheckinReminders({
   const lines = [
     `📅 **Weekly Check-in reminders posted** — ${sentCount}/${plan.toSend.length} in their own channels.`,
   ];
+  if (resumed > 0) {
+    lines.push('', `↩️ ${resumed} were already sent before an earlier run stopped, and were skipped.`);
+  }
   if (failures.length > 0) {
     lines.push('', `Failed to post (${failures.length}):`);
     for (const failure of failures) {
@@ -100,5 +117,5 @@ export async function sendWeeklyCheckinReminders({
 
   await discord.sendToChannel(logChannelId, lines.join('\n'));
 
-  return { sentCount, failures, noChannel, skipped: plan.skipped };
+  return { sentCount, resumed, failures, noChannel, skipped: plan.skipped };
 }
