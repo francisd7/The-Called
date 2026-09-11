@@ -239,6 +239,15 @@ so a role clicked while the bot is down or redeploying is lost permanently —
 no retry, no queue. This happened on 2026-09-10 and nothing surfaced it.
 `npm run tier-reconcile` is the manual catch-up; run it after a deploy.
 
+**Assigning a tier role is the single action that fixes a flagged join.** When
+onboarding can't tell which invite was used, it creates the client's channel
+with no category and only the CSM on it, then flags a human. Giving them the
+right `Tier:` role makes tier sync write the package to Airtable, move the
+channel into that tier's category, and rewrite its overwrites to that tier's
+full staff list. Do not drag the channel first — tier sync moves and
+re-permissions in one step, and a channel dragged into place by hand is in the
+right category with the wrong access, which looks finished and isn't.
+
 One deliberate exception: **removing** a tier role writes nothing to Airtable.
 Losing the role means losing access, not un-buying the program — a client
 finishing and becoming a Veteran is the normal path. Blanking `Package / Tier`

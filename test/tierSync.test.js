@@ -260,3 +260,32 @@ test('the lookup still accepts a plain overwrite array', () => {
 test('a channel with no overwrites at all does not throw', () => {
   assert.equal(pickClientChannel([{ id: 'c', parentId: 'cat-momentum' }], 'm', ['cat-momentum']), null);
 });
+
+test('a parentless channel is found, so a flagged join can be fixed by the tier role', () => {
+  // Onboarding creates a channel with no parent when it cannot tell which
+  // invite was used. Staff then assign the tier role by hand - and without
+  // this, that role change updated Airtable and left the channel where it was,
+  // with only the CSM on it.
+  const channels = [
+    { id: 'cat-momentum', parentId: null, permissionOverwrites: [] },
+    { id: 'loose', parentId: null, permissionOverwrites: [{ id: 'member1' }] },
+  ];
+  assert.equal(pickClientChannel(channels, 'member1', ['cat-momentum'])?.id, 'loose');
+});
+
+test('a channel already in a tier category wins over a parentless one', () => {
+  const channels = [
+    { id: 'loose', parentId: null, permissionOverwrites: [{ id: 'member1' }] },
+    { id: 'proper', parentId: 'cat-momentum', permissionOverwrites: [{ id: 'member1' }] },
+  ];
+  assert.equal(pickClientChannel(channels, 'member1', ['cat-momentum'])?.id, 'proper');
+});
+
+test('an overwrite on a shared channel is still never mistaken for a private one', () => {
+  // The reason the lookup is restricted at all: a client holds overwrites on
+  // plenty of channels. Only a tier category or no category counts.
+  const channels = [
+    { id: 'wins', parentId: 'cat-forge', permissionOverwrites: [{ id: 'member1' }] },
+  ];
+  assert.equal(pickClientChannel(channels, 'member1', ['cat-momentum']), null);
+});

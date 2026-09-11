@@ -95,13 +95,24 @@ export function overwriteTargetIds(channel) {
 }
 
 export function pickClientChannel(channels, memberId, tierCategoryIds) {
-  return (
-    channels.find(
-      (channel) =>
-        tierCategoryIds.includes(channel.parentId) &&
-        overwriteTargetIds(channel).includes(memberId)
-    ) ?? null
-  );
+  const theirs = channels.filter((channel) => overwriteTargetIds(channel).includes(memberId));
+
+  // A channel already filed under a tier category is unambiguously theirs.
+  const inTier = theirs.find((channel) => tierCategoryIds.includes(channel.parentId));
+  if (inTier) return inTier;
+
+  // Otherwise a channel with no category at all. Onboarding creates one with
+  // no parent when it cannot tell which invite link was used, which is the
+  // one moment a client most needs this to work: staff assign the tier role
+  // by hand afterwards, and without this that role change would update
+  // Airtable and leave the channel where it was, with the wrong staff on it -
+  // exactly the state the whole restructure existed to remove.
+  //
+  // Restricted to parentless on purpose. Every channel the structure script
+  // owns has a category, so a stray top-level one is a new client's or
+  // nothing; matching on any category would let a member's overwrite on some
+  // shared channel be mistaken for their private one.
+  return theirs.find((channel) => !channel.parentId) ?? null;
 }
 
 export function registerTierSync({
