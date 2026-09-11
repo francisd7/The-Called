@@ -9,14 +9,21 @@ import * as setterEod from './automations/setterEod.js';
 import * as weeklyCheckin from './automations/weeklyCheckin.js';
 import { isTargetMinute, getLocalDateString } from './reminders/schedule.js';
 import { sendWeeklyCheckinReminders } from './reminders/sendWeeklyCheckinReminders.js';
+import { sendWeeklyCheckinReport } from './reminders/sendWeeklyCheckinReport.js';
 import { registerNewMemberOnboarding } from './onboarding/newMemberOnboarding.js';
 import { createInviteTracker } from './discord/inviteTracker.js';
 import { parseInviteRoleMap, findUnmappedSlots, getInviteSlot } from './discord/inviteRoles.js';
 import { registerTierSync } from './discord/tierSync.js';
 
+// America/New_York rather than a fixed offset: the user says "EST", but half
+// the year it is EDT, and Intl handles the switch on its own.
 const WEEKLY_REMINDER_TIMEZONE = 'America/New_York';
 const WEEKLY_REMINDER_WEEKDAY = 'Fri';
 const WEEKLY_REMINDER_STATE_KEY = 'weeklyCheckinReminderLastRunDate';
+
+// The day after the reminder, so clients have had a full day to act on it.
+const WEEKLY_REPORT_WEEKDAY = 'Sat';
+const WEEKLY_REPORT_STATE_KEY = 'weeklyCheckinReportLastRunDate';
 
 async function main() {
   assertRequiredConfig();
@@ -127,6 +134,47 @@ async function main() {
     }
   }
   setInterval(runWeeklyReminderCheckCycle, 60_000);
+
+  // Same shape as the reminder cycle above, deliberately: one date-stamped
+  // state key so a tick that overlaps a slow run can't post the report twice
+  // into a staff channel.
+  let isCheckingReportSchedule = false;
+  async function runWeeklyReportCheckCycle() {
+    if (!config.weeklyReportEnabled || isCheckingReportSchedule) return;
+    isCheckingReportSchedule = true;
+    try {
+      const now = new Date();
+      const todayEt = getLocalDateString(now, WEEKLY_REMINDER_TIMEZONE);
+      if (state[WEEKLY_REPORT_STATE_KEY] === todayEt) return;
+
+      const isFireTime = isTargetMinute(now, {
+        weekday: WEEKLY_REPORT_WEEKDAY,
+        hour: config.weeklyReportHourEt,
+        minute: config.weeklyReportMinuteEt,
+        timeZone: WEEKLY_REMINDER_TIMEZONE,
+      });
+      if (!isFireTime) return;
+
+      state[WEEKLY_REPORT_STATE_KEY] = todayEt;
+      await saveState(state);
+
+      console.log('Running Weekly Check-in missing report...');
+      await sendWeeklyCheckinReport({
+        airtableClient,
+        discord,
+        baseId: config.clientSuccessBaseId,
+        channelId: config.weeklyReportChannelId,
+        now,
+        timeZone: WEEKLY_REMINDER_TIMEZONE,
+      });
+      console.log('Weekly Check-in missing report complete.');
+    } catch (err) {
+      console.error('Weekly Check-in missing report failed:', err);
+    } finally {
+      isCheckingReportSchedule = false;
+    }
+  }
+  setInterval(runWeeklyReportCheckCycle, 60_000);
 
   if (config.newMemberOnboardingEnabled) {
     const { map: inviteRoleMap, unknownSlots } = parseInviteRoleMap(config.inviteRoleMap);

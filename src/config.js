@@ -20,6 +20,12 @@ export const config = {
   weeklyReminderEnabled: process.env.WEEKLY_REMINDER_ENABLED === 'true',
   weeklyReminderHourEt: numberOrDefault(process.env.WEEKLY_REMINDER_HOUR_ET, 12),
   weeklyReminderMinuteEt: numberOrDefault(process.env.WEEKLY_REMINDER_MINUTE_ET, 0),
+  // The accountability half: Saturday's "who ignored Friday's DM" report.
+  // Same off-by-default gate, though this one only ever posts to a staff
+  // channel - no client ever sees it.
+  weeklyReportEnabled: process.env.WEEKLY_REPORT_ENABLED === 'true',
+  weeklyReportHourEt: numberOrDefault(process.env.WEEKLY_REPORT_HOUR_ET, 12),
+  weeklyReportMinuteEt: numberOrDefault(process.env.WEEKLY_REPORT_MINUTE_ET, 0),
   // Same off-by-default gate as weeklyReminderEnabled - this is the switch
   // between "code exists" and "real Discord channels get created for real
   // new members." Must be explicitly set to the string "true".
@@ -56,6 +62,12 @@ config.onboardingFlagChannelId =
 // rewrites a billing record, so tier sync refuses to start without one.
 config.tierChangesChannelId =
   process.env.DISCORD_TIER_CHANGES_CHANNEL_ID || config.opsNotificationsChannelId;
+
+// Defaults to wherever check-in submissions already post, so the "who
+// submitted" feed and the "who didn't" report sit together rather than
+// splitting one topic across two channels.
+config.weeklyReportChannelId =
+  process.env.DISCORD_WEEKLY_REPORT_CHANNEL_ID || config.discordWeeklyCheckinChannelId;
 
 export function assertRequiredConfig() {
   const missing = [

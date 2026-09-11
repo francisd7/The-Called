@@ -165,12 +165,22 @@ between "code exists" and "real people get real messages".
 | 3 | Weekly Check-in reminder DMs | Scheduled, noon ET by default | `WEEKLY_REMINDER_ENABLED` | DMs to active clients |
 | 4 | New-member onboarding | `guildMemberAdd` | `NEW_MEMBER_ONBOARDING_ENABLED` | Roles, a private channel, an Airtable record |
 | 5 | Tier sync | `guildMemberUpdate` | `TIER_SYNC_ENABLED` | Airtable write, channel move, audit log |
+| 6 | Weekly Check-in missing report | Scheduled, Saturday noon ET | `WEEKLY_REPORT_ENABLED` | Staff channel post naming who didn't check in |
 
 **All five are live** as of 2026-09-10 — every gate above is set to `true` on
 Railway. Assume an automation is running unless something says otherwise.
 
 **#3** skips anyone with `Skip Weekly Reminder` checked, and only targets
 records where `Status = 'Active'`.
+
+**#6** is the accountability half of #3. The Friday DM used to go out and
+nothing followed, so a client could quietly stop checking in for a month and
+the first anyone noticed was at renewal. The report names who didn't submit,
+grouped by CSM — a flat list of fourteen names gets skimmed by everyone and
+owned by no one. It counts a **whole week** of check-ins, not just the hours
+since the DM: people submit before being asked, and both check-ins on file when
+this was built arrived the evening before that week's reminder. Matching is on
+the check-in's linked record ID, so a renamed client is never a false miss.
 
 **#4, invite routing.** Discord has no native invite→role mapping. **Four**
 permanent invite links exist, one per tier. The bot caches every invite's use
@@ -264,6 +274,7 @@ npm run discord-migrate-roles      # brand + tier roles from Airtable (one time)
 npm run discord-migrate-channels   # client channels into tier categories
 npm run discord-sync-retired       # make retiring a channel actually hide it
 npm run tier-reconcile             # catch tier changes tier sync missed
+npm run weekly-report-dry-run      # preview Saturday's missing-check-in report
 npm run weekly-reminder-dry-run
 ```
 
