@@ -66,11 +66,13 @@ export function buildMissingReport({
       continue;
     }
 
-    // Someone who started three days ago has not missed a weekly check-in;
-    // they have not had a week. Chasing them for it is how a report earns a
-    // reputation for crying wolf. Still listed, separately, so the team can
-    // see the new client exists without them landing on a CSM's to-do list.
-    // A missing Start Date does not exempt anyone - it would be a silent way
+    // With the default grace of zero this only catches a client whose Start
+    // Date is in the future - someone who has not begun, and so has no week to
+    // have missed. Raising the grace also excuses recent joiners, which the
+    // team deliberately does not want: a new client's first check-in is the
+    // baseline their CSM reads before the onboarding call.
+    //
+    // A missing Start Date never excuses anyone - that would be a silent way
     // to disappear from the report entirely.
     const startDate = fields['Start Date'];
     if (startedAfterDate && typeof startDate === 'string' && startDate > startedAfterDate) {
@@ -143,8 +145,8 @@ export function formatMissingReport(report, { weekLabel } = {}) {
 
   if (report.tooNew.length > 0) {
     lines.push(
-      `🆕 Too new to expect one (${report.tooNew.length}): ${report.tooNew
-        .map((entry) => `${entry.clientName} — started ${entry.startDate}`)
+      `🆕 Not expected yet (${report.tooNew.length}): ${report.tooNew
+        .map((entry) => `${entry.clientName} — starts ${entry.startDate}`)
         .join(', ')}`
     );
   }

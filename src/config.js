@@ -26,6 +26,10 @@ export const config = {
   weeklyReportEnabled: process.env.WEEKLY_REPORT_ENABLED === 'true',
   weeklyReportHourEt: numberOrDefault(process.env.WEEKLY_REPORT_HOUR_ET, 12),
   weeklyReportMinuteEt: numberOrDefault(process.env.WEEKLY_REPORT_MINUTE_ET, 0),
+  // 0 on purpose - a new client checks in like everyone else, because their
+  // first one is the baseline their CSM reads. Raise it to excuse recent
+  // joiners if the report ever gets noisy.
+  weeklyReportGraceDays: numberOrDefault(process.env.WEEKLY_REPORT_GRACE_DAYS, 0),
   // Same off-by-default gate as weeklyReminderEnabled - this is the switch
   // between "code exists" and "real Discord channels get created for real
   // new members." Must be explicitly set to the string "true".

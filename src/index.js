@@ -164,6 +164,7 @@ async function main() {
         discord,
         baseId: config.clientSuccessBaseId,
         channelId: config.weeklyReportChannelId,
+        graceDays: config.weeklyReportGraceDays,
         now,
         timeZone: WEEKLY_REMINDER_TIMEZONE,
       });

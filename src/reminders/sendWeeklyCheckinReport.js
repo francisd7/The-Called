@@ -11,10 +11,15 @@ import { getLocalDateString } from './schedule.js';
 // be asked.
 export const DEFAULT_LOOKBACK_DAYS = 7;
 
-// A client gets one full week before a missed check-in counts against them.
-// Same length as the lookback on purpose: the window we measure and the grace
-// we give are the same week.
-export const DEFAULT_GRACE_DAYS = 7;
+// Zero by design: a brand-new client is expected to check in like everyone
+// else. Their first one is a baseline their CSM wants before the onboarding
+// call, not a chore they haven't earned yet - which is the opposite of the
+// obvious assumption, and the reason this is a knob rather than a hard rule.
+//
+// It still does work at zero. Someone whose Start Date is in the future has
+// not begun, and chasing them for a week that hasn't started is noise. Raise
+// WEEKLY_REPORT_GRACE_DAYS if the reports ever get noisy with new joiners.
+export const DEFAULT_GRACE_DAYS = 0;
 
 export async function sendWeeklyCheckinReport({
   airtableClient,

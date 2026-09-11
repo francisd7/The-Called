@@ -124,42 +124,51 @@ test('the week label appears in the heading when given', () => {
   assert.match(formatMissingReport(report, { weekLabel: '2026-09-12' }), /week ending 2026-09-12/);
 });
 
-test('a client who started this week is too new to be a miss', () => {
+test('a brand-new client is expected to check in like everyone else', () => {
+  // The default grace is zero deliberately. A new client's first check-in is
+  // the baseline their CSM reads before the onboarding call, so excusing them
+  // would withhold the most useful one.
   const report = buildMissingReport({
     clientRecords: [client('rec1', 'Gavin OBrien', { 'Start Date': '2026-09-11' })],
     checkinRecords: [],
     cutoffIso: CUTOFF,
-    startedAfterDate: '2026-09-05',
-  });
-  assert.equal(report.missing.length, 0);
-  assert.deepEqual(report.tooNew.map((e) => e.clientName), ['Gavin OBrien']);
-  // Not counted against the total either - 0 of 0, not 0 of 1.
-  assert.equal(report.expectedCount, 0);
-  assert.match(formatMissingReport(report), /Too new to expect one \(1\): Gavin OBrien/);
-});
-
-test('the same client is expected the following week, with no human action', () => {
-  // The grace is a rolling comparison against Start Date, not a flag someone
-  // has to remember to clear - which is the failure mode of using Skip Weekly
-  // Reminder for this.
-  const report = buildMissingReport({
-    clientRecords: [client('rec1', 'Gavin OBrien', { 'Start Date': '2026-09-11' })],
-    checkinRecords: [],
-    cutoffIso: CUTOFF,
-    startedAfterDate: '2026-09-12',
+    startedAfterDate: '2026-09-11', // grace 0: boundary is today
   });
   assert.equal(report.tooNew.length, 0);
   assert.deepEqual(report.missing.map((e) => e.clientName), ['Gavin OBrien']);
 });
 
-test('a client starting exactly on the boundary is expected, not excused', () => {
+test('a client whose start date is in the future has no week to have missed', () => {
   const report = buildMissingReport({
-    clientRecords: [client('rec1', 'A', { 'Start Date': '2026-09-05' })],
+    clientRecords: [client('rec1', 'Starts Monday', { 'Start Date': '2026-09-14' })],
+    checkinRecords: [],
+    cutoffIso: CUTOFF,
+    startedAfterDate: '2026-09-11',
+  });
+  assert.equal(report.missing.length, 0);
+  // Not counted against the total either - 0 of 0, not 0 of 1.
+  assert.equal(report.expectedCount, 0);
+  assert.match(formatMissingReport(report), /Not expected yet \(1\): Starts Monday — starts 2026-09-14/);
+});
+
+test('raising the grace excuses a recent joiner, and only until it lapses', () => {
+  // The knob is a rolling comparison against Start Date, not a flag someone
+  // has to clear - which is the failure mode of using Skip Weekly Reminder.
+  const withGrace = buildMissingReport({
+    clientRecords: [client('rec1', 'Gavin OBrien', { 'Start Date': '2026-09-11' })],
     checkinRecords: [],
     cutoffIso: CUTOFF,
     startedAfterDate: '2026-09-05',
   });
-  assert.equal(report.missing.length, 1);
+  assert.deepEqual(withGrace.tooNew.map((e) => e.clientName), ['Gavin OBrien']);
+
+  const weekLater = buildMissingReport({
+    clientRecords: [client('rec1', 'Gavin OBrien', { 'Start Date': '2026-09-11' })],
+    checkinRecords: [],
+    cutoffIso: CUTOFF,
+    startedAfterDate: '2026-09-12',
+  });
+  assert.deepEqual(weekLater.missing.map((e) => e.clientName), ['Gavin OBrien']);
 });
 
 test('a missing Start Date does not excuse anyone', () => {
