@@ -21,16 +21,19 @@ ${NOAH_CSM_MENTION} is your CSM (Client Success Manager) — With an incredible 
 ${ANDREW_CMO_MENTION} is our CMO, he's behind the marketing and systems that power everything you'll be using here.
 I'm ${FRANCIS_COO_MENTION}, COO, I run the operations on the backend so your experience here runs the way it's supposed to. I also help with the DM Setting side of the business.
 
-Below are you first tasks so you know exactly what to knock out. Get through both before you hop on your 1:1 onboarding call with Noah.
+Below are you first tasks so you know exactly what to knock out. Get through all three before you hop on your 1:1 onboarding call with Noah.
 
 Let's get to work 📈
 
 ---
 ${dashboardLine}
+This intake form is part of onboarding as well — complete it before your call with Noah, so he walks in already knowing what you came here for instead of spending the call on discovery.
+https://tally.so/r/KYEgkX
+
 * Complete "THE LEADER WITHIN" protocol — lays the foundation before we build anything
 * Complete "ONBOARDING SPRINT" — gets your first moves in motion
 
-Let us know if you have any questions along the way. Once again, make sure both are complete before you get on your call. The booking link for your 1:1 call is inside the notion.
+Let us know if you have any questions along the way. Once again, make sure all three are complete before you get on your call. The booking link for your 1:1 call is inside the notion.
 
 ---
 🚨 One more thing — reply here with your **email address** so we can get your account linked up.`;
