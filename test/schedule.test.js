@@ -4,6 +4,7 @@ import {
   getLocalTimeParts,
   isTargetMinute,
   getLocalDateString,
+  isWeeklyJobDue,
   BUSINESS_TIMEZONE,
 } from '../src/reminders/schedule.js';
 
@@ -51,4 +52,41 @@ test('the business timezone tracks DST rather than a fixed offset', () => {
   // Same wall-clock hour, six months apart: EDT in September, EST in January.
   assert.equal(getLocalDateString(new Date('2026-09-11T03:30:00.000Z'), BUSINESS_TIMEZONE), '2026-09-10');
   assert.equal(getLocalDateString(new Date('2026-01-11T03:30:00.000Z'), BUSINESS_TIMEZONE), '2026-01-10');
+});
+
+// The bug this replaces: isTargetMinute needs a tick to land inside the exact
+// 60-second target minute, and the checker runs on setInterval(60_000), which
+// never fires early and accumulates lateness. Two ticks 60.1s apart at
+// 11:59:59.9 and 12:01:00.0 skip the 12:00 minute entirely, and the job
+// silently does not run for a week.
+const FRIDAY_NOON = { weekday: 'Fri', hour: 12, minute: 0, timeZone: BUSINESS_TIMEZONE };
+const noonFriday = new Date('2026-09-11T16:00:00.000Z'); // 12:00 EDT
+
+test('a weekly job is due from its target time onward, not only on the minute', () => {
+  assert.equal(isWeeklyJobDue(noonFriday, FRIDAY_NOON), true);
+  // The exact minute was missed by a drifting tick; a minute later it still runs.
+  assert.equal(isWeeklyJobDue(new Date('2026-09-11T16:01:00.000Z'), FRIDAY_NOON), true);
+  // And hours later, after a restart that spanned the window.
+  assert.equal(isWeeklyJobDue(new Date('2026-09-11T19:30:00.000Z'), FRIDAY_NOON), true);
+});
+
+test('it is not due before its time', () => {
+  assert.equal(isWeeklyJobDue(new Date('2026-09-11T15:59:00.000Z'), FRIDAY_NOON), false);
+});
+
+test('it is not due on the wrong weekday, however late in the day', () => {
+  assert.equal(isWeeklyJobDue(new Date('2026-09-10T23:00:00.000Z'), FRIDAY_NOON), false);
+});
+
+test('having already run today stops it firing again', () => {
+  // The caller stamps the local date before sending, so every later tick that
+  // day sees the stamp. This is what makes catching up safe.
+  assert.equal(isWeeklyJobDue(noonFriday, { ...FRIDAY_NOON, lastRunDate: '2026-09-11' }), false);
+  // Last week's stamp does not stop this week's run.
+  assert.equal(isWeeklyJobDue(noonFriday, { ...FRIDAY_NOON, lastRunDate: '2026-09-04' }), true);
+});
+
+test('the target time is read in Eastern, not UTC', () => {
+  // 16:00 UTC is noon EDT and due; 12:00 UTC is 8am EDT and is not.
+  assert.equal(isWeeklyJobDue(new Date('2026-09-11T12:00:00.000Z'), FRIDAY_NOON), false);
 });

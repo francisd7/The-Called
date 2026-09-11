@@ -8,7 +8,7 @@ import { loadState, saveState as persistState } from './state.js';
 import * as setterEod from './automations/setterEod.js';
 import * as weeklyCheckin from './automations/weeklyCheckin.js';
 import * as postCall from './automations/postCall.js';
-import { isTargetMinute, getLocalDateString, BUSINESS_TIMEZONE } from './reminders/schedule.js';
+import { isWeeklyJobDue, getLocalDateString, BUSINESS_TIMEZONE } from './reminders/schedule.js';
 import { sendWeeklyCheckinReminders } from './reminders/sendWeeklyCheckinReminders.js';
 import { sendWeeklyCheckinReport } from './reminders/sendWeeklyCheckinReport.js';
 import { registerNewMemberOnboarding } from './onboarding/newMemberOnboarding.js';
@@ -114,18 +114,20 @@ async function main() {
     try {
       const now = new Date();
       const todayEt = getLocalDateString(now, BUSINESS_TIMEZONE);
-      if (state[WEEKLY_REMINDER_STATE_KEY] === todayEt) return;
-
-      const isFireTime = isTargetMinute(now, {
-        weekday: WEEKLY_REMINDER_WEEKDAY,
-        hour: config.weeklyReminderHourEt,
-        minute: config.weeklyReminderMinuteEt,
-        timeZone: BUSINESS_TIMEZONE,
-      });
-      if (!isFireTime) return;
+      if (
+        !isWeeklyJobDue(now, {
+          weekday: WEEKLY_REMINDER_WEEKDAY,
+          hour: config.weeklyReminderHourEt,
+          minute: config.weeklyReminderMinuteEt,
+          timeZone: BUSINESS_TIMEZONE,
+          lastRunDate: state[WEEKLY_REMINDER_STATE_KEY],
+        })
+      ) {
+        return;
+      }
 
       // Mark as run before sending, so an overlapping tick mid-send (or a
-      // send that takes over a minute) can't double-fire in the same minute.
+      // send that takes over a minute) can't double-fire.
       state[WEEKLY_REMINDER_STATE_KEY] = todayEt;
       await saveState(state);
 
@@ -155,15 +157,17 @@ async function main() {
     try {
       const now = new Date();
       const todayEt = getLocalDateString(now, BUSINESS_TIMEZONE);
-      if (state[WEEKLY_REPORT_STATE_KEY] === todayEt) return;
-
-      const isFireTime = isTargetMinute(now, {
-        weekday: WEEKLY_REPORT_WEEKDAY,
-        hour: config.weeklyReportHourEt,
-        minute: config.weeklyReportMinuteEt,
-        timeZone: BUSINESS_TIMEZONE,
-      });
-      if (!isFireTime) return;
+      if (
+        !isWeeklyJobDue(now, {
+          weekday: WEEKLY_REPORT_WEEKDAY,
+          hour: config.weeklyReportHourEt,
+          minute: config.weeklyReportMinuteEt,
+          timeZone: BUSINESS_TIMEZONE,
+          lastRunDate: state[WEEKLY_REPORT_STATE_KEY],
+        })
+      ) {
+        return;
+      }
 
       state[WEEKLY_REPORT_STATE_KEY] = todayEt;
       await saveState(state);
