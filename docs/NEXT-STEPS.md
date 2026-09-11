@@ -92,12 +92,31 @@ records isn't worth the code.
 
 ---
 
-## C. ~~Finish the invite rotation~~ — done
+## C. ~~Finish the invite rotation~~ — done, but currently inert
 
 Regenerated as **four** links (one per tier, brand assigned by hand), the map
 is on Railway, and the old seven are deleted. One client — Gavin — got in on a
 stale link before that finished and landed with no tier, which is exactly the
 failure the ordering below exists to prevent.
+
+**The four links aren't reaching buyers yet, and won't until Whop is split.**
+Whop sells one product, so every buyer gets the one Discord link Whop owns —
+not one of ours. The bot can't map that link to a tier, so it does the right
+thing: creates the private channel with no category, assigns no tier role, and
+flags the join. **Expect that on every new client until the Whop products are
+split.** A flagged join is the system working, not breaking. Recovery is two
+role clicks — tier role, then brand role — and the tier role alone re-homes the
+channel, rewrites its staff list and writes `Package / Tier` to Airtable.
+
+Leave the four links in place; they cost nothing and are ready the day Whop
+splits. Note they still work as doors — anyone who has one gets that tier
+without paying, which is what the email-reply backstop in onboarding exists to
+catch.
+
+Splitting Whop into four products is Francis's to do. Worth being honest about
+the payoff: it saves two clicks per client, which at this volume is small. The
+better reason is that Whop can then report revenue by tier, which it cannot do
+at all today.
 
 <details><summary>original</summary>
 
