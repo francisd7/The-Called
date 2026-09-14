@@ -14,17 +14,11 @@ import { getLocalDateString, BUSINESS_TIMEZONE } from '../reminders/schedule.js'
 
 const PENDING_STATE_KEY = 'newMemberOnboardingPending';
 
-// Kept for the original CSM-only shape. New joins go through
-// buildClientChannelOverwrites directly with the tier's full staff list -
-// which staff belong in a channel now depends on what the client bought.
-export function buildChannelOverwrites({ guildId, memberId, botUserId, csmRoleId }) {
-  return buildClientChannelOverwrites({
-    guildId,
-    memberId,
-    botUserId,
-    staffRoleIds: [csmRoleId],
-  });
-}
+// Who sits in a new client's private channel when the invite could not be
+// resolved, so there is no tier to read staffRoleNames from. The narrowest
+// set that still leaves someone responsible for the channel - never Coach,
+// and never anything wider than the lowest tier would have granted.
+export const FALLBACK_STAFF_ROLE_NAMES = ['CSM'];
 
 export async function findClientByEmail(airtableClient, baseId, email) {
   const normalized = normalizeEmail(email).replace(/'/g, "\\'");
@@ -126,7 +120,6 @@ export function registerNewMemberOnboarding({
   airtableClient,
   clientGuildId,
   clientSuccessBaseId,
-  csmRoleId,
   flagChannelId,
   notionDashboardUrl,
   state,
@@ -165,10 +158,26 @@ export function registerNewMemberOnboarding({
       // paying client outside the server is worse than staff assigning a tier
       // by hand. It just gets the safe fallback: CSM only, no tier role, and
       // a flag. It never guesses upward.
-      const staffRoleNames = plan.tier?.staffRoleNames ?? [];
-      const { ids: staffRoleIds } = staffRoleNames.length
-        ? resolveRoleIdsByName(member.guild, staffRoleNames)
-        : { ids: [csmRoleId].filter(Boolean) };
+      //
+      // Resolved BY NAME, not from DISCORD_CSM_ROLE_ID. That env var was the
+      // one way a role absent from tiers.js could land on a private client
+      // channel - point it at Coach and every fallback join grants Coach,
+      // invisibly, because nothing in the code mentions the role. And the
+      // fallback is not the rare path it reads as: while Whop sells a single
+      // product, every buyer arrives on an unmapped link, so this branch runs
+      // on every join. Names come from FALLBACK_STAFF_ROLE_NAMES so the rule
+      // "only tiers.js decides who sits in a client's channel" holds on every
+      // path rather than depending on what is set in Railway.
+      const staffRoleNames = plan.tier?.staffRoleNames ?? FALLBACK_STAFF_ROLE_NAMES;
+      const { ids: staffRoleIds, missing: missingStaff } = resolveRoleIdsByName(
+        member.guild,
+        staffRoleNames
+      );
+      if (missingStaff.length > 0) {
+        log.error(
+          `[newMemberOnboarding] staff roles missing from the guild: ${missingStaff.join(', ')}`
+        );
+      }
 
       const parentCategory = plan.tier
         ? findCategoryByName(member.guild.channels.cache.values(), plan.tier.categoryName)

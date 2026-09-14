@@ -43,7 +43,10 @@ export const config = {
   // new members." Must be explicitly set to the string "true".
   newMemberOnboardingEnabled: process.env.NEW_MEMBER_ONBOARDING_ENABLED === 'true',
   clientGuildId: process.env.DISCORD_CLIENT_GUILD_ID,
-  onboardingCsmRoleId: process.env.DISCORD_CSM_ROLE_ID,
+  // DISCORD_CSM_ROLE_ID was read here and is deliberately gone. Who sits in a
+  // client's private channel comes from tiers.js by role name now, on every
+  // path - an ID in the environment could name any role at all, including
+  // Coach, and nothing in the code would show it. Safe to delete from Railway.
   // Where everything the bot needs a human to look at goes: onboarding flags
   // it couldn't resolve, and the tier-change audit log. This lives in the
   // ops server, not the client server - staff work there, clients are here,

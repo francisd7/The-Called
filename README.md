@@ -369,7 +369,7 @@ enabled:
 |---|---|---|
 | `NEW_MEMBER_ONBOARDING_ENABLED` | Yes | Must be exactly `true` (string). |
 | `DISCORD_CLIENT_GUILD_ID` | Yes | The client-facing server's ID — right-click the server icon (Developer Mode on) → **Copy Server ID**. Only joins in this server trigger it. |
-| `DISCORD_CSM_ROLE_ID` | Yes | The CSM role that can see every onboarding channel, alongside the new member and the bot itself. |
+| ~~`DISCORD_CSM_ROLE_ID`~~ | — | **No longer read.** Who sits in a client's private channel comes from `staffRoleNames` in `tiers.js`, resolved by role name on every path — including the fallback for an unresolved invite, which used to take this ID. A role ID in the environment could name *any* role, Coach included, with nothing in the code to show it. Safe to delete from Railway. |
 | `DISCORD_ONBOARDING_FLAG_CHANNEL_ID` | No | Where a newly auto-created starter Client record gets flagged for staff to finish filling in. Defaults to `DISCORD_WEEKLY_CHECKIN_CHANNEL_ID`. |
 | `NOTION_DASHBOARD_URL` | No | Defaults to a literal `[Insert Link]` placeholder in the welcome message until set. |
 

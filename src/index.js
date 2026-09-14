@@ -30,10 +30,11 @@ const WEEKLY_REPORT_STATE_KEY = 'weeklyCheckinReportLastRunDate';
 async function main() {
   assertRequiredConfig();
 
-  if (config.newMemberOnboardingEnabled && (!config.clientGuildId || !config.onboardingCsmRoleId)) {
-    throw new Error(
-      'NEW_MEMBER_ONBOARDING_ENABLED is true but DISCORD_CLIENT_GUILD_ID or DISCORD_CSM_ROLE_ID is missing'
-    );
+  // No DISCORD_CSM_ROLE_ID check: who sits in a client's private channel now
+  // comes from tiers.js by role name on every path, so a role ID in the
+  // environment can no longer put anyone in there.
+  if (config.newMemberOnboardingEnabled && !config.clientGuildId) {
+    throw new Error('NEW_MEMBER_ONBOARDING_ENABLED is true but DISCORD_CLIENT_GUILD_ID is missing');
   }
 
   // The reminder posts into each client's private channel, so it needs to know
@@ -297,7 +298,6 @@ async function main() {
       airtableClient,
       clientGuildId: config.clientGuildId,
       clientSuccessBaseId: config.clientSuccessBaseId,
-      csmRoleId: config.onboardingCsmRoleId,
       flagChannelId: config.onboardingFlagChannelId,
       notionDashboardUrl: config.notionDashboardUrl,
       state,

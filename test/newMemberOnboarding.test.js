@@ -1,8 +1,9 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import EventEmitter from 'node:events';
+import { ChannelType } from 'discord.js';
 import {
-  buildChannelOverwrites,
+  FALLBACK_STAFF_ROLE_NAMES,
   findClientByEmail,
   buildNewClientFields,
   buildJoinPlan,
@@ -10,24 +11,8 @@ import {
   registerNewMemberOnboarding,
 } from '../src/onboarding/newMemberOnboarding.js';
 import { parseInviteRoleMap } from '../src/discord/inviteRoles.js';
-import { getTierByKey } from '../src/discord/tiers.js';
+import { getTierByKey, TIERS } from '../src/discord/tiers.js';
 import { RESOLVED, NO_CHANGE, AMBIGUOUS } from '../src/discord/inviteTracker.js';
-
-test('buildChannelOverwrites denies @everyone and allows member/bot/CSM', () => {
-  const overwrites = buildChannelOverwrites({
-    guildId: 'guild1',
-    memberId: 'member1',
-    botUserId: 'bot1',
-    csmRoleId: 'csm1',
-  });
-
-  assert.deepEqual(overwrites, [
-    { id: 'guild1', deny: ['ViewChannel'] },
-    { id: 'member1', allow: ['ViewChannel', 'SendMessages', 'ReadMessageHistory'] },
-    { id: 'bot1', allow: ['ViewChannel', 'SendMessages', 'ReadMessageHistory'] },
-    { id: 'csm1', allow: ['ViewChannel', 'SendMessages', 'ReadMessageHistory'] },
-  ]);
-});
 
 test('findClientByEmail normalizes and queries by a case/whitespace-insensitive formula', async () => {
   let capturedFormula;
@@ -90,6 +75,97 @@ function makeChannelStub(id) {
   return { id, send: async (message) => sent.push(message), _sent: sent };
 }
 
+const GUILD_ROLES = ['CSM', 'COO', 'CMO', 'Nigel', 'Coach', 'Tier: Foundations'];
+
+function makeGuildStub({ categories = [] } = {}) {
+  const roles = GUILD_ROLES.map((name) => ({ id: `role-${name}`, name }));
+  const channels = categories.map((name) => ({
+    id: `cat-${name}`,
+    name,
+    type: ChannelType.GuildCategory,
+  }));
+  return {
+    id: 'guild1',
+    roles: { cache: { find: (fn) => roles.find(fn) } },
+    channels: { cache: { values: () => channels } },
+  };
+}
+
+function makeMemberStub(guild) {
+  return {
+    id: 'member1',
+    guild,
+    displayName: 'Jack Garcia',
+    user: { username: 'jack' },
+    roles: { add: async () => {} },
+  };
+}
+
+// Runs a join end to end and hands back the overwrites the private channel
+// was actually created with.
+async function joinAndCaptureOverwrites({ guild, inviteTracker = null, inviteRoleMap }) {
+  const discord = makeDiscordStub();
+  let created = null;
+  discord.createPrivateChannel = async (guildId, options) => {
+    created = options;
+    return makeChannelStub('chanNew');
+  };
+
+  registerNewMemberOnboarding({
+    discord,
+    airtableClient: { listRecords: async () => [] },
+    clientGuildId: 'guild1',
+    clientSuccessBaseId: 'appXXX',
+    flagChannelId: 'flagChan',
+    notionDashboardUrl: '',
+    state: {},
+    saveState: async () => {},
+    inviteTracker,
+    inviteRoleMap,
+    log: { info: () => {}, error: () => {} },
+  });
+
+  discord.client.emit('guildMemberAdd', makeMemberStub(guild));
+  await new Promise((resolve) => setImmediate(resolve));
+  return created;
+}
+
+// Coach reaches every category so Eddie can run the weekly call and see each
+// tier's announcements and chat. It must never reach a client's private
+// channel. Every path builds that channel from tiers.js staffRoleNames, which
+// omits Coach - this pins the one path that has no tier to read it from.
+test('an unresolved invite grants CSM only — never Coach', async () => {
+  const overwrites = await joinAndCaptureOverwrites({
+    guild: makeGuildStub(),
+    inviteRoleMap: new Map(),
+  });
+
+  const granted = overwrites.overwrites.filter((o) => o.allow).map((o) => o.id);
+  assert.ok(granted.includes('role-CSM'), 'the CSM can see a new client channel');
+  assert.ok(!granted.includes('role-Coach'), 'Coach must not be on a private client channel');
+  assert.deepEqual(FALLBACK_STAFF_ROLE_NAMES, ['CSM']);
+});
+
+test('a resolved tier grants exactly that tier\'s staff — never Coach', async () => {
+  const overwrites = await joinAndCaptureOverwrites({
+    guild: makeGuildStub({ categories: ['FOUNDATIONS'] }),
+    inviteTracker: { resolveForJoin: async () => ({ code: 'low', reason: RESOLVED }) },
+    inviteRoleMap: parseInviteRoleMap('low=foundations').map,
+  });
+
+  const granted = overwrites.overwrites.filter((o) => o.allow).map((o) => o.id);
+  assert.deepEqual(granted, ['member1', 'bot1', 'role-CSM', 'role-COO']);
+  assert.ok(!granted.includes('role-Coach'));
+});
+
+// Belt and braces: the rule is a property of the data, so assert it there too
+// rather than only through the one path a test happens to walk.
+test('no tier puts Coach in its private client channels', () => {
+  for (const tier of TIERS) {
+    assert.ok(!tier.staffRoleNames.includes('Coach'), `${tier.name} must not grant Coach`);
+  }
+});
+
 test('messageCreate: matches a pending member\'s email, writes Discord ID, confirms', async () => {
   const discord = makeDiscordStub();
   const state = {
@@ -110,7 +186,6 @@ test('messageCreate: matches a pending member\'s email, writes Discord ID, confi
     airtableClient,
     clientGuildId: 'guild1',
     clientSuccessBaseId: 'appXXX',
-    csmRoleId: 'csm1',
     flagChannelId: 'flagChan',
     notionDashboardUrl: '',
     state,
@@ -155,7 +230,6 @@ test('messageCreate: no match creates a starter Client record and flags staff to
     airtableClient,
     clientGuildId: 'guild1',
     clientSuccessBaseId: 'appXXX',
-    csmRoleId: 'csm1',
     flagChannelId: 'flagChan',
     notionDashboardUrl: '',
     state,
@@ -205,7 +279,6 @@ test('messageCreate: non-email text prompts a retry without querying Airtable', 
     airtableClient,
     clientGuildId: 'guild1',
     clientSuccessBaseId: 'appXXX',
-    csmRoleId: 'csm1',
     flagChannelId: 'flagChan',
     notionDashboardUrl: '',
     state,
@@ -246,7 +319,6 @@ test('messageCreate: ignores messages from someone other than the pending member
     airtableClient,
     clientGuildId: 'guild1',
     clientSuccessBaseId: 'appXXX',
-    csmRoleId: 'csm1',
     flagChannelId: 'flagChan',
     notionDashboardUrl: '',
     state,
