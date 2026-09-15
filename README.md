@@ -336,9 +336,9 @@ It posted into every client's private channel each Friday at noon ET. It was
 removed at the CSM's request: clients are prompted in their 1:1s instead.
 
 **Nothing the bot runs now messages a client on a schedule.** Every remaining
-automation posts to a staff channel. Worth keeping in view when reading the
-Saturday report below — a long miss list is now measuring unprompted
-submissions, which is a harder bar than what it measured before.
+automation posts to a staff channel — including the "✅ *[Client]* submitted
+their Weekly Check-in" notification, which is a separate always-on automation
+and is unaffected by this.
 
 Removed with it: `src/reminders/sendWeeklyCheckinReminders.js`, the message
 formatting in what is now `src/clientsTable.js`, the

@@ -202,10 +202,12 @@ It counts a **whole week** of check-ins, which was already the right window
 when a reminder existed (people submit before being asked) and is now the only
 sensible one, since there is no reminder to measure from.
 
-**Expect the miss list to get longer.** It is now measuring who submits
-unprompted, which is a harder bar than what it measured before. That is
-information, not a malfunction — but a jump the first Saturday after
-2026-09-15 is the removal showing up, not a sudden drop in client engagement.
+**Don't expect the removal to show up in the numbers, in either direction.**
+The Weekly Check-ins table held 8 records in total on 2026-09-15, all created
+inside the one week the reminder ran — there is no before-and-after to compare,
+and 8 records split 3/5 around the send is noise. The more useful fact in that
+data: nothing had been submitted since 2026-09-12, so a near-empty week is the
+status quo rather than a consequence of anything.
 
 **A brand-new client is expected to check in like everyone else.** That is a
 deliberate call: their first check-in is the baseline their CSM reads before

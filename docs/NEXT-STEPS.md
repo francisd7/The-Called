@@ -172,25 +172,33 @@ running.
 ## H. Read the first Saturday report after the reminder removal
 
 The Friday reminder was removed on 2026-09-15 at the CSM's request. The
-Saturday missing-check-in report stays, and it is now the only thing watching
-check-ins at all.
+Saturday missing-check-in report stays, and is now the only thing watching
+check-ins.
 
-**Expect the miss list to jump on the first Saturday.** The report is now
-measuring who submits *unprompted*, which is a harder bar than what it
-measured while a reminder went out. A longer list is the removal showing up,
-not a sudden collapse in engagement — don't read it as the latter, and don't
-quietly re-enable the reminder to make the number look better without saying
-so.
+**There is no baseline to compare against, so do not predict what the report
+will say.** The Weekly Check-ins table (`tblj04VfjlFxoXzL6`) held **8 records
+in total** as of 2026-09-15, every one of them created between 2026-09-10 and
+2026-09-12 — the single week the reminder existed. There is no
+before-the-reminder week and no after-the-reminder week yet. Splitting those 8
+around the moment the reminder went out gives 3 before and 5 after, which is
+far too small to mean anything.
 
-Worth deciding after two or three weeks of data: if submissions fall far
-enough that the report stops being useful, that is a real finding to take
-back to the CSM, with numbers rather than a hunch. Compare against the weeks
-before 2026-09-15 in the Weekly Check-ins table.
+What the numbers actually say, which is more useful than a guess about the
+reminder: **nothing has been submitted since 2026-09-12**, and 22 clients are
+active. The report uses a rolling 7-day lookback, so unless people submit
+during the week it will read as nearly everyone missing — and that would be
+true with or without a reminder.
 
-One thing to confirm: **`WEEKLY_REPORT_ENABLED` is actually `true` on
-Railway.** The report was still unset the last time it was checked, which
-would now mean nothing watches check-ins at all. The boot log says which:
-`Weekly Check-in missing report armed for Sat 12:00 ET...` or `... is off`.
+So: read the first two or three reports as the baseline rather than as
+evidence about the removal. If submissions stay near zero, that is a real
+finding for the CSM, and the honest framing is "the check-in habit did not
+take hold", not "removing the reminder broke it" — the data cannot support
+the second claim.
+
+One thing to confirm: **is `WEEKLY_REPORT_ENABLED` actually `true` on
+Railway?** If it is not, nothing watches check-ins at all now. The boot log
+says which: `Weekly Check-in missing report armed for Sat 12:00 ET...` or
+`... is off`.
 
 ---
 
