@@ -1,9 +1,14 @@
 import { selectName } from '../discord/migration.js';
 
-// The accountability half of the Weekly Check-in reminder. The Friday DM goes
-// out and then nothing happens - nobody finds out who ignored it, so a client
-// can quietly stop checking in for a month and the first anyone notices is at
-// renewal. This posts the miss list to the team on Saturday.
+// Who has not submitted a Weekly Check-in, posted to the team on Saturday.
+// Without it a client can quietly stop checking in for a month and the first
+// anyone notices is at renewal.
+//
+// This became the only half on 2026-09-15: the Friday reminder that prompted
+// clients was removed at the CSM's request, who prompt them in their 1:1s
+// instead. So this is no longer "who ignored the reminder" - nobody is sent
+// one - it is simply who has not submitted. Worth keeping in mind when reading
+// a long miss list: unprompted is a harder bar than prompted.
 //
 // Grouped by CSM on purpose. A flat list of fourteen names is something
 // everyone skims and nobody owns; "Noah Freedman (11)" is a to-do list with a
@@ -49,9 +54,10 @@ export function buildMissingReport({
     const fields = record.fields ?? {};
     const clientName = fields['Client Name'] ?? record.id;
 
-    // The same opt-out the Friday DM honours. Someone who is not expected to
-    // check in must not appear as a miss, or the report trains the team to
-    // ignore it.
+    // Someone who is not expected to check in must not appear as a miss, or
+    // the report trains the team to ignore it. The field is still named
+    // "Skip Weekly Reminder" in Airtable from when a reminder existed; it now
+    // means "not expected to check in at all".
     if (fields['Skip Weekly Reminder'] === true) {
       report.notExpected.push({ clientName, reason: 'opted out' });
       continue;
@@ -84,8 +90,10 @@ export function buildMissingReport({
       recordId: record.id,
       clientName,
       csm: selectName(fields.CSM) || 'Unassigned',
-      // Worth showing: someone with no Discord ID never got the reminder, so
-      // their miss is the team's to fix, not theirs.
+      // Still worth showing now that no reminder goes out, but for a different
+      // reason: an unlinked record is a data gap the team owns. It also means
+      // tier sync can't match them, so a role change would never reach their
+      // billing field either.
       hasDiscordId: Boolean(String(fields['Discord ID'] ?? '').trim()),
     });
   }
@@ -128,7 +136,7 @@ export function formatMissingReport(report, { weekLabel } = {}) {
     for (const [csm, entries] of byCsm(report.missing)) {
       lines.push(`**${csm}** (${entries.length})`);
       for (const entry of entries) {
-        const note = entry.hasDiscordId ? '' : ' — no Discord ID, never got the reminder';
+        const note = entry.hasDiscordId ? '' : ' — no Discord ID on file';
         lines.push(`• ${entry.clientName}${note}`);
       }
       lines.push('');

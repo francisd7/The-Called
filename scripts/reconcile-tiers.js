@@ -26,7 +26,7 @@ import { createAirtableClient } from '../src/airtableClient.js';
 import {
   CLIENTS_TABLE_ID,
   ACTIVE_CLIENTS_FORMULA,
-} from '../src/reminders/weeklyCheckinReminder.js';
+} from '../src/clientsTable.js';
 import { clientsByDiscordId } from '../src/discord/migration.js';
 import { planTierReconciliation, formatReconciliation } from '../src/discord/tierReconcile.js';
 

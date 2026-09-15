@@ -1,4 +1,4 @@
-import { CLIENTS_TABLE_ID } from '../reminders/weeklyCheckinReminder.js';
+import { CLIENTS_TABLE_ID } from '../clientsTable.js';
 import { slugifyChannelName } from './channelName.js';
 import { looksLikeEmail, normalizeEmail } from './email.js';
 import { formatWelcomeMessage } from './welcomeMessage.js';

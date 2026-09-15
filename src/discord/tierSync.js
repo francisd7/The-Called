@@ -1,4 +1,4 @@
-import { CLIENTS_TABLE_ID } from '../reminders/weeklyCheckinReminder.js';
+import { CLIENTS_TABLE_ID } from '../clientsTable.js';
 import {
   TIER_ROLE_NAMES,
   TIER_CATEGORY_NAMES,

@@ -19,18 +19,13 @@ export const config = {
   clientSuccessBaseId: process.env.AIRTABLE_CLIENT_SUCCESS_BASE_ID || 'appkSTSqkeXGHt6pY',
   pollIntervalMs: Number(process.env.POLL_INTERVAL_MS) || 60_000,
   stateFilePath: process.env.STATE_FILE_PATH || 'data/state.json',
-  // Off by default on purpose - this is the gate between "code exists" and
-  // "clients get real DMs." Must be explicitly set to the string "true".
-  weeklyReminderEnabled: process.env.WEEKLY_REMINDER_ENABLED === 'true',
-  weeklyReminderHourEt: numberOrDefault(process.env.WEEKLY_REMINDER_HOUR_ET, 12),
-  weeklyReminderMinuteEt: numberOrDefault(process.env.WEEKLY_REMINDER_MINUTE_ET, 0),
-  // The single Airtable form URL every client uses for their Weekly Check-in.
-  // Unset means the reminder still goes out, just without a link - it never
-  // produces a sentence ending in a dangling dash.
-  weeklyCheckinFormUrl: process.env.WEEKLY_CHECKIN_FORM_URL || '',
-  // The accountability half: Saturday's "who ignored Friday's DM" report.
-  // Same off-by-default gate, though this one only ever posts to a staff
-  // channel - no client ever sees it.
+  // WEEKLY_REMINDER_ENABLED / _HOUR_ET / _MINUTE_ET / WEEKLY_CHECKIN_FORM_URL
+  // were read here and are deliberately gone. The Friday reminder was removed
+  // on 2026-09-15 at the CSM's request, so nothing the bot runs sends a client
+  // anything on a schedule. Safe to delete from Railway.
+  //
+  // Saturday's missing-check-in report. Off by default, though it only ever
+  // posts to a staff channel - no client ever sees it.
   weeklyReportEnabled: process.env.WEEKLY_REPORT_ENABLED === 'true',
   weeklyReportHourEt: numberOrDefault(process.env.WEEKLY_REPORT_HOUR_ET, 12),
   weeklyReportMinuteEt: numberOrDefault(process.env.WEEKLY_REPORT_MINUTE_ET, 0),

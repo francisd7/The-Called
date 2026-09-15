@@ -13,7 +13,6 @@ build status: [`docs/STATUS.md`](docs/STATUS.md).
 |---|---|---|
 | Setter EOD → Discord | New record in **Setter EOD** (`EOD Reports` base) | Posts "📋 **[Setter Name]** submitted their EOD report — [Date]" to the `DISCORD_SETTER_EOD_CHANNEL_ID` channel |
 | Weekly Check-in → Discord | New record in **Weekly Check-ins** (`Client Success` base) | Posts "✅ **[Client Name]** submitted their Weekly Check-in — Momentum: [X]/10" to the `DISCORD_WEEKLY_CHECKIN_CHANNEL_ID` channel |
-| Weekly Check-in reminder DMs | Every Friday, `WEEKLY_REMINDER_HOUR_ET`:`WEEKLY_REMINDER_MINUTE_ET` ET (default noon) | DMs every `Status = Active` Client with a Discord ID and no opt-out: "Hey [First Name], time for your Weekly Check-in — [prefilled link]". Posts a send/skip summary to `DISCORD_WEEKLY_CHECKIN_CHANNEL_ID` right after. |
 | New-member onboarding | Someone joins the client-facing Discord server (`DISCORD_CLIENT_GUILD_ID`) | Works out which package invite they used, assigns the matching brand + tier roles, creates a private `firstname-lastname` channel under that tier's category (visible to them, the bot, and the staff that tier is entitled to), posts the welcome message, then waits for their reply. A reply that looks like an email is matched against the Clients table's `Email` field — matched → writes their Discord ID back to that record; no match (the common case for a genuinely new signup) → creates a starter Client record (Name, Email, Discord ID, Start Date, Status Active, plus Brand and Package/Tier from the invite) and flags `DISCORD_ONBOARDING_FLAG_CHANNEL_ID` so staff fills in CSM and Contract Value. |
 | Tier sync | A tier role is added or removed on a member in the client server | Writes the new `Package / Tier` to the matching Client record, moves their private channel to the new tier's category (rewriting its permission overwrites so the new tier's staff actually gain access), and posts the change to `DISCORD_TIER_CHANGES_CHANNEL_ID` as an audit trail. |
 
@@ -331,33 +330,28 @@ tier upward:
 | An invite that isn't in the map | Flagged by code, so it can be added. |
 | A forwarded link | The email-reply step cross-checks the invite's tier against the matched Client record and flags a mismatch. Tightening this further means one-time invites generated per purchase from a Whop webhook — deferred, see `docs/STATUS.md`. |
 
-## Weekly Check-in reminder DMs — how skipping works
+## The Friday Weekly Check-in reminder — removed 2026-09-15
 
-Two independent skip conditions, both logged in the run summary rather than
-failed silently:
+It posted into every client's private channel each Friday at noon ET. It was
+removed at the CSM's request: clients are prompted in their 1:1s instead.
 
-- **`Discord ID`** blank on the Clients table (`The Called — Client Success`
-  base) → skipped until it's filled in.
-- **`Skip Weekly Reminder`** checked on the same table → permanently
-  skipped even once a Discord ID exists (e.g. once the future new-member
-  onboarding automation starts auto-populating Discord ID for other
-  reasons) — this always wins over having a Discord ID.
+**Nothing the bot runs now messages a client on a schedule.** Every remaining
+automation posts to a staff channel. Worth keeping in view when reading the
+Saturday report below — a long miss list is now measuring unprompted
+submissions, which is a harder bar than what it measured before.
 
-This is gated by `WEEKLY_REMINDER_ENABLED` on the host (currently `true` on
-Railway — **live**). To pause it without losing the backfilled Discord IDs or
-opt-outs, set it back to anything other than `true` (or delete the variable)
-and redeploy; flip it back to `true` to resume. `WEEKLY_REMINDER_HOUR_ET` /
-`WEEKLY_REMINDER_MINUTE_ET` (defaults `12` / `0`, 24-hour, America/New_York —
-handles the EST/EDT switch automatically) change the send time if needed.
+Removed with it: `src/reminders/sendWeeklyCheckinReminders.js`, the message
+formatting in what is now `src/clientsTable.js`, the
+`npm run weekly-reminder-dry-run` script, and the `WEEKLY_REMINDER_ENABLED`,
+`WEEKLY_REMINDER_HOUR_ET`, `WEEKLY_REMINDER_MINUTE_ET`,
+`WEEKLY_CHECKIN_FORM_URL` and `DISCORD_TEST_CHANNEL_ID` variables. Leaving
+those set on Railway does nothing; delete them when convenient.
 
-To test a change (new message wording, etc.) without risk, use the
-dry-run-only script — it has no code path that can send a real DM, and posts
-to a test channel instead:
-```
-npm run weekly-reminder-dry-run
-```
-(needs `DISCORD_BOT_TOKEN`, `AIRTABLE_PAT`, and `DISCORD_TEST_CHANNEL_ID` set,
-e.g. in a local `.env`)
+`git revert` the removal commit to bring the whole thing back.
+
+**`Skip Weekly Reminder`** on the Clients table outlives it. The field is now
+read only by the Saturday report, where it means "not expected to check in at
+all" — someone with it checked never appears as a miss.
 
 ## New-member onboarding — built, gated off by default
 
@@ -409,10 +403,10 @@ Design notes:
   exists because a brand-new signup's Airtable record usually doesn't exist
   yet at the moment they join Discord — staff logs the sale by hand, often
   afterward — so a same-message email match is the exception, not the rule,
-  for genuinely new clients. Worth knowing: Status `Active` + a Discord ID
-  means this client is immediately eligible for the Friday Weekly Check-in
-  reminder DM (automation #3), even before a CSM is assigned — a deliberate
-  choice, not an oversight.
+  for genuinely new clients. Worth knowing: Status `Active` means this client
+  is counted by the Saturday missing-check-in report straight away, even
+  before a CSM is assigned — a deliberate choice, not an oversight. They show
+  under "Unassigned" until one is.
 
 ## How it works
 
@@ -533,10 +527,11 @@ src/
   automations/
     setterEod.js        Setter EOD -> Discord message
     weeklyCheckin.js     Weekly Check-in -> Discord message
+  clientsTable.js        the Clients table id + the "active clients" filter
   reminders/
-    weeklyCheckinReminder.js       who gets a reminder DM, and the message
-    schedule.js                     DST-aware "is it Friday at HH:MM ET" helpers
-    sendWeeklyCheckinReminders.js   the real send path
+    schedule.js                     DST-aware "is it <day> at HH:MM ET" helpers
+    weeklyCheckinReport.js          who hasn't checked in, grouped by CSM
+    sendWeeklyCheckinReport.js      the Saturday report's send path
   onboarding/
     channelName.js       display name -> Discord-safe channel name
     email.js              email-shaped-text detection + normalization

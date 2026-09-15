@@ -10,7 +10,7 @@
 //   node scripts/run-weekly-checkin-report-dry-run.js --days 14
 import 'dotenv/config';
 import { createAirtableClient } from '../src/airtableClient.js';
-import { CLIENTS_TABLE_ID, ACTIVE_CLIENTS_FORMULA } from '../src/reminders/weeklyCheckinReminder.js';
+import { CLIENTS_TABLE_ID, ACTIVE_CLIENTS_FORMULA } from '../src/clientsTable.js';
 import { tableId as CHECKIN_TABLE_ID } from '../src/automations/weeklyCheckin.js';
 import { buildMissingReport, formatMissingReport } from '../src/reminders/weeklyCheckinReport.js';
 import { getLocalDateString, BUSINESS_TIMEZONE } from '../src/reminders/schedule.js';

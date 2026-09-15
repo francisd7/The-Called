@@ -1,4 +1,4 @@
-import { CLIENTS_TABLE_ID, ACTIVE_CLIENTS_FORMULA } from './weeklyCheckinReminder.js';
+import { CLIENTS_TABLE_ID, ACTIVE_CLIENTS_FORMULA } from '../clientsTable.js';
 import { tableId as CHECKIN_TABLE_ID } from '../automations/weeklyCheckin.js';
 import { buildMissingReport, formatMissingReport } from './weeklyCheckinReport.js';
 import { getLocalDateString, BUSINESS_TIMEZONE } from './schedule.js';

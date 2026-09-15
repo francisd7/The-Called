@@ -83,14 +83,22 @@ test('opted-out clients are never counted as missing', () => {
   assert.deepEqual(report.notExpected.map((e) => e.clientName), ['Wylie Hawkins']);
 });
 
-test('a client with no Discord ID is flagged — their miss is the team\'s fault', () => {
+// The note used to read "never got the reminder". No reminder is sent to
+// anyone since 2026-09-15, so that sentence now implies everyone else was
+// prompted and this one person wasn't - the opposite of the truth. It says
+// what is actually wrong instead: the record is not linked to a Discord user,
+// which also means tier sync can never match them.
+test('a client with no Discord ID is flagged as an unlinked record', () => {
   const report = buildMissingReport({
     clientRecords: [client('rec1', 'Someone', { 'Discord ID': '  ' })],
     checkinRecords: [],
     cutoffIso: CUTOFF,
   });
   assert.equal(report.missing[0].hasDiscordId, false);
-  assert.match(formatMissingReport(report), /never got the reminder/);
+
+  const output = formatMissingReport(report);
+  assert.match(output, /no Discord ID on file/);
+  assert.doesNotMatch(output, /reminder/i, 'the report must not mention a reminder that is gone');
 });
 
 test('missing clients are grouped by CSM, biggest list first', () => {

@@ -162,25 +162,25 @@ between "code exists" and "real people get real messages".
 |---|---|---|---|---|
 | 1 | Setter EOD → Discord | Polls Airtable every 60s | always on | `DISCORD_SETTER_EOD_CHANNEL_ID` |
 | 2 | Weekly Check-in → Discord | Polls Airtable every 60s | always on | `DISCORD_WEEKLY_CHECKIN_CHANNEL_ID` |
-| 3 | Weekly Check-in reminder | Scheduled, Friday noon ET | `WEEKLY_REMINDER_ENABLED` | A post in each client's own private channel |
+| ~~3~~ | ~~Weekly Check-in reminder~~ | — | — | **Removed 2026-09-15** |
 | 4 | New-member onboarding | `guildMemberAdd` | `NEW_MEMBER_ONBOARDING_ENABLED` | Roles, a private channel, an Airtable record |
 | 5 | Tier sync | `guildMemberUpdate` | `TIER_SYNC_ENABLED` | Airtable write, channel move, audit log |
 | 6 | Weekly Check-in missing report | Scheduled, Saturday noon ET | `WEEKLY_REPORT_ENABLED` | Staff channel post naming who didn't check in |
 | 7 | Post Call → Discord | Polls Airtable every 60s | `DISCORD_POST_CALL_CHANNEL_ID` set | Full call outcome, attribution, money and recording |
 
-**#1–#5 and #7 are live.** #1–#5 since 2026-09-10; #7 since 2026-09-11,
-verified end-to-end with a test record that posted and was then deleted.
-**#6 is built but off** until `WEEKLY_REPORT_ENABLED` is set.
+**#1, #2, #4, #5 and #7 are live.** #1–#5 since 2026-09-10; #7 since
+2026-09-11, verified end-to-end with a test record that posted and was then
+deleted. **#6 is built but off** until `WEEKLY_REPORT_ENABLED` is set.
 
-**#3** posts into each client's private channel rather than DMing them —
-changed 2026-09-11 after the first live run, where 20 DMs sent successfully and
-nobody noticed, because a DM lands in an inbox nobody opens and the CSM never
-sees it. The client's channel is where their coaching already happens, it is
-private to them and their CSM, and Noah can tell at a glance who was asked.
-The client is mentioned rather than named, so they still get the notification
-the DM gave them. A client with no private channel is reported, never quietly
-DMed instead — that fallback would hide the gap worth fixing. It skips anyone
-with `Skip Weekly Reminder` checked, and only targets `Status = 'Active'`.
+**#3 was removed on 2026-09-15** at the CSM's request — clients are prompted
+in their 1:1s instead. It had posted into each client's private channel every
+Friday at noon ET.
+
+**The consequence worth holding on to: no automation sends a client anything
+on a schedule any more.** Every remaining one posts to a staff channel. If a
+future session is asked why clients aren't being reminded, this is why, and
+`git revert` on the removal commit brings it back intact — the send path, its
+tests and its config all came out together.
 
 **#7** posts the outcome of a sales call as soon as a closer logs it. Unlike
 the EOD automations, which announce that a daily summary was submitted, this
@@ -191,14 +191,21 @@ and the money line is omitted when a call produced none: a row of "$0
 collected" teaches people to skip the line that matters. It has no boolean
 gate; the channel id is the switch.
 
-**#6** is the accountability half of #3. The Friday DM used to go out and
-nothing followed, so a client could quietly stop checking in for a month and
-the first anyone noticed was at renewal. The report names who didn't submit,
-grouped by CSM — a flat list of fourteen names gets skimmed by everyone and
-owned by no one. It counts a **whole week** of check-ins, not just the hours
-since the DM: people submit before being asked, and both check-ins on file when
-this was built arrived the evening before that week's reminder. Matching is on
-the check-in's linked record ID, so a renamed client is never a false miss.
+**#6** was built as the accountability half of #3; with #3 gone it is the
+whole thing. Without it a client could quietly stop checking in for a month
+and the first anyone noticed would be at renewal. The report names who didn't
+submit, grouped by CSM — a flat list of fourteen names gets skimmed by
+everyone and owned by no one. Matching is on the check-in's linked record ID,
+so a renamed client is never a false miss.
+
+It counts a **whole week** of check-ins, which was already the right window
+when a reminder existed (people submit before being asked) and is now the only
+sensible one, since there is no reminder to measure from.
+
+**Expect the miss list to get longer.** It is now measuring who submits
+unprompted, which is a harder bar than what it measured before. That is
+information, not a malfunction — but a jump the first Saturday after
+2026-09-15 is the removal showing up, not a sudden drop in client engagement.
 
 **A brand-new client is expected to check in like everyone else.** That is a
 deliberate call: their first check-in is the baseline their CSM reads before
@@ -314,7 +321,6 @@ npm run discord-migrate-channels   # client channels into tier categories
 npm run discord-sync-retired       # make retiring a channel actually hide it
 npm run tier-reconcile             # catch tier changes tier sync missed
 npm run weekly-report-dry-run      # preview Saturday's missing-check-in report
-npm run weekly-reminder-dry-run
 ```
 
 Add `-- --apply` to write. `src/discord/serverStructure.js` is the source of

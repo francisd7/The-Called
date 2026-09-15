@@ -30,7 +30,7 @@ import { createAirtableClient } from '../src/airtableClient.js';
 import {
   CLIENTS_TABLE_ID,
   ACTIVE_CLIENTS_FORMULA,
-} from '../src/reminders/weeklyCheckinReminder.js';
+} from '../src/clientsTable.js';
 import { clientsByDiscordId } from '../src/discord/migration.js';
 import { planRetiredSync } from '../src/discord/channelMigration.js';
 import { normalizeChannelName } from '../src/discord/serverStructure.js';

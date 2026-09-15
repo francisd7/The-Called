@@ -9,21 +9,14 @@ import * as setterEod from './automations/setterEod.js';
 import * as weeklyCheckin from './automations/weeklyCheckin.js';
 import * as postCall from './automations/postCall.js';
 import { isWeeklyJobDue, getLocalDateString, BUSINESS_TIMEZONE } from './reminders/schedule.js';
-import { sendWeeklyCheckinReminders } from './reminders/sendWeeklyCheckinReminders.js';
 import { sendWeeklyCheckinReport } from './reminders/sendWeeklyCheckinReport.js';
 import { registerNewMemberOnboarding } from './onboarding/newMemberOnboarding.js';
 import { createInviteTracker } from './discord/inviteTracker.js';
 import { parseInviteRoleMap, findUnmappedSlots, getInviteSlot } from './discord/inviteRoles.js';
 import { registerTierSync } from './discord/tierSync.js';
 
-const WEEKLY_REMINDER_WEEKDAY = 'Fri';
-const WEEKLY_REMINDER_STATE_KEY = 'weeklyCheckinReminderLastRunDate';
-// Which clients this week's run has already reached. Recorded per client as
-// it goes, so a run that dies part-way resumes rather than losing the rest of
-// the week - the failure that went unnoticed on 2026-09-11.
-const WEEKLY_REMINDER_PROGRESS_KEY = 'weeklyCheckinReminderProgress';
-
-// The day after the reminder, so clients have had a full day to act on it.
+// Saturday, so a client has the whole working week plus Friday to submit
+// before the team is asked to chase them.
 const WEEKLY_REPORT_WEEKDAY = 'Sat';
 const WEEKLY_REPORT_STATE_KEY = 'weeklyCheckinReportLastRunDate';
 
@@ -35,13 +28,6 @@ async function main() {
   // environment can no longer put anyone in there.
   if (config.newMemberOnboardingEnabled && !config.clientGuildId) {
     throw new Error('NEW_MEMBER_ONBOARDING_ENABLED is true but DISCORD_CLIENT_GUILD_ID is missing');
-  }
-
-  // The reminder posts into each client's private channel, so it needs to know
-  // which guild to look in. Failing at boot beats discovering it as twenty
-  // "no private channel found" lines on a Friday afternoon.
-  if (config.weeklyReminderEnabled && !config.clientGuildId) {
-    throw new Error('WEEKLY_REMINDER_ENABLED is true but DISCORD_CLIENT_GUILD_ID is missing');
   }
 
   // Tier sync rewrites a billing field in Airtable off a Discord role click,
@@ -135,88 +121,14 @@ async function main() {
   setInterval(runPollCycle, config.pollIntervalMs);
   runPollCycle();
 
-  let isCheckingReminderSchedule = false;
-  async function runWeeklyReminderCheckCycle() {
-    if (!config.weeklyReminderEnabled || isCheckingReminderSchedule) return;
-    isCheckingReminderSchedule = true;
-    try {
-      const now = new Date();
-      const todayEt = getLocalDateString(now, BUSINESS_TIMEZONE);
-      if (
-        !isWeeklyJobDue(now, {
-          weekday: WEEKLY_REMINDER_WEEKDAY,
-          hour: config.weeklyReminderHourEt,
-          minute: config.weeklyReminderMinuteEt,
-          timeZone: BUSINESS_TIMEZONE,
-          lastRunDate: state[WEEKLY_REMINDER_STATE_KEY],
-        })
-      ) {
-        return;
-      }
+  // The Friday reminder that posted into every client's private channel was
+  // removed on 2026-09-15 at the CSM's request - clients are prompted in their
+  // 1:1s instead. Only the Saturday report below survives, so the team still
+  // sees who has not checked in; nothing is sent to clients automatically.
+  // `git revert` the commit that removed it to bring it back.
 
-      // Progress is per client and saved as each post lands, so a crash costs
-      // only the client in flight. The "ran today" stamp is written at the
-      // END now, not the start: writing it first is what let a crashed run
-      // look like a finished one and lose a whole week in silence. A second
-      // tick during a slow run is held off by isCheckingReminderSchedule, and
-      // across a restart the progress record is what prevents a double-send.
-      const progress =
-        state[WEEKLY_REMINDER_PROGRESS_KEY]?.date === todayEt
-          ? state[WEEKLY_REMINDER_PROGRESS_KEY]
-          : { date: todayEt, sent: [] };
-      state[WEEKLY_REMINDER_PROGRESS_KEY] = progress;
-      await saveState(state);
-
-      console.log('Running Weekly Check-in reminder send...');
-      await sendWeeklyCheckinReminders({
-        airtableClient,
-        discord,
-        baseId: config.clientSuccessBaseId,
-        clientGuildId: config.clientGuildId,
-        logChannelId: config.discordWeeklyCheckinChannelId,
-        formUrl: config.weeklyCheckinFormUrl,
-        alreadySent: new Set(progress.sent),
-        markSent: async (discordId) => {
-          progress.sent.push(discordId);
-          await saveState(state);
-        },
-      });
-
-      state[WEEKLY_REMINDER_STATE_KEY] = todayEt;
-      await saveState(state);
-      console.log('Weekly Check-in reminder send complete.');
-    } catch (err) {
-      console.error('Weekly Check-in reminder run failed:', err);
-      // Said out loud in Discord, not just the console. A run that fails
-      // quietly is indistinguishable from one that was never due, which is
-      // how a missed week goes unnoticed until someone thinks to ask.
-      await discord
-        .sendToChannel(
-          config.opsNotificationsChannelId,
-          `⚠️ **Weekly Check-in reminder run failed** — ${err?.message ?? err}\nIt will retry on the next check and resume where it stopped.`
-        )
-        .catch(() => {});
-    } finally {
-      isCheckingReminderSchedule = false;
-    }
-  }
-  setInterval(runWeeklyReminderCheckCycle, 60_000);
-  // Said out loud at boot. Neither weekly job announced itself, so the only
-  // way to tell "it is switched off" from "it should have fired and didn't"
-  // was to wait for the day and then go digging - which is exactly how
-  // 2026-09-11 was spent.
-  console.log(
-    config.weeklyReminderEnabled
-      ? `Weekly Check-in reminder armed for ${WEEKLY_REMINDER_WEEKDAY} ${String(
-          config.weeklyReminderHourEt
-        ).padStart(2, '0')}:${String(config.weeklyReminderMinuteEt).padStart(2, '0')} ET` +
-          `${config.weeklyCheckinFormUrl ? '' : ' (no form URL set — the message will have no link)'}`
-      : 'Weekly Check-in reminder is off — set WEEKLY_REMINDER_ENABLED=true to arm it.'
-  );
-
-  // Same shape as the reminder cycle above, deliberately: one date-stamped
-  // state key so a tick that overlaps a slow run can't post the report twice
-  // into a staff channel.
+  // One date-stamped state key, so a tick that overlaps a slow run can't post
+  // the report twice into a staff channel.
   let isCheckingReportSchedule = false;
   async function runWeeklyReportCheckCycle() {
     if (!config.weeklyReportEnabled || isCheckingReportSchedule) return;

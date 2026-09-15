@@ -169,6 +169,31 @@ running.
 
 ---
 
+## H. Read the first Saturday report after the reminder removal
+
+The Friday reminder was removed on 2026-09-15 at the CSM's request. The
+Saturday missing-check-in report stays, and it is now the only thing watching
+check-ins at all.
+
+**Expect the miss list to jump on the first Saturday.** The report is now
+measuring who submits *unprompted*, which is a harder bar than what it
+measured while a reminder went out. A longer list is the removal showing up,
+not a sudden collapse in engagement — don't read it as the latter, and don't
+quietly re-enable the reminder to make the number look better without saying
+so.
+
+Worth deciding after two or three weeks of data: if submissions fall far
+enough that the report stops being useful, that is a real finding to take
+back to the CSM, with numbers rather than a hunch. Compare against the weeks
+before 2026-09-15 in the Weekly Check-ins table.
+
+One thing to confirm: **`WEEKLY_REPORT_ENABLED` is actually `true` on
+Railway.** The report was still unset the last time it was checked, which
+would now mean nothing watches check-ins at all. The boot log says which:
+`Weekly Check-in missing report armed for Sat 12:00 ET...` or `... is off`.
+
+---
+
 ## F. Watch the first real upsell
 
 Tier sync is on and smoke-tested, but the Airtable write and the channel move
