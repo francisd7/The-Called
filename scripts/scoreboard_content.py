@@ -64,7 +64,10 @@ RATES = [
         do="Book inside 48 hours — the further out, the colder. Confirm within an hour of booking "
            "and ask them to reply. Remind 24 hours before and again the morning of. A "
            "confirmation they don't reply to isn't a confirmation.",
-        high="Your bookings are real. Push volume upstream.",
+        high="Your bookings are real. Push volume upstream. Over a single week this can read "
+             "above 100% — a call booked on Friday gets shown on Monday, so inside a 7-day "
+             "window the shows can outnumber the bookings. It is not a broken number. Judge "
+             "show rate on the month or all-time column, never on one week.",
     ),
     dict(
         name="Close rate",

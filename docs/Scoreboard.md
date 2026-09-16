@@ -428,6 +428,10 @@ EOF
 - **Charts show a rolling 13 weeks**, not everything since the start. Deliberate: a fixed
   52-week chart is mostly empty space for the first six months.
 - **Weeks run Monday–Sunday** everywhere, including "This Week".
+- **Show rate can exceed 100% on a one-week view.** A call booked Friday is shown Monday, so
+  inside a fixed 7-day window the shows can outnumber that window's bookings. Real behaviour,
+  not a bug — it settles over the month and all-time columns, and the Cheat Sheet says so where
+  a client would go looking.
 - **Streaks tolerate today being blank.** They read yesterday's value until today is logged, so
   logging at 9pm doesn't look like a broken streak all day.
 - **"Fix this first" needs three weeks** of data before the funnel line means anything; until
