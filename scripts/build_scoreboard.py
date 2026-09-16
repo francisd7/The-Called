@@ -784,11 +784,12 @@ metric_row(28, "Revenue Generated", lambda L: sumifs(M["revenue"], f"{L}$10", f"
 
 # band stops at F so the healthy-floor column keeps its own header cell
 section(kd, 30, "CONVERSION RATES — where you're actually leaking", 6)
-hf = kd["G30"]
-hf.value = "Healthy\nfloor"
-hf.font = Font(name=FONT, size=8, bold=True, color="FFFFFF")
-hf.fill = PatternFill("solid", fgColor=PALETTE["dark"])
-hf.alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
+for cell_ref, text in (("G30", "Red\nbelow"), ("H30", "The bar")):
+    hf = kd[cell_ref]
+    hf.value = text
+    hf.font = Font(name=FONT, size=8, bold=True, color="FFFFFF")
+    hf.fill = PatternFill("solid", fgColor=PALETTE["dark"])
+    hf.alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
 rate_rows = [(31, "Reply Rate (replies ÷ DMs sent)", "20", "19", "0.0%"),
              (32, "Pitch Rate (pitched ÷ replies)", "23", "20", "0.0%"),
              (33, "Book Rate (booked ÷ pitched)", "24", "23", "0.0%"),
@@ -800,20 +801,28 @@ for row, lbl_text, num, den, fmt in rate_rows:
     metric_row(row, lbl_text, lambda L, n=num, d=den: f'IFERROR({L}{n}/{L}{d},"")', fmt=fmt)
 # floors mirrored onto this tab: Google Sheets conditional formatting cannot
 # reach across tabs, and these are the numbers the colour rules compare against
+# both thresholds mirrored onto this tab: Google Sheets conditional formatting
+# cannot reach across tabs, and these are what the colour rules compare against
 for i, row in enumerate(range(31, 36)):
-    g = kd[f"G{row}"]
-    g.value = f"='Cheat Sheet'!$C${11 + i}"   # floors live in col C, rows 11-15
-    g.number_format = "0%"
-    g.font = Font(name=FONT, size=10, bold=True, color=PALETTE["ink"])
-    g.alignment = Alignment(horizontal="center")
-    g.fill = PatternFill("solid", fgColor=PALETTE["band_soft"])
-    g.border = BOX
+    for col_letter, src_col in (("G", "C"), ("H", "D")):   # C = red below, D = the bar
+        g = kd[f"{col_letter}{row}"]
+        g.value = f"='Cheat Sheet'!${src_col}${11 + i}"
+        g.number_format = "0%"
+        g.font = Font(name=FONT, size=10, bold=True, color=PALETTE["ink"])
+        g.alignment = Alignment(horizontal="center")
+        g.fill = PatternFill("solid", fgColor=PALETTE["band_soft"])
+        g.border = BOX
+# three tiers: at/above the bar is green, genuinely broken is red, and the wide
+# middle is amber — a client working well but short of the bar is not a failure
 kd.conditional_formatting.add("B31:F35", FormulaRule(
-    formula=['AND(B31<>"",B31>=$G31)'], fill=green,
+    formula=['AND(B31<>"",B31>=$H31)'], fill=green,
     font=Font(name=FONT, bold=True, color=PALETTE["good_text"])))
 kd.conditional_formatting.add("B31:F35", FormulaRule(
     formula=['AND(B31<>"",B31<$G31)'], fill=red,
     font=Font(name=FONT, bold=True, color=PALETTE["bad_text"])))
+kd.conditional_formatting.add("B31:F35", FormulaRule(
+    formula=['AND(B31<>"",B31>=$G31,B31<$H31)'], fill=amber,
+    font=Font(name=FONT, bold=True, color=PALETTE["warn_text"])))
 metric_row(38, "Cash per 100 DMs Sent", lambda L: f'IFERROR({L}27/{L}19*100,"")',
            fmt='"$"#,##0', bold=True)
 kd["A38"].comment = Comment(
@@ -1054,7 +1063,7 @@ for i, t in enumerate(INTRO):
     cs.row_dimensions[5 + i].height = 28
 
 section(cs, 9, "HEALTHY RANGES — edit these as you learn what's true for your clients", 4)
-header_row(cs, 10, ["Rate", "What it's measuring", "Healthy\nfloor", "Healthy\nceiling"])
+header_row(cs, 10, ["Rate", "What it's measuring", "Red\nbelow", "The bar\n(green at/above)"])
 for i, rate in enumerate(RATES):
     r = 11 + i
     label(cs, r, rate["name"], bold=True)
@@ -1063,7 +1072,7 @@ for i, rate in enumerate(RATES):
     w.font = Font(name=FONT, size=10)
     w.alignment = Alignment(vertical="center", indent=1)
     w.border = BOX
-    for cidx, v in ((3, rate["floor"]), (4, rate["ceiling"])):
+    for cidx, v in ((3, rate["needs_work"]), (4, rate["bar"])):
         c = cs.cell(row=r, column=cidx, value=v)
         c.number_format = "0%"
         c.font = Font(name=FONT, size=11, bold=True)
@@ -1073,10 +1082,11 @@ for i, rate in enumerate(RATES):
     cs.row_dimensions[r].height = 20
 
 n = cs.cell(row=16, column=2, value=(
-    "These are The Called's working numbers, not gospel — they are cream cells because they are "
-    "yours to change. The KPI Dashboard colours your rates against the FLOOR column: edit a "
-    "floor here and the dashboard re-grades itself. Once you have enough client history, "
-    "replace these with what you actually see."))
+    "Two numbers, two meanings. THE BAR is what we push you towards — hit it and the dashboard "
+    "goes green. RED BELOW is the line where something is actually broken. In between you are "
+    "amber: working, not there yet. That is most people most of the time, and it is not a "
+    "failure. Both are cream cells because your coach can tune them to you, and the KPI "
+    "Dashboard re-grades itself the moment they change."))
 n.font = Font(name=FONT, size=9, italic=True, color=PALETTE["muted"])
 n.alignment = Alignment(wrap_text=True, vertical="top")
 cs.row_dimensions[16].height = 32
@@ -1293,14 +1303,16 @@ def notion_cheat_sheet(path):
     L = ["# Reading Your Scoreboard", ""]
     L += [esc(p_) + "\n" for p_ in INTRO]
     L += ["## The five rates at a glance", "",
-          "| Rate | Formula | Healthy range | What it measures |",
-          "| --- | --- | --- | --- |"]
+          "| Rate | Formula | The bar | Red below | What it measures |",
+          "| --- | --- | --- | --- | --- |"]
     for x in RATES:
-        L.append(f'| **{x["name"]}** | {x["formula"]} | {x["floor"]:.0%}–{x["ceiling"]:.0%} '
+        L.append(f'| **{x["name"]}** | {x["formula"]} | {x["bar"]:.0%} | {x["needs_work"]:.0%} '
                  f'| {esc(x["measures"])} |')
-    L += ["", "*These are The Called's working numbers, not gospel. Your coach may set different "
-              "ones for you — the ranges live in editable cells on the Cheat Sheet tab of your "
-              "Scoreboard.*", "",
+    L += ["", "*Two numbers, two meanings. **The bar** is what we push you towards — hit it and "
+              "your dashboard goes green. **Red below** is where something is actually broken. "
+              "In between you are amber: working, not there yet. That is most people most of the "
+              "time, and it is not a failure. Both live in editable cells on the Cheat Sheet tab "
+              "of your Scoreboard, and your coach can tune them to you.*", "",
           "## Diagnosing a rate", "",
           "| Rate | If it's low, it usually means | Do this | If it's high |",
           "| --- | --- | --- | --- |"]

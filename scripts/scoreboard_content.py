@@ -1,7 +1,11 @@
 """Cheat-sheet content for The Scoreboard.
 
-The healthy ranges are The Called's own numbers, set from what the team sees
-across clients — not generic benchmarks. Change them here, not in the outputs.
+Two thresholds per rate, and they mean different things:
+  * `bar`        — what The Called pushes clients towards. Green at or above it.
+  * `needs_work` — below this something is genuinely broken. Red under it, amber between.
+A client working well but not yet at the bar reads amber, which is the honest
+picture; making the bar the red line would paint everyone red permanently.
+Change them here, not in the outputs.
 
 Single source of truth. `build_scoreboard.py` renders this into the Cheat Sheet
 tab of the workbook, and `--notion` renders the same data as a markdown file to
@@ -22,7 +26,7 @@ RATES = [
     dict(
         name="Reply rate",
         formula="Replies ÷ DMs sent",
-        floor=0.50, ceiling=0.80,
+        needs_work=0.15, bar=0.50,
         measures="Whether your opener is worth answering. Nothing downstream can beat this number.",
         low="Your opener reads like a pitch, or you're messaging people who have never seen you. "
             "Cold list, or a first line about you instead of them.",
@@ -35,7 +39,7 @@ RATES = [
     dict(
         name="Pitch rate",
         formula="Calls pitched ÷ replies",
-        floor=0.25, ceiling=0.40,
+        needs_work=0.15, bar=0.25,
         measures="Whether you actually ask. This is the most common place the whole thing quietly dies.",
         low="You're chatting. Either you're scared of the ask, or you don't have a clean line to "
             "get from conversation to call.",
@@ -47,7 +51,7 @@ RATES = [
     dict(
         name="Book rate",
         formula="Calls booked ÷ pitched",
-        floor=0.60, ceiling=0.80,
+        needs_work=0.15, bar=0.60,
         measures="Whether the ask lands when you make it.",
         low="Three usual causes: asking too early, an unclear offer, or pitching people who were "
             "never going to buy.",
@@ -59,7 +63,7 @@ RATES = [
     dict(
         name="Show rate",
         formula="Calls showed ÷ booked",
-        floor=0.70, ceiling=0.90,
+        needs_work=0.50, bar=0.70,
         measures="Whether the booking was real. This is a confirmation problem, almost never a "
                  "booking problem.",
         low="Most no-shows booked in a moment of interest and then forgot. The gap between "
@@ -75,7 +79,7 @@ RATES = [
     dict(
         name="Close rate",
         formula="Closes ÷ showed",
-        floor=0.40, ceiling=0.70,
+        needs_work=0.15, bar=0.40,
         measures="The offer and the call itself — but only for the people who actually turned up.",
         low="Check book rate first. High book rate plus low close rate is a qualification problem, "
             "not a closing problem — you're booking the wrong people, and no call script fixes "

@@ -68,15 +68,25 @@ markdown tables that paste straight into a Notion page. Both outputs render from
 `scripts/scoreboard_content.py`, so **edit the content there and the sheet and the Notion page
 stay in step.** Editing either output directly is how they drift.
 
-**The healthy ranges are editable cells, and they're wired in.** Floor and ceiling for each
-rate live on the Cheat Sheet (cream cells, columns C and D, rows 11–15). The KPI Dashboard
-mirrors the floor column into its own Target column and colours every rate against it — so
-changing a floor there re-grades the dashboard, with no rebuild.
+**Two thresholds per rate, and they mean different things.** They live on the Cheat Sheet in
+cream cells (columns C and D, rows 11–15):
 
-They are The Called's own numbers, set from what the team actually sees: **reply 50–80%, pitch
-25–40%, book 60–80%, show 70–90%, close 40–70%**. Deliberately demanding — a client sitting
-under them is meant to notice. Revisit as the client base grows, and change them in
-`scripts/scoreboard_content.py` so the sheet and the Notion page move together.
+- **The bar** (column D) — what The Called pushes clients towards. **Green** at or above it.
+- **Red below** (column C) — the line where something is genuinely broken. **Red** under it.
+- Everything in between is **amber**: working, not there yet.
+
+That middle tier is the whole point. The bar is deliberately demanding, so most clients live
+under it most of the time — colouring that red would paint everyone red permanently and the
+dashboard would stop meaning anything within a month. Amber says "working, not there yet",
+which is both true and motivating.
+
+The KPI Dashboard mirrors both columns (G = red below, H = the bar) and runs three colour
+rules against them, so **editing either cell re-grades the dashboard with no rebuild**.
+
+The bars are The Called's own, set by the team: **reply 50%, pitch 25%, book 60%, show 70%,
+close 40%** — the standard clients are pushed towards, not what they typically hit on day one.
+The red lines sit well below (**15 / 15 / 15 / 50 / 15%**) and mark genuine breakage. Change
+both in `scripts/scoreboard_content.py` so the sheet and the Notion page move together.
 
 ### The This Week tab
 

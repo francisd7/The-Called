@@ -8,15 +8,15 @@ Rule of thumb: fix the earliest broken link first. Working on your close rate wh
 
 ## The five rates at a glance
 
-| Rate | Formula | Healthy range | What it measures |
-| --- | --- | --- | --- |
-| **Reply rate** | Replies ÷ DMs sent | 50%–80% | Whether your opener is worth answering. Nothing downstream can beat this number. |
-| **Pitch rate** | Calls pitched ÷ replies | 25%–40% | Whether you actually ask. This is the most common place the whole thing quietly dies. |
-| **Book rate** | Calls booked ÷ pitched | 60%–80% | Whether the ask lands when you make it. |
-| **Show rate** | Calls showed ÷ booked | 70%–90% | Whether the booking was real. This is a confirmation problem, almost never a booking problem. |
-| **Close rate** | Closes ÷ showed | 40%–70% | The offer and the call itself — but only for the people who actually turned up. |
+| Rate | Formula | The bar | Red below | What it measures |
+| --- | --- | --- | --- | --- |
+| **Reply rate** | Replies ÷ DMs sent | 50% | 15% | Whether your opener is worth answering. Nothing downstream can beat this number. |
+| **Pitch rate** | Calls pitched ÷ replies | 25% | 15% | Whether you actually ask. This is the most common place the whole thing quietly dies. |
+| **Book rate** | Calls booked ÷ pitched | 60% | 15% | Whether the ask lands when you make it. |
+| **Show rate** | Calls showed ÷ booked | 70% | 50% | Whether the booking was real. This is a confirmation problem, almost never a booking problem. |
+| **Close rate** | Closes ÷ showed | 40% | 15% | The offer and the call itself — but only for the people who actually turned up. |
 
-*These are The Called's working numbers, not gospel. Your coach may set different ones for you — the ranges live in editable cells on the Cheat Sheet tab of your Scoreboard.*
+*Two numbers, two meanings. **The bar** is what we push you towards — hit it and your dashboard goes green. **Red below** is where something is actually broken. In between you are amber: working, not there yet. That is most people most of the time, and it is not a failure. Both live in editable cells on the Cheat Sheet tab of your Scoreboard, and your coach can tune them to you.*
 
 ## Diagnosing a rate
 
