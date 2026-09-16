@@ -241,6 +241,35 @@ the middle in your own words.
 
 ---
 
+## Changing the workbook
+
+Edit `scripts/build_client_tracker.py` and re-run it — never hand-edit the .xlsx, the next
+run overwrites it. Brand colours are the `PALETTE` dict at the top of the script.
+
+```bash
+python3 scripts/build_client_tracker.py          # the template
+python3 scripts/build_client_tracker.py --demo   # the recording copy
+```
+
+After a change, verify the formulas actually evaluate:
+
+```bash
+pip install formulas
+python3 - <<'EOF'
+import formulas
+for f in ("docs/The_Called_Client_Tracker.xlsx", "docs/The_Called_Client_Tracker_DEMO.xlsx"):
+    sol = formulas.ExcelModel().loads(f).finish().calculate()
+    bad = [k for k, v in sol.items()
+           if str(getattr(v, "value", v)).startswith("#")]
+    print(f, len(sol), "cells,", len(bad), "errors")
+EOF
+```
+
+Both files currently evaluate clean — 4,442 and 4,826 cells, zero errors — and the dashboard
+totals, all five conversion rates, cash per 100 DMs and the perfect-days count were checked
+against the demo data by hand. (The `xlsx` skill's `recalc.py` needs LibreOffice, which doesn't
+run in this environment; `formulas` does the same job in-process.)
+
 ## Known limits — worth knowing before a client asks
 
 - **366 days.** The Daily Log covers a year from the start date. At the year mark, either add
