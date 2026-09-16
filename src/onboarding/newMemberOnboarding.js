@@ -1,7 +1,7 @@
 import { CLIENTS_TABLE_ID } from '../reminders/weeklyCheckinReminder.js';
 import { slugifyChannelName } from './channelName.js';
 import { looksLikeEmail, normalizeEmail } from './email.js';
-import { formatWelcomeMessage } from './welcomeMessage.js';
+import { EMAIL_CONFIRMED_MESSAGE, formatWelcomeMessage } from './welcomeMessage.js';
 
 const PENDING_STATE_KEY = 'newMemberOnboardingPending';
 
@@ -119,7 +119,7 @@ export function registerNewMemberOnboarding({
         await airtableClient.updateRecord(clientSuccessBaseId, CLIENTS_TABLE_ID, client.id, {
           'Discord ID': message.author.id,
         });
-        await message.channel.send("You're all set! ✅ Welcome aboard.");
+        await message.channel.send(EMAIL_CONFIRMED_MESSAGE);
         log.info(`[newMemberOnboarding] matched ${message.author.id} to client ${client.id}`);
       } else {
         const newClient = await airtableClient.createRecord(
@@ -132,7 +132,7 @@ export function registerNewMemberOnboarding({
             joinDate: todayDateString(),
           })
         );
-        await message.channel.send("You're all set! ✅ Welcome aboard.");
+        await message.channel.send(EMAIL_CONFIRMED_MESSAGE);
         await discord.sendToChannel(
           flagChannelId,
           `🆕 Created a new Client record for <@${message.author.id}> (\`${normalizedEmail}\`) — no existing match, so this is a starter record. Please review and fill in Package/CSM/Contract details. Channel: <#${message.channel.id}>`

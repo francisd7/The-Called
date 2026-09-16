@@ -41,5 +41,11 @@ https://tally.so/r/KYEgkX
 Let us know if you have any questions along the way. Once again, make sure all the items in orange on the Follow and Track In Order are completed before you get on your call. The booking link for your 1:1 call is inside the notion.
 
 ---
-🚨 One more thing — reply here with your **email address** so we can get your account linked up.`;
+🚨 One more thing — reply here with your **email address** so we can get your account linked up and send you your Notion Dashboard.`;
 }
+
+// Sent in the member's channel once their email is matched (or a starter
+// Client record is created for them). Lives here with the rest of the
+// onboarding copy rather than inline at the two call sites that send it.
+export const EMAIL_CONFIRMED_MESSAGE =
+  "You're all set! ✅ Your Notion Dashboard is on its way — hang tight.";

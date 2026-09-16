@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { formatWelcomeMessage } from '../src/onboarding/welcomeMessage.js';
+import { EMAIL_CONFIRMED_MESSAGE, formatWelcomeMessage } from '../src/onboarding/welcomeMessage.js';
 
 test('includes the member mention and all three team mentions', () => {
   const message = formatWelcomeMessage({ memberMention: '<@999>', notionDashboardUrl: '' });
@@ -10,9 +10,16 @@ test('includes the member mention and all three team mentions', () => {
   assert.match(message, /<@584241323981406221>/); // Francis
 });
 
-test('appends the email ask', () => {
+// The email reply is what triggers dashboard delivery, so the ask says what
+// they get for it rather than just "so we can link your account".
+test('appends the email ask, tied to the Notion Dashboard', () => {
   const message = formatWelcomeMessage({ memberMention: '<@999>', notionDashboardUrl: '' });
   assert.match(message, /reply here with your \*\*email address\*\*/);
+  assert.match(message, /send you your Notion Dashboard/);
+});
+
+test('the email confirmation says the dashboard is coming', () => {
+  assert.match(EMAIL_CONFIRMED_MESSAGE, /Notion Dashboard is on its way/);
 });
 
 test('uses a "coming shortly" line when no Notion link is configured', () => {
