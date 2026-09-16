@@ -10,11 +10,11 @@ Rule of thumb: fix the earliest broken link first. Working on your close rate wh
 
 | Rate | Formula | Healthy range | What it measures |
 | --- | --- | --- | --- |
-| **Reply rate** | Replies ÷ DMs sent | 10%–25% | Whether your opener is worth answering. Nothing downstream can beat this number. |
-| **Pitch rate** | Calls pitched ÷ replies | 30%–60% | Whether you actually ask. This is the most common place the whole thing quietly dies. |
-| **Book rate** | Calls booked ÷ pitched | 20%–40% | Whether the ask lands when you make it. |
-| **Show rate** | Calls showed ÷ booked | 60%–85% | Whether the booking was real. This is a confirmation problem, almost never a booking problem. |
-| **Close rate** | Closes ÷ showed | 20%–40% | The offer and the call itself — but only for the people who actually turned up. |
+| **Reply rate** | Replies ÷ DMs sent | 50%–80% | Whether your opener is worth answering. Nothing downstream can beat this number. |
+| **Pitch rate** | Calls pitched ÷ replies | 25%–40% | Whether you actually ask. This is the most common place the whole thing quietly dies. |
+| **Book rate** | Calls booked ÷ pitched | 60%–80% | Whether the ask lands when you make it. |
+| **Show rate** | Calls showed ÷ booked | 70%–90% | Whether the booking was real. This is a confirmation problem, almost never a booking problem. |
+| **Close rate** | Closes ÷ showed | 40%–70% | The offer and the call itself — but only for the people who actually turned up. |
 
 *These are The Called's working numbers, not gospel. Your coach may set different ones for you — the ranges live in editable cells on the Cheat Sheet tab of your Scoreboard.*
 

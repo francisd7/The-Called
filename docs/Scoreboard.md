@@ -73,9 +73,10 @@ rate live on the Cheat Sheet (cream cells, columns C and D, rows 11–15). The K
 mirrors the floor column into its own Target column and colours every rate against it — so
 changing a floor there re-grades the dashboard, with no rebuild.
 
-They ship as The Called's *working* numbers, not gospel: reply 10–25%, pitch 30–60%, book
-20–40%, show 60–85%, close 20–40%. Replace them with what you actually see across clients once
-you have the history — that's the single highest-value edit anyone can make to this sheet.
+They are The Called's own numbers, set from what the team actually sees: **reply 50–80%, pitch
+25–40%, book 60–80%, show 70–90%, close 40–70%**. Deliberately demanding — a client sitting
+under them is meant to notice. Revisit as the client base grows, and change them in
+`scripts/scoreboard_content.py` so the sheet and the Notion page move together.
 
 ### The This Week tab
 
