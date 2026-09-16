@@ -238,11 +238,13 @@ docs/
   Automation_Hub_Blueprint.md   the original blueprint this hub implements
   STATUS.md                     what's built vs. pending, and why
   Scoreboard.md                 The Scoreboard: Notion copy, Loom scripts, rollout SOP
+  Cheat_Sheet_for_Notion.md     generated — paste into Notion, don't hand-edit
   The_Called_Scoreboard.xlsx        the client template itself
   The_Called_Scoreboard_DEMO.xlsx   same sheet with sample data, for recording videos
   assets/the-called-logo.png    logo used in every tab banner (drop it here)
 scripts/
-  build_scoreboard.py           regenerates both workbooks
+  build_scoreboard.py           regenerates both workbooks + the Notion markdown
+  scoreboard_content.py         cheat-sheet wording, shared by both outputs
 ```
 
 ## The Scoreboard (not part of the server)

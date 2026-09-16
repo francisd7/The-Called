@@ -35,6 +35,8 @@ from openpyxl.drawing.line import LineProperties
 from openpyxl.chart.shapes import GraphicalProperties
 from openpyxl.comments import Comment
 
+from scoreboard_content import (INSTAGRAM, INTRO, MONEY, RATES, TRAPS, VOLUME)
+
 # ---------------------------------------------------------------- brand
 PALETTE = {
     # Sampled from The Called's logo — warm pewter/graphite on near-black.
@@ -69,8 +71,8 @@ PALETTE = {
 FONT = "Arial"
 CHART_SERIES = [PALETTE["brass"], PALETTE["teal"], PALETTE["clay"], PALETTE["indigo"]]
 
-DAYS = 366
-IG_WEEKS = 53
+DAYS = 731          # two years
+IG_WEEKS = 105      # two years of Mondays
 ROLL_WEEKS = 13
 
 DL_FIRST, DL_LAST = 4, 4 + DAYS - 1
@@ -1045,41 +1047,23 @@ banner(cs, "CHEAT SHEET — what your numbers are telling you", 4)
 subtitle(cs, "Every number in this sheet has one job: to tell you which single thing to fix next.", 4)
 
 section(cs, 4, "HOW TO READ YOUR NUMBERS", 4)
-intro = [
-    "Your business is a chain. Content gets you seen. Stories build trust. Opener DMs start "
-    "conversations. Follow-ups rescue the ones that stalled. Replies become pitches, pitches "
-    "become booked calls, booked calls become clients.",
-    "Every link has a rate. When the money is down, one link broke — and the rates tell you "
-    "exactly which one. That is the entire point of this sheet: stop guessing, fix one thing.",
-    "Rule of thumb: fix the earliest broken link first. Working on your close rate while your "
-    "reply rate is broken just means closing a smaller number of people.",
-]
-r = 5
-for t in intro:
-    c = cs.cell(row=r, column=2, value=t)
+for i, t in enumerate(INTRO):
+    c = cs.cell(row=5 + i, column=2, value=t)
     c.font = Font(name=FONT, size=10)
     c.alignment = Alignment(wrap_text=True, vertical="top")
-    cs.row_dimensions[r].height = 28
-    r += 1
+    cs.row_dimensions[5 + i].height = 28
 
 section(cs, 9, "HEALTHY RANGES — edit these as you learn what's true for your clients", 4)
 header_row(cs, 10, ["Rate", "What it's measuring", "Healthy\nfloor", "Healthy\nceiling"])
-ranges = [
-    ("Reply rate", "Replies ÷ DMs sent — whether your opener is worth answering.", 0.10, 0.25),
-    ("Pitch rate", "Calls pitched ÷ replies — whether you actually make the ask.", 0.30, 0.60),
-    ("Book rate", "Calls booked ÷ pitched — whether the ask lands.", 0.20, 0.40),
-    ("Show rate", "Calls showed ÷ booked — whether the booking was real.", 0.60, 0.85),
-    ("Close rate", "Closes ÷ showed — whether the offer and the call work.", 0.20, 0.40),
-]
-for i, (name, what, lo, hi) in enumerate(ranges):
+for i, rate in enumerate(RATES):
     r = 11 + i
-    label(cs, r, name, bold=True)
+    label(cs, r, rate["name"], bold=True)
     cs[f"A{r}"].border = BOX
-    w = cs.cell(row=r, column=2, value=what)
+    w = cs.cell(row=r, column=2, value=f'{rate["formula"]} — {rate["measures"]}')
     w.font = Font(name=FONT, size=10)
     w.alignment = Alignment(vertical="center", indent=1)
     w.border = BOX
-    for cidx, v in ((3, lo), (4, hi)):
+    for cidx, v in ((3, rate["floor"]), (4, rate["ceiling"])):
         c = cs.cell(row=r, column=cidx, value=v)
         c.number_format = "0%"
         c.font = Font(name=FONT, size=11, bold=True)
@@ -1108,6 +1092,8 @@ def block(row, title, items):
     cs.row_dimensions[row].height = 20
     r = row + 1
     for lbl_text, text in items:
+        if not text or text == "—":
+            continue
         lc = cs.cell(row=r, column=1, value=lbl_text)
         lc.font = Font(name=FONT, size=9, bold=True,
                        color=PALETTE["bad_text"] if "low" in lbl_text.lower()
@@ -1124,104 +1110,33 @@ def block(row, title, items):
 
 section(cs, 18, "THE FIVE RATES — where the money actually leaks", 4)
 r = 19
-r = block(r, "REPLY RATE — replies ÷ DMs sent", [
-    ("Measures", "Whether your opener is worth answering. Nothing downstream can beat this number."),
-    ("If it's low", "Your opener reads like a pitch, or you're messaging people who have never seen you. Cold list, or a first line about you instead of them."),
-    ("Do this", "Rewrite the first line so it's about them — something specific from their profile or content. Warm the list first: watch stories, reply to posts for 2–3 days before the DM. Change ONE thing and give it 50 DMs before you judge it."),
-    ("If it's high", "Good — but check your pitch rate. A high reply rate with a low pitch rate means you're being liked, not hired. Pleasant conversations are not pipeline."),
-])
-r = block(r, "PITCH RATE — calls pitched ÷ replies", [
-    ("Measures", "Whether you actually ask. This is the most common place the whole thing quietly dies."),
-    ("If it's low", "You're chatting. Either you're scared of the ask, or you don't have a clean line to get from conversation to call."),
-    ("Do this", "Decide the ask before you open the conversation. Two exchanges, then transition. Write one transition line, save it, use it every time until it feels boring."),
-    ("If it's high", "Check your book rate. If you're pitching almost everyone and few are booking, you're asking before you've earned it."),
-])
-r = block(r, "BOOK RATE — calls booked ÷ pitched", [
-    ("Measures", "Whether the ask lands when you make it."),
-    ("If it's low", "Three usual causes: asking too early, an unclear offer, or pitching people who were never going to buy."),
-    ("Do this", "Qualify before you ask — do they actually have the problem you solve, and can they pay? Make the call sound like a specific outcome, not \"a quick chat\". Offer two times, not an open calendar."),
-    ("If it's high", "Your ask works. The bottleneck is upstream — send more DMs."),
-])
-r = block(r, "SHOW RATE — calls showed ÷ booked", [
-    ("Measures", "Whether the booking was real. This is a confirmation problem, almost never a booking problem."),
-    ("If it's low", "Most no-shows booked in a moment of interest and then forgot. The gap between booking and call is where it died."),
-    ("Do this", "Book inside 48 hours — the further out, the colder. Confirm within an hour of booking and ask them to reply. Remind 24 hours before and the morning of. A confirmation they don't reply to isn't a confirmation."),
-    ("If it's high", "Your bookings are real. Push volume upstream."),
-])
-r = block(r, "CLOSE RATE — closes ÷ showed", [
-    ("Measures", "The offer and the call itself — but only for the people who actually turned up."),
-    ("If it's low", "Check book rate first. High book rate plus low close rate is a qualification problem, not a closing problem — you're booking the wrong people, and no call script fixes that. If qualification is fine, it's the call structure or the price framing."),
-    ("Do this", "Fix who's showing up before you fix the call. Then: diagnose longer before you present, and get the money objection on the table early rather than at the end."),
-    ("If it's high", "Your offer works and the right people are showing. Every extra DM is now worth real money — look at Cash per 100 DMs and act on it."),
-])
+for rate in RATES:
+    r = block(r, f'{rate["name"].upper()} — {rate["formula"].lower()}', [
+        ("Measures", rate["measures"]),
+        ("If it's low", rate["low"]),
+        ("Do this", rate["do"]),
+        ("If it's high", rate["high"]),
+    ])
 
 section(cs, r, "THE VOLUME NUMBERS — the inputs you control", 4)
 r += 1
-r = block(r, "REELS / POSTS", [
-    ("What it does", "Gets you in front of people who've never heard of you, and gives your DMs a reason to be answered."),
-    ("If it's low", "Your DM volume has to do all the work, and your reply rate usually drops a week or two later."),
-    ("Do this", "Batch film. Content volume is a scheduling problem, not a creativity problem."),
-])
-r = block(r, "STORIES", [
-    ("What it does", "The trust layer. Stories are why someone recognises your name when your DM lands."),
-    ("If it's low", "Watch your reply rate about a week later — this is usually where a reply-rate drop starts."),
-    ("Do this", "Post through the day, not in one block. Behind the scenes, client wins, opinions. Low effort, high frequency."),
-])
-r = block(r, "OPENER DMS", [
-    ("What it does", "The single biggest lever on how many calls you book. Everything downstream is a percentage of this number."),
-    ("If it's low", "Nothing else matters much. A great reply rate on 5 DMs a day is still no pipeline."),
-    ("Do this", "Same time, every day, before anything else. Volume first, then optimise the opener."),
-])
-r = block(r, "FOLLOW-UP DMS", [
-    ("What it does", "Where most of the money is. Most replies come on the second or third touch, not the first."),
-    ("If it's low", "You're paying full price for leads and abandoning them. This is the cheapest fix in the whole sheet."),
-    ("Do this", "Every unanswered opener gets a follow-up 48 hours later, and another 4 days after that. Add value, don't just bump."),
-])
-r = block(r, "REPLIES", [
-    ("What it is", "An outcome, not an input. You don't control replies — you control DMs sent and how good the opener is."),
-    ("If it's low", "Don't try to fix replies. Fix the opener (reply rate) or the volume (opener DMs)."),
-])
+for v in VOLUME:
+    r = block(r, v["name"].upper(), [
+        ("What it does", v["does"]), ("If it's low", v["low"]), ("Do this", v["do"])])
 
 section(cs, r, "THE MONEY NUMBERS", 4)
 r += 1
-r = block(r, "CASH PER CALL BOOKED", [
-    ("What it is", "What one booked call is worth to you on average, including the ones that don't close."),
-    ("Use it", "Multiply it by the calls you didn't book this week. That's what the missed follow-ups cost you — in dollars, not vibes."),
-])
-r = block(r, "CASH PER 100 DMS SENT", [
-    ("What it is", "The number that turns your daily standard into a decision instead of a chore."),
-    ("Use it", "If 100 DMs is worth $1,200 to you, then 20 more DMs today is worth $240. That's the whole argument for hitting the standard."),
-])
-r = block(r, "CASH COLLECTED vs REVENUE GENERATED", [
-    ("What it is", "Revenue is what they agreed to pay. Cash is what actually landed in your account."),
-    ("If there's a gap", "You're running payment plans, or you have unpaid invoices. Neither is wrong — but manage cash off the cash number, never the revenue number."),
-])
+for m in MONEY:
+    r = block(r, m["name"].upper(), [("What it is", m["what"]), ("Use it", m["use"])])
 
 section(cs, r, "THE INSTAGRAM NUMBERS", 4)
 r += 1
-r = block(r, "FOLLOWERS", [
-    ("What it is", "The least useful number on the page. Followers only matter if reach and DMs move with them."),
-    ("Watch instead", "Accounts reached, and new followers per 1,000 reached."),
-])
-r = block(r, "ACCOUNTS REACHED", [
-    ("What it is", "How many people actually saw you this week. This is the real top of your funnel."),
-    ("If it's falling", "Post more, or post differently — reach follows volume and hooks far more than it follows follower count."),
-])
-r = block(r, "NEW FOLLOWERS PER 1,000 REACHED", [
-    ("What it is", "The quality number. How many people who saw you thought you were worth following."),
-    ("If it's falling while reach rises", "You're being shown to the wrong people. That's a hook and positioning problem — a viral reel that brings the wrong audience makes your DMs worse, not better."),
-])
+for g in INSTAGRAM:
+    r = block(r, g["name"].upper(), [("What it is", g["what"]), ("Watch", g["watch"])])
 
 section(cs, r, "FIVE TRAPS", 4)
 r += 1
-traps = [
-    "One week is not a trend. Three weeks minimum before you change strategy off a number.",
-    "A low close rate with a high book rate is a qualification problem, not a closing problem.",
-    "Cash lags the work by two to four weeks. Don't panic in the middle of the lag — look at the activity numbers instead, they move first.",
-    "Blank is not zero. A blank day tells the sheet you didn't track; a zero tells it you didn't work. Only one of those is honest.",
-    "Don't fix two things at once. You'll never know which one worked, and you'll keep doing both forever.",
-]
-for i, t in enumerate(traps):
+for i, t in enumerate(TRAPS):
     c = cs.cell(row=r + i, column=1, value=f"{i + 1}.")
     c.font = Font(name=FONT, size=11, bold=True, color=PALETTE["ink"])
     c.alignment = Alignment(horizontal="right", vertical="top", indent=1)
@@ -1352,9 +1267,68 @@ if DEMO:
     ig[f"N{IG_FIRST + 6}"] = "Posted less this month — reach went with it"
     ig[f"N{IG_FIRST + 11}"] = "Back to 5 a day, reach recovering"
 
+    # Unmissable on every tab: this copy is a reference, never a working sheet.
+    # Marking row 1 rather than inserting a warning row keeps every formula intact.
+    ws["B4"] = "This is a sample. Do not work in it."
+    ws["B5"] = ("Every number in this file is made up, and it is here so you can see what the "
+                "Scoreboard looks like once it has history in it. Your own copy starts empty — "
+                "log in that one, not this one.")
+    for sheet in wb.worksheets:
+        head = sheet["A1"]
+        head.value = f"DEMO \u00b7 {head.value} \u00b7 SAMPLE DATA — REFERENCE ONLY"
+        head.fill = PatternFill("solid", fgColor=PALETTE["clay"])
+        sheet.sheet_properties.tabColor = PALETTE["clay"]
+
 out = ("docs/The_Called_Scoreboard_DEMO.xlsx" if DEMO
        else "docs/The_Called_Scoreboard.xlsx")
 wb.save(out)
+
+
+def notion_cheat_sheet(path):
+    """Same content as the Cheat Sheet tab, as markdown tables that paste
+    straight into Notion. Generated from the same module so the two can't drift."""
+    def esc(t):
+        return t.replace("|", "\\|")
+
+    L = ["# Reading Your Scoreboard", ""]
+    L += [esc(p_) + "\n" for p_ in INTRO]
+    L += ["## The five rates at a glance", "",
+          "| Rate | Formula | Healthy range | What it measures |",
+          "| --- | --- | --- | --- |"]
+    for x in RATES:
+        L.append(f'| **{x["name"]}** | {x["formula"]} | {x["floor"]:.0%}–{x["ceiling"]:.0%} '
+                 f'| {esc(x["measures"])} |')
+    L += ["", "*These are The Called's working numbers, not gospel. Your coach may set different "
+              "ones for you — the ranges live in editable cells on the Cheat Sheet tab of your "
+              "Scoreboard.*", "",
+          "## Diagnosing a rate", "",
+          "| Rate | If it's low, it usually means | Do this | If it's high |",
+          "| --- | --- | --- | --- |"]
+    for x in RATES:
+        L.append(f'| **{x["name"]}** | {esc(x["low"])} | {esc(x["do"])} | {esc(x["high"])} |')
+    L += ["", "## The volume numbers — the inputs you control", "",
+          "| Number | What it does | If it's low | Do this |", "| --- | --- | --- | --- |"]
+    for x in VOLUME:
+        do = "" if x["do"] == "—" else esc(x["do"])
+        L.append(f'| **{x["name"]}** | {esc(x["does"])} | {esc(x["low"])} | {do} |')
+    L += ["", "## The money numbers", "",
+          "| Number | What it is | How to use it |", "| --- | --- | --- |"]
+    for x in MONEY:
+        L.append(f'| **{x["name"]}** | {esc(x["what"])} | {esc(x["use"])} |')
+    L += ["", "## The Instagram numbers", "",
+          "| Number | What it is | What to watch |", "| --- | --- | --- |"]
+    for x in INSTAGRAM:
+        L.append(f'| **{x["name"]}** | {esc(x["what"])} | {esc(x["watch"])} |')
+    L += ["", "## Five traps", ""]
+    L += [f"{i + 1}. {esc(t)}" for i, t in enumerate(TRAPS)]
+    L.append("")
+    with open(path, "w") as fh:
+        fh.write("\n".join(L))
+    return path
+
+
+if not DEMO:
+    print(f"wrote {notion_cheat_sheet('docs/Cheat_Sheet_for_Notion.md')}")
 print(f"wrote {out}")
 print(f"  logo: {LOGO_PATH or 'none yet — drop a PNG at ' + LOGO_DEFAULT + ' and re-run'}")
 print(f"  Daily Log rows {DL_FIRST}-{DL_LAST} ({DAYS} days)")

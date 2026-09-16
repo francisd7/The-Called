@@ -2,6 +2,7 @@
 
 Replaces the Notion tracking dashboards with one Google Sheet per client.
 Template: [`The_Called_Scoreboard.xlsx`](The_Called_Scoreboard.xlsx) ·
+Notion cheat sheet: [`Cheat_Sheet_for_Notion.md`](Cheat_Sheet_for_Notion.md) ·
 recording copy with sample data: [`The_Called_Scoreboard_DEMO.xlsx`](The_Called_Scoreboard_DEMO.xlsx) ·
 regenerate with `python3 scripts/build_scoreboard.py [--demo]`.
 
@@ -45,10 +46,10 @@ with the palette, but never pushed toward brass.
 |---|---|---|---|
 | — | **Start Here** | No | Five numbered steps in the order they're done, the rules, an example row, Loom links. |
 | 1 | **Setup** | Once | Name, coach, handle, start date, the four daily standards, monthly cash goal. Start date sets every date in the Daily Log. |
-| 2 | **Daily Log** | Every day | 366 dated rows. **Today's row auto-highlights in brass.** Full funnel, green/red against standards, scores each day out of 4, and runs two streak counters. |
+| 2 | **Daily Log** | Every day | **Two years** of dated rows (731). **Today's row auto-highlights in brass.** Full funnel, green/red against standards, scores each day out of 4, and runs two streak counters. |
 | 3 | **This Week** | No | What you've done, where you should be by now, ahead/behind, next week's aim — plus the "fix this first" callout. |
 | 4 | **KPI Dashboard** | No | Five hero tiles, five time windows, seven conversion rates, standards vs target, four charts. |
-| 5 | **Instagram Tracker** | Weekly + monthly | 53 weeks of follower/reach numbers with growth and quality ratios. Posts and stories auto-fill from the Daily Log. Monthly screenshot drop zone. |
+| 5 | **Instagram Tracker** | Weekly + monthly | Two years (105 weeks) of follower/reach numbers with growth and quality ratios. Posts and stories auto-fill from the Daily Log. Monthly screenshot drop zone. |
 | — | **Cheat Sheet** | The ranges | What every number means, what a low one is telling you, and what to do about it. Healthy ranges live here in editable cells and drive the dashboard's colour rules. |
 | — | **Weekly Rollup** | No | Rolling last 13 weeks. Feeds the dashboard charts. |
 
@@ -61,6 +62,11 @@ The tab that makes the rest of the sheet worth filling in. For each of the five 
 measures, what a low reading actually means, exactly what to do about it, and the trap that
 comes with a high one. Then the volume numbers, the money numbers, the Instagram numbers, and
 five traps worth knowing before someone over-reacts to one bad week.
+
+The same content is generated as [`Cheat_Sheet_for_Notion.md`](Cheat_Sheet_for_Notion.md) —
+markdown tables that paste straight into a Notion page. Both outputs render from
+`scripts/scoreboard_content.py`, so **edit the content there and the sheet and the Notion page
+stay in step.** Editing either output directly is how they drift.
 
 **The healthy ranges are editable cells, and they're wired in.** Floor and ceiling for each
 rate live on the Cheat Sheet (cream cells, columns C and D, rows 11–15). The KPI Dashboard
@@ -330,9 +336,16 @@ The demo's dates are relative to whenever it's opened, so the dashboard, This We
 streaks are always populated. Weekday alignment is set at build time, so weekends drift by a
 day for each day after the build — re-run `--demo` before a big sales push if that matters.
 
+**It is marked as reference-only on every tab.** Row 1 of all eight tabs carries a terracotta
+`DEMO · … · SAMPLE DATA — REFERENCE ONLY` banner, every tab is coloured terracotta, and the
+Start Here intro says plainly not to work in it. That's deliberate: the failure mode is a
+prospect copying the *demo*, logging real numbers, and burying their own data under six weeks
+of fiction. The marking is applied to row 1 rather than by inserting a warning row, so no
+formula shifts.
+
 **Using it in a sales conversation:** open This Week first (the callouts do the talking), then
 the Cheat Sheet for the rate they just asked about, then the dashboard charts for the arc.
-Don't open the Daily Log first — 366 rows of data entry is the least persuasive part of it.
+Don't open the Daily Log first — two years of empty rows is the least persuasive part of it.
 
 ---
 
@@ -367,6 +380,8 @@ Don't open the Daily Log first — 366 rows of data entry is the least persuasiv
    Clients → add a **Scoreboard URL** field if it doesn't exist) so a CSM can open it before a
    call without hunting through Drive.
 5. Send them the Notion parent page with their link in it.
+6. If they want to see it populated first, send the demo as a **view-only** link and say out
+   loud that it's a sample. It's marked on every tab, but say it anyway.
 
 ---
 
@@ -376,9 +391,12 @@ Edit `scripts/build_scoreboard.py` and re-run it — never hand-edit the .xlsx, 
 overwrites it. Brand colours are the `PALETTE` dict at the top.
 
 ```bash
-python3 scripts/build_scoreboard.py          # the template
-python3 scripts/build_scoreboard.py --demo   # the recording copy
+python3 scripts/build_scoreboard.py          # template + the Notion cheat sheet markdown
+python3 scripts/build_scoreboard.py --demo   # the reference / recording copy
 ```
+
+Cheat-sheet wording lives in `scripts/scoreboard_content.py` and renders into both the workbook
+tab and the Notion markdown. Change it there, never in the outputs.
 
 After a change, verify the formulas actually evaluate:
 
@@ -400,8 +418,8 @@ EOF
 
 ## Known limits — worth knowing before a client asks
 
-- **366 days.** The Daily Log covers a year from the start date. At the year mark, copy the last
-  row down (formulas carry) or hand them a fresh copy.
+- **Two years.** The Daily Log covers 731 days from the start date and the Instagram tab 105
+  weeks. Past that, copy the last row down (the formulas carry) or hand them a fresh copy.
 - **Don't delete columns.** Hiding is safe, deleting breaks the dashboard with `#REF!`.
 - **Protection doesn't survive the .xlsx import** — apply it in Sheets, on the master, after
   conversion. Step 5 above.
