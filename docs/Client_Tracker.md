@@ -13,6 +13,19 @@ build touches it.
 
 ## What changed from the Notion version, and why
 
+**Brand colours** are sampled from the logo — warm pewter and graphite on near-black
+(`#1B1916` banners, `#3A3833` headings, `#E1DFDB` section strips). They live in the `PALETTE`
+dict at the top of the build script. The only non-brand colours in the workbook are the
+green/red hit-or-miss signals, which stay green and red on purpose.
+
+**One thing to fix in Notion while you're in there:** the client-facing Content Planner and the
+internal Content Chamber use different column names — `To Film / To Edit / To Post` versus
+`Film / Needs edit / Ready / Posted`. Worth standardising the client board on the Content
+Chamber's six stages. `Ready` as its own stage is the useful part (a buffer of ready-to-post
+content is what keeps people consistent), and `Needs edit` says who's waiting on whom in a way
+`To Edit` doesn't. Keep the client board's Calendar and Posted This Month views — the internal
+board doesn't have them and they're worth having.
+
 | Notion today | Google Sheet | Why |
 |---|---|---|
 | "Daily Tasks" and "Daily KPI Tracking" are the **same table twice** — same columns, same video, same standards | One **Daily Log** (the only place anything is typed) + one **KPI Dashboard** (100% calculated) | Two identical pages meant two places to enter the same numbers and nowhere that did maths. Now each Notion page points at a tab that does a genuinely different job. |
@@ -110,7 +123,30 @@ numbers mean the same thing when they land side by side.
 
 ### "Content Planner"
 
-> Staying in Notion — no change. *(Nothing to paste.)*
+Stays in Notion — Sheets can't do boards, calendars and per-post script pages, and Notion does
+all three well. The copy below assumes the six-stage pipeline from the internal **Content
+Chamber** board (Idea → Scripting → Film → Needs edit → Ready → Posted).
+
+> Every piece of content moves left to right across the board. Two boards, same six stages —
+> one for Instagram, one for YouTube.
+>
+> **Idea** — a hook, a thought, a comment someone left you. No detail needed, just get it out of your head.
+> **Scripting** — open the page and write the script. You don't film from an idea, you film from a script.
+> **Film** — scripted and ready to shoot. Batch these; don't film one at a time.
+> **Needs edit** — filmed, waiting on an edit.
+> **Ready** — edited, ready to go out.
+> **Posted** — done. Drag it over and move on.
+>
+> **Ready is the column that matters.** A stocked Ready column is the only reason consistent
+> people stay consistent through a bad week. If Ready is empty, you're always one bad day away
+> from missing your posts.
+>
+> **How to work it:** Sunday, twenty minutes — empty your head into Idea, move what's good into
+> Scripting. Film in batches. Then you're never sitting down to "make content", you're just
+> posting what's already Ready.
+>
+> You're not counting posts here — that's the Daily Log's job. This board only tells you what's
+> next and where things are stuck.
 
 ---
 
@@ -188,6 +224,24 @@ the middle in your own words.
 | 8 | Point at the two charts | Follower growth and weekly reach. Empty now, full in a month. |
 
 **Close with:** *"Five minutes on a Sunday. That's the whole thing."*
+
+---
+
+### Video 4 — Content Planner · target 2:00
+
+**Open with:** *"This one stays in Notion, and it's the only page that isn't about numbers. This is where content actually gets made."*
+
+| # | On screen | Say |
+|---|---|---|
+| 1 | Show both boards | Two boards, Instagram and YouTube, same six columns. |
+| 2 | Walk the columns left to right | Idea, Scripting, Film, Needs edit, Ready, Posted. Content only ever moves one direction. |
+| 3 | Open a card in Scripting | Every card is a page. The script lives inside it, so when you sit down to film you're reading, not writing. |
+| 4 | Drag a card from Film to Needs edit | You move the card when the work's done. That's the whole system. |
+| 5 | Point at **Ready** — slow down here | This column is the one I'll ask you about. A stocked Ready column is the only reason people stay consistent through a bad week. Empty Ready means you're one bad day from missing your posts. |
+| 6 | Point at Idea | Sunday, twenty minutes: empty your head into Idea, move the good ones into Scripting. |
+| 7 | Say what it's *not* | You're not counting posts here — that's your Daily Log. This board tells you what's next and where you're stuck, nothing else. |
+
+**Close with:** *"Film in batches, keep Ready stocked, and posting stops being a decision you have to make every day."*
 
 ---
 

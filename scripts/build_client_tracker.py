@@ -28,17 +28,21 @@ from openpyxl.comments import Comment
 
 # ---------------------------------------------------------------- brand
 PALETTE = {
-    "dark":        "111318",  # headers / banners
-    "accent":      "6B4EFF",  # primary brand accent
-    "accent_soft": "EFEAFF",  # accent tint for section strips
-    "input":       "FFF8DC",  # "type here" cells
-    "auto":        "F1F3F5",  # "leave alone" cells
-    "good":        "E6F4EA",
-    "good_text":   "137333",
-    "bad":         "FCE8E6",
-    "bad_text":    "C5221F",
-    "line":        "D7DAE0",
-    "muted":       "6B7280",
+    # Sampled from The Called's logo — warm pewter/graphite on near-black.
+    # Every hue in the workbook comes from here except the green/red hit-or-miss
+    # signals, which stay green and red on purpose.
+    "dark":        "1B1916",  # logo background, lit corner — banners, header rows
+    "accent":      "3A3833",  # letter shadow/recess — section headings, targets
+    "accent_soft": "E1DFDB",  # letter highlight, brightest metal — section strips
+    "input":       "FCF3E3",  # warm parchment — "type here"
+    "auto":        "F2F1EF",  # warm light grey — "leave this alone"
+    "good":        "E7F0E5",
+    "good_text":   "2F6B3A",
+    "bad":         "F7E4E0",
+    "bad_text":    "A83A2C",
+    "line":        "D6D3CC",
+    "muted":       "6E6A62",  # logo midtone, darkened to stay legible on white
+    "tab_input":   "8E8A82",  # logo midtone — tabs the client types in
 }
 FONT = "Arial"
 
@@ -707,7 +711,7 @@ order = ["Start Here", "Setup", "Daily Log", "KPI Dashboard", "Instagram Tracker
 wb._sheets = [wb[name] for name in order]
 for name in order:
     wb[name].sheet_properties.tabColor = (
-        PALETTE["accent"] if name in ("Daily Log", "Instagram Tracker", "Setup")
+        PALETTE["tab_input"] if name in ("Daily Log", "Instagram Tracker", "Setup")
         else PALETTE["dark"])
 wb.active = 0
 
