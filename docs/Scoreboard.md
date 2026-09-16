@@ -46,10 +46,10 @@ with the palette, but never pushed toward brass.
 |---|---|---|---|
 | — | **Start Here** | No | Five numbered steps in the order they're done, the rules, an example row, Loom links. |
 | 1 | **Setup** | Once | Name, coach, handle, start date, the four daily standards, monthly cash goal. Start date sets every date in the Daily Log. |
-| 2 | **Daily Log** | Every day | **Two years** of dated rows (731). **Today's row auto-highlights in brass.** Full funnel, green/red against standards, scores each day out of 4, and runs two streak counters. |
+| 2 | **Daily Log** | Every day | 366 dated rows. **Today's row auto-highlights in brass.** Full funnel, green/red against standards, scores each day out of 4, and runs two streak counters. |
 | 3 | **This Week** | No | What you've done, where you should be by now, ahead/behind, next week's aim — plus the "fix this first" callout. |
 | 4 | **KPI Dashboard** | No | Five hero tiles, five time windows, seven conversion rates, standards vs target, four charts. |
-| 5 | **Instagram Tracker** | Weekly + monthly | Two years (105 weeks) of follower/reach numbers with growth and quality ratios. Posts and stories auto-fill from the Daily Log. Monthly screenshot drop zone. |
+| 5 | **Instagram Tracker** | Weekly + monthly | 53 weeks of follower/reach numbers with growth and quality ratios. Posts and stories auto-fill from the Daily Log. Monthly screenshot drop zone. |
 | — | **Cheat Sheet** | The ranges | What every number means, what a low one is telling you, and what to do about it. Healthy ranges live here in editable cells and drive the dashboard's colour rules. |
 | — | **Weekly Rollup** | No | Rolling last 13 weeks. Feeds the dashboard charts. |
 
@@ -345,7 +345,7 @@ formula shifts.
 
 **Using it in a sales conversation:** open This Week first (the callouts do the talking), then
 the Cheat Sheet for the rate they just asked about, then the dashboard charts for the arc.
-Don't open the Daily Log first — two years of empty rows is the least persuasive part of it.
+Don't open the Daily Log first — a year of empty rows is the least persuasive part of it.
 
 ---
 
@@ -418,8 +418,10 @@ EOF
 
 ## Known limits — worth knowing before a client asks
 
-- **Two years.** The Daily Log covers 731 days from the start date and the Instagram tab 105
-  weeks. Past that, copy the last row down (the formulas carry) or hand them a fresh copy.
+- **One year.** The Daily Log covers 366 days from the start date and the Instagram tab 53
+  weeks. At the year mark, copy the last row down (the formulas carry) or hand them a fresh
+  copy — a deliberate call not to double every SUMIFS range for a deadline most clients won't
+  reach.
 - **Don't delete columns.** Hiding is safe, deleting breaks the dashboard with `#REF!`.
 - **Protection doesn't survive the .xlsx import** — apply it in Sheets, on the master, after
   conversion. Step 5 above.

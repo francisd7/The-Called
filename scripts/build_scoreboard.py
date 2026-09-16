@@ -71,8 +71,8 @@ PALETTE = {
 FONT = "Arial"
 CHART_SERIES = [PALETTE["brass"], PALETTE["teal"], PALETTE["clay"], PALETTE["indigo"]]
 
-DAYS = 731          # two years
-IG_WEEKS = 105      # two years of Mondays
+DAYS = 366          # one year; past that, copy the last row down or start a fresh copy
+IG_WEEKS = 53
 ROLL_WEEKS = 13
 
 DL_FIRST, DL_LAST = 4, 4 + DAYS - 1
