@@ -11,7 +11,9 @@
     "start": "node src/index.js",
     "test": "node --test",
     "grant-bot-channel-access": "node scripts/grant-bot-channel-access.js",
-    "weekly-reminder-dry-run": "node scripts/run-weekly-checkin-reminder-dry-run.js"
+    "weekly-reminder-dry-run": "node scripts/run-weekly-checkin-reminder-dry-run.js",
+    "client-dashboard-dry-run": "node scripts/run-client-dashboard-dry-run.js",
+    "create-one-client-dashboard": "node scripts/create-one-client-dashboard.js"
   },
   "dependencies": {
     "discord.js": "^14.16.3",

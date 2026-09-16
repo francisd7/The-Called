@@ -10,6 +10,8 @@ import * as weeklyCheckin from './automations/weeklyCheckin.js';
 import { isTargetMinute, getLocalDateString } from './reminders/schedule.js';
 import { sendWeeklyCheckinReminders } from './reminders/sendWeeklyCheckinReminders.js';
 import { registerNewMemberOnboarding } from './onboarding/newMemberOnboarding.js';
+import { createNotionClient } from './notionClient.js';
+import { createClientDashboards } from './dashboards/createClientDashboards.js';
 
 const WEEKLY_REMINDER_TIMEZONE = 'America/New_York';
 const WEEKLY_REMINDER_WEEKDAY = 'Fri';
@@ -24,7 +26,19 @@ async function main() {
     );
   }
 
+  if (
+    config.notionDashboardEnabled &&
+    (!config.notionToken || !config.notionDashboardsDatabaseId)
+  ) {
+    throw new Error(
+      'NOTION_DASHBOARD_ENABLED is true but NOTION_TOKEN or NOTION_DASHBOARDS_DATABASE_ID is missing'
+    );
+  }
+
   const airtableClient = createAirtableClient(config.airtablePat);
+  const notionClient = config.notionDashboardEnabled
+    ? createNotionClient(config.notionToken)
+    : null;
   // GuildMembers/MessageContent are privileged intents - only request them
   // once onboarding is actually enabled, so this never breaks login for the
   // rest of the hub before those portal toggles are turned on.
@@ -108,6 +122,38 @@ async function main() {
     }
   }
   setInterval(runWeeklyReminderCheckCycle, 60_000);
+
+  // Creates a Notion dashboard for every Active client that doesn't have one
+  // yet. Driven by the absence of a "Notion Dashboard URL" on the Airtable
+  // record rather than a created-time watermark, which means it's idempotent,
+  // self-healing after a failed run, and picks up clients who were added
+  // before this automation existed.
+  let isCreatingDashboards = false;
+  async function runClientDashboardCycle() {
+    if (isCreatingDashboards) return;
+    isCreatingDashboards = true;
+    try {
+      await createClientDashboards({
+        airtableClient,
+        notionClient,
+        discord,
+        baseId: config.clientSuccessBaseId,
+        databaseId: config.notionDashboardsDatabaseId,
+        templateName: config.notionDashboardTemplateName,
+        notifyChannelId: config.dashboardNotifyChannelId,
+      });
+    } catch (err) {
+      console.error('Client dashboard run failed:', err);
+    } finally {
+      isCreatingDashboards = false;
+    }
+  }
+
+  if (config.notionDashboardEnabled) {
+    setInterval(runClientDashboardCycle, config.pollIntervalMs);
+    runClientDashboardCycle();
+    console.log('Client dashboard automation registered.');
+  }
 
   if (config.newMemberOnboardingEnabled) {
     registerNewMemberOnboarding({

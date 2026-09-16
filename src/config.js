@@ -29,6 +29,17 @@ export const config = {
   onboardingFlagChannelId:
     process.env.DISCORD_ONBOARDING_FLAG_CHANNEL_ID || process.env.DISCORD_WEEKLY_CHECKIN_CHANNEL_ID,
   notionDashboardUrl: process.env.NOTION_DASHBOARD_URL || '',
+  // Same off-by-default gate as the two above. Until this is exactly "true",
+  // nothing is created in Notion and nothing is written back to Airtable.
+  notionDashboardEnabled: process.env.NOTION_DASHBOARD_ENABLED === 'true',
+  notionToken: process.env.NOTION_TOKEN,
+  notionDashboardsDatabaseId: process.env.NOTION_DASHBOARDS_DATABASE_ID,
+  // Blank means "use whichever template is set as default on that database".
+  notionDashboardTemplateName: process.env.NOTION_DASHBOARD_TEMPLATE_NAME || '',
+  dashboardNotifyChannelId:
+    process.env.DISCORD_DASHBOARD_CHANNEL_ID ||
+    process.env.DISCORD_ONBOARDING_FLAG_CHANNEL_ID ||
+    process.env.DISCORD_WEEKLY_CHECKIN_CHANNEL_ID,
 };
 
 export function assertRequiredConfig() {

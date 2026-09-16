@@ -15,6 +15,7 @@ build status: [`docs/STATUS.md`](docs/STATUS.md).
 | Weekly Check-in → Discord | New record in **Weekly Check-ins** (`Client Success` base) | Posts "✅ **[Client Name]** submitted their Weekly Check-in — Momentum: [X]/10" to the `DISCORD_WEEKLY_CHECKIN_CHANNEL_ID` channel |
 | Weekly Check-in reminder DMs | Every Friday, `WEEKLY_REMINDER_HOUR_ET`:`WEEKLY_REMINDER_MINUTE_ET` ET (default noon) | DMs every `Status = Active` Client with a Discord ID and no opt-out: "Hey [First Name], time for your Weekly Check-in — [prefilled link]". Posts a send/skip summary to `DISCORD_WEEKLY_CHECKIN_CHANNEL_ID` right after. |
 | New-member onboarding | Someone joins the client-facing Discord server (`DISCORD_CLIENT_GUILD_ID`) | Creates a private `firstname-lastname` channel (visible to them, the bot, and the CSM role), posts the welcome message, then waits for their reply. A reply that looks like an email is matched against the Clients table's `Email` field — matched → writes their Discord ID back to that record; no match (the common case for a genuinely new signup) → creates a starter Client record (Name, Email, Discord ID, Start Date, Status Active) and flags `DISCORD_ONBOARDING_FLAG_CHANNEL_ID` so staff fills in Package/CSM/Contract Value. |
+| Client Notion dashboard | Airtable Client record with `Status = Active` and an empty `Notion Dashboard URL` | Creates a page in the **Client Dashboards** Notion database from the saved template, fills in Name / Client Email / CSM / Package / Start Date / Status, writes the new page's URL back onto the Airtable record, and posts that link (plus the client's email) to `DISCORD_DASHBOARD_CHANNEL_ID` so a human can do the single step Notion's API cannot: invite the client as a guest. |
 
 The first two notifications go to separate Discord channels (and can be in
 separate servers) — the bot just needs to be a member of whichever server
@@ -103,6 +104,76 @@ Design notes:
   means this client is immediately eligible for the Friday Weekly Check-in
   reminder DM (automation #3), even before a CSM is assigned — a deliberate
   choice, not an oversight.
+
+## Client Notion dashboards — built, gated off by default
+
+Replaces duplicating the Notion dashboard template by hand for every new
+client. Gated by `NOTION_DASHBOARD_ENABLED` (unset/false by default — no
+Notion page is created and nothing is written back to Airtable until this is
+explicitly `true`).
+
+| Variable | Required to go live | Notes |
+|---|---|---|
+| `NOTION_DASHBOARD_ENABLED` | Yes | Must be exactly `true` (string). |
+| `NOTION_TOKEN` | Yes | Internal integration token from notion.so/profile/integrations (starts with `ntn_`). The integration must then be connected to the database: open it → `•••` → **Connections** → add the integration. Without that step every call 404s. |
+| `NOTION_DASHBOARDS_DATABASE_ID` | Yes | The 32-character chunk in the database URL: `notion.so/<workspace>/<DATABASE_ID>?v=<view id>`. **This is the only thing that changes when moving from a mock database to the real one.** |
+| `NOTION_DASHBOARD_TEMPLATE_NAME` | No | Build each dashboard from the template with this name. Leave unset to use whichever template is marked default on that database. |
+| `DISCORD_DASHBOARD_CHANNEL_ID` | No | Where the "created, now go invite them" message lands. Defaults to `DISCORD_ONBOARDING_FLAG_CHANNEL_ID`, then `DISCORD_WEEKLY_CHECKIN_CHANNEL_ID`. |
+
+**Two setup steps outside this repo:**
+
+1. Add a **`Notion Dashboard URL`** field (type: URL or single line text) to the
+   Clients table in the Client Success base. It's both where the finished link
+   lives and the "already done" marker — without it the automation errors with
+   `Unknown field name`.
+2. In Notion, the Client Dashboards database needs a database template
+   containing the dashboard layout, set as default (`⌄` next to **New** →
+   `•••` → **Set as default**), with the integration connected to it.
+
+**Testing against a mock database first:**
+
+```bash
+npm run client-dashboard-dry-run          # reads everything, writes nothing
+npm run create-one-client-dashboard -- someone@example.com
+```
+
+The dry run prints the resolved data source ID, every template it found, every
+Notion column and its type, and the exact property payload each client would
+get — which is how you confirm a database is wired up correctly before going
+live. It has no code path that writes.
+
+`create-one-client-dashboard` makes one real Notion page so you can see the
+finished article. It deliberately does **not** write the URL back to Airtable
+unless you add `--write-airtable` — writing a mock-database URL onto a real
+Client record would make the live automation skip that client later.
+
+Design notes:
+- **Notion has no API for sharing a page with a guest.** There is no
+  permissions endpoint at all (verified against the official SDK), and
+  "Share to web" can't be toggled programmatically either. So inviting the
+  client stays a human step — the Discord message carries the link and the
+  email so it's a copy-paste, not a lookup. The CSM side needs no per-client
+  work at all if the database lives in a teamspace the CSMs are in;
+  permissions inherit.
+- The trigger is **the absence of a `Notion Dashboard URL`**, not a
+  created-time watermark like automations #1/#2. That makes it idempotent
+  (a client with a URL is never picked up again), self-healing (a run that
+  died halfway resumes next cycle), and it retroactively covers clients who
+  existed before this automation did.
+- Before creating anything it queries the Notion database for a page with
+  that client's email, and reuses it if one exists. This is the guard against
+  the ugly failure mode: page created, Airtable write failed, next cycle
+  creates a second dashboard.
+- A failure **stops the whole run** rather than continuing to the next client,
+  for the same reason.
+- Property values are built from Notion's live schema rather than hardcoded,
+  so a renamed or missing column is skipped and reported instead of 400-ing
+  the request. `Status` is special-cased: Notion's API can't create new
+  options on a `status`-type property, so an unrecognised value is dropped
+  rather than failing the page.
+- `Notion-Version` is pinned to `2025-09-03` in `src/notionClient.js` — the
+  version that introduced data sources and the `template` parameter this
+  depends on.
 
 ## How it works
 
@@ -227,6 +298,10 @@ src/
     weeklyCheckinReminder.js       who gets a reminder DM, and the message
     schedule.js                     DST-aware "is it Friday at HH:MM ET" helpers
     sendWeeklyCheckinReminders.js   the real send path
+  notionClient.js      Notion REST API (data sources, templates, create page)
+  dashboards/
+    clientDashboard.js           field mapping + who needs a dashboard (pure)
+    createClientDashboards.js    the real create/write-back path
   onboarding/
     channelName.js       display name -> Discord-safe channel name
     email.js              email-shaped-text detection + normalization
