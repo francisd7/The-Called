@@ -25,10 +25,27 @@ test('does not mention a walkthrough video (not made yet)', () => {
   assert.doesNotMatch(message, /walkthrough video/i);
 });
 
-test('includes the mandatory intake form', () => {
-  const message = formatWelcomeMessage({ memberMention: '<@999>', notionDashboardUrl: '' });
-  assert.match(message, /https:\/\/tally\.so\/r\/KYEgkX/);
-  assert.match(message, /This intake form is part of onboarding as well/);
+test('includes the mandatory intake form in both states', () => {
+  for (const notionDashboardUrl of ['', 'https://notion.so/dashboard']) {
+    const message = formatWelcomeMessage({ memberMention: '<@999>', notionDashboardUrl });
+    assert.match(message, /https:\/\/tally\.so\/r\/KYEgkX/);
+    assert.match(message, /before your call with Noah/);
+  }
+});
+
+// Until the Notion link is configured the form is the only thing a new member
+// can actually do, so it's framed as the stopgap - but "in the meantime" would
+// read wrong once they have the dashboard in hand.
+test('frames the intake form as the stopgap only while the Notion link is missing', () => {
+  const waiting = formatWelcomeMessage({ memberMention: '<@999>', notionDashboardUrl: '' });
+  assert.match(waiting, /In the meantime, here's something you can knock out right now/);
+
+  const configured = formatWelcomeMessage({
+    memberMention: '<@999>',
+    notionDashboardUrl: 'https://notion.so/dashboard',
+  });
+  assert.doesNotMatch(configured, /In the meantime/i);
+  assert.match(configured, /This intake form is part of onboarding as well/);
 });
 
 // Tasks live in Notion now (the "Follow and Track In Order" section, orange

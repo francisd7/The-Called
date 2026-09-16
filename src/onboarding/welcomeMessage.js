@@ -12,6 +12,14 @@ export function formatWelcomeMessage({ memberMention, notionDashboardUrl }) {
     ? `Here is your Notion Dashboard: ${trimmedUrl}`
     : 'You will get your Notion Dashboard shortly.';
 
+  // The intake form is the one thing a brand-new member can act on before
+  // their Notion lands, so without a dashboard link it's framed as the
+  // stopgap ("in the meantime"). Once the link is there they aren't waiting
+  // on anything, so that framing would read wrong - hence both versions.
+  const intakeFormLine = trimmedUrl
+    ? "This intake form is part of onboarding as well — complete it before your call with Noah, so he walks in already knowing what you came here for instead of spending the call on discovery."
+    : "In the meantime, here's something you can knock out right now — complete this intake form before your call with Noah, so he walks in already knowing what you came here for instead of spending the call on discovery.";
+
   return `${memberMention} — welcome to The Called 🔥
 
 You didn't just sign up for a program. You stepped into a brotherhood of men who are done playing small in business and in life and we take that seriously. Glad you're here.
@@ -27,7 +35,7 @@ Let's get to work 📈
 
 ---
 ${dashboardLine}
-This intake form is part of onboarding as well — complete it before your call with Noah, so he walks in already knowing what you came here for instead of spending the call on discovery.
+${intakeFormLine}
 https://tally.so/r/KYEgkX
 
 Let us know if you have any questions along the way. Once again, make sure all the items in orange on the Follow and Track In Order are completed before you get on your call. The booking link for your 1:1 call is inside the notion.
