@@ -24,9 +24,10 @@ than broken, so the sheet is usable either way.
 ## Colour
 
 Base palette is sampled from the logo — warm pewter and graphite on near-black. Because that's
-a hueless brand and a sheet of grey numbers reads dead, **brass `#C8931A` is the chromatic
-accent**: section bands, the Target column, today's row, and the first chart series. It's the
-natural partner to pewter and reads premium rather than random.
+a hueless brand and a sheet of grey numbers reads dead, **soft sand `#D4B579` carries the
+accent**: section bands, callouts, the Target column and today's row, with `#EFE1C6` as its
+tint. Saturated brass `#C8931A` is now reserved for the chart series and the hero-tile numbers,
+where it sits on a dark fill and needs the punch.
 
 The four chart hues — brass `#C8931A`, teal `#0D8F7A`, terracotta `#C4552B`, indigo
 `#4A55A8` — were validated together for colour-blind separation (worst adjacent pair ΔE 11.2
@@ -48,10 +49,27 @@ with the palette, but never pushed toward brass.
 | 3 | **This Week** | No | What you've done, where you should be by now, ahead/behind, next week's aim — plus the "fix this first" callout. |
 | 4 | **KPI Dashboard** | No | Five hero tiles, five time windows, seven conversion rates, standards vs target, four charts. |
 | 5 | **Instagram Tracker** | Weekly + monthly | 53 weeks of follower/reach numbers with growth and quality ratios. Posts and stories auto-fill from the Daily Log. Monthly screenshot drop zone. |
+| — | **Cheat Sheet** | The ranges | What every number means, what a low one is telling you, and what to do about it. Healthy ranges live here in editable cells and drive the dashboard's colour rules. |
 | — | **Weekly Rollup** | No | Rolling last 13 weeks. Feeds the dashboard charts. |
 
 Daily standards ship at **5 reels · 5 stories · 20 opener DMs · 10 follow-up DMs**, editable
 per client on Setup.
+
+### The Cheat Sheet tab
+
+The tab that makes the rest of the sheet worth filling in. For each of the five rates: what it
+measures, what a low reading actually means, exactly what to do about it, and the trap that
+comes with a high one. Then the volume numbers, the money numbers, the Instagram numbers, and
+five traps worth knowing before someone over-reacts to one bad week.
+
+**The healthy ranges are editable cells, and they're wired in.** Floor and ceiling for each
+rate live on the Cheat Sheet (cream cells, columns C and D, rows 11–15). The KPI Dashboard
+mirrors the floor column into its own Target column and colours every rate against it — so
+changing a floor there re-grades the dashboard, with no rebuild.
+
+They ship as The Called's *working* numbers, not gospel: reply 10–25%, pitch 30–60%, book
+20–40%, show 60–85%, close 20–40%. Replace them with what you actually see across clients once
+you have the history — that's the single highest-value edit anyone can make to this sheet.
 
 ### The This Week tab
 
@@ -66,6 +84,10 @@ The Monday ritual, and the thing worth screenshotting into a coaching call.
   "good" reply rate is. Only whether *you* dropped.
 - **Two callouts at the top** — the standard you're furthest behind on, and the funnel step
   that fell furthest below your own average. Both are formulas, so they're never flattering.
+  When every standard is at or ahead of pace the first one says so rather than manufacturing a
+  problem.
+- **Aim for next week** — its own section at the bottom: the metric to protect named in a
+  sentence, then per-day and week-total targets for each standard with a one-line reason.
 
 "Next week: aim per day" nudges up 10% on anything hit and holds the standard on anything
 missed. It's a suggestion, not a rule — the standards themselves live on Setup.
@@ -81,6 +103,8 @@ missed. It's a suggestion, not a rule — the standards themselves live on Setup
 | Standards were text on the page | Standards live on Setup and drive green/red everywhere | Per-client targets, and the sheet grades the day instead of the client grading themselves. |
 | Instagram Tracker was two screenshots | **Weekly numbers** (charted) **+ the monthly screenshots** | Screenshots are a coaching artefact, not data. Both kept. |
 | Nothing rewarded consistency | **Day streak** and **perfect-day streak** on the dashboard | People protect a streak. It's the cheapest adherence mechanic there is. |
+| No way to tell a stale sheet from a bad week | **"Last entry: …"** strip under the tiles, red past three days | A CSM pulling the sheet up on a call can see in one glance whether the numbers are current before reading a single one of them. |
+| Numbers with no interpretation | **Cheat Sheet** tab | A rate nobody can read is just a number. This is what turns the sheet from a chore into a diagnostic. |
 
 Column names match the Setter EOD base vocabulary (`Total Follow Ups Sent`, `Calls Pitched`,
 `Calls Booked`, `Cash Collected`, `Revenue Generated`) so a client's numbers and a setter's
@@ -193,8 +217,8 @@ the middle in your own words. Four videos, matching the four link slots on the S
 
 ### Before you hit record
 
-1. Record from **`The_Called_Scoreboard_DEMO.xlsx`**, not the blank template — it has six weeks
-   of realistic data, so no dashboard shows a screen of zeros.
+1. Record from **`The_Called_Scoreboard_DEMO.xlsx`**, not the blank template — 17 weeks of data
+   with a real arc in it (see below), so every chart has shape and nothing reads zero.
 2. Hide the bookmarks bar, close other tabs, clean Chrome profile.
 3. Zoom to **110–125%**. Sheets text is unreadable on a phone at 100%.
 4. Have the tab you're demoing already open before you start.
@@ -235,12 +259,14 @@ the middle in your own words. Four videos, matching the four link slots on the S
 | 3 | **The work you control** table | This week so far, your target for end of today, and ahead or behind. On a Wednesday it holds you to three days of standard, not seven — so it's fair mid-week. |
 | 4 | Point at "Next week: aim per day" | Hit it, it nudges up ten percent. Miss it, it holds. Your actual standards live on Setup. |
 | 5 | **The result that follows** table | This week against last week. You'll see this move a week *after* the work moves — that lag is normal, don't panic in the middle of it. |
+| 5b | Scroll to **Aim for next week** | One line naming the thing to protect, then per-day and weekly targets. That's your Monday planning done. |
 | 6 | **KPI Dashboard** tab, hero tiles | Cash this month, percent of goal, calls booked this week, and your two streaks. |
 | 7 | Sweep the five period columns | This week, last week, this month, last month, all time. That's how you tell a trend from one good day. |
 | 8 | **Conversion Rates** — slow down here | Every one of these is a step in the chain. Low reply rate is a DM problem. Low book rate means you're getting replies and not asking. Low show rate is a confirmation problem, not a booking problem. Low close rate is the offer or the call. |
 | 9 | Point at **Cash per 100 DMs Sent** | My favourite number on the page. What a hundred DMs is worth to you in dollars. Once you know it, sending twenty more stops being a chore and starts being a decision. |
 | 10 | Standards block + Target column | Your averages against your standards. Green you're holding, red you're not. |
 | 11 | Scroll to the four charts | Last thirteen weeks. They fill in as you go. |
+| 12 | Open the **Cheat Sheet** tab | Any number on that dashboard you don't recognise, it's explained here — what it means when it's low, and exactly what to do about it. Read it once now, then come back whenever something looks wrong. |
 
 **Close with:** *"Nothing on these pages is an opinion. And if a number looks wrong, the fix is in the Daily Log — not here."*
 
@@ -283,6 +309,33 @@ the middle in your own words. Four videos, matching the four link slots on the S
 
 ---
 
+## The demo file — what's in it and how to use it
+
+`The_Called_Scoreboard_DEMO.xlsx` is 17 weeks of data built as a story, because a demo of a
+tracker full of noise proves nothing. The arc:
+
+| Weeks | What happens | What the sheet shows |
+|---|---|---|
+| 1–5 | Holding the standard, building | ~200 DMs/week, 17–20% reply rate, $2–6k weeks |
+| 6–9 | **Follow-ups collapse** — they get busy with delivery | DMs fall to ~125, reply rate drops to 12%, **four straight weeks of zero cash** |
+| 10–11 | Coach catches it, follow-ups restart | Reply rate back to 14–17%, first close in a month |
+| 12–17 | Recovery, better than the start | 220+ DMs/week, 21–23% reply rate, book rate 31–41% |
+
+The final week is deliberately awkward in a useful way: **all four standards read green, and the
+close rate still falls 36% below their own average.** That's the whole pitch in one screen —
+someone doing the work, and the sheet finding the thing quietly costing them money anyway.
+Nothing about effort would have surfaced that.
+
+The demo's dates are relative to whenever it's opened, so the dashboard, This Week and the
+streaks are always populated. Weekday alignment is set at build time, so weekends drift by a
+day for each day after the build — re-run `--demo` before a big sales push if that matters.
+
+**Using it in a sales conversation:** open This Week first (the callouts do the talking), then
+the Cheat Sheet for the rate they just asked about, then the dashboard charts for the arc.
+Don't open the Daily Log first — 366 rows of data entry is the least persuasive part of it.
+
+---
+
 ## Rollout SOP
 
 **One-time, on the master:**
@@ -294,12 +347,13 @@ the middle in your own words. Four videos, matching the four link slots on the S
    Office-compatibility file.)*
 4. Rename it **`TEMPLATE — The Scoreboard`** and delete the uploaded .xlsx.
 5. Lock the calculated ranges — **Data → Protect sheets and ranges**, each set to "Only you":
-   - `Daily Log`: columns **A:B** and **O:S**
+   - `Daily Log`: columns **A:B** and **O:T**
    - `This Week`: whole tab
    - `KPI Dashboard`: whole tab
    - `Weekly Rollup`: whole tab
    - `Instagram Tracker`: columns **A**, **C:D**, **J:M**
    - `Setup`: row 9 only
+   - `Cheat Sheet`: everything **except** C11:D15 (the healthy ranges stay editable)
 
    Copies inherit protection, so doing it once on the master covers every client.
 6. Record the four Looms and paste the links into the Start Here tab of the master.

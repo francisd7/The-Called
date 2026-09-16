@@ -17,6 +17,7 @@ Design rules that matter (don't undo them without reading this):
   * Chart palette is validated for colour-blind separation (see PALETTE notes).
 """
 
+import datetime
 import os
 import sys
 import random
@@ -46,9 +47,10 @@ PALETTE = {
     # hues below are validated together for colour-blind separation (worst
     # adjacent pair dE 11.2 deutan, normal-vision floor 21.4) — re-run
     # dataviz/scripts/validate_palette.js before changing any of them.
-    "brass":       "C8931A",  # chart series 1, section bands
-    "brass_light": "E3B341",  # brass that stays legible on the dark fill
-    "brass_soft":  "F7E4BC",  # today's row, callout backing
+    "band":        "D4B579",  # soft sand — section bands, callouts, accents
+    "band_soft":   "EFE1C6",  # tint of the same — today's row, target cells
+    "brass":       "C8931A",  # chart series 1 ONLY — charts need the saturation
+    "brass_light": "E3B341",  # brass that stays legible on the dark tiles
     "teal":        "0D8F7A",  # chart series 2
     "clay":        "C4552B",  # chart series 3
     "indigo":      "4A55A8",  # chart series 4
@@ -100,7 +102,7 @@ auto_fill = PatternFill("solid", fgColor=PALETTE["auto"])
 green = PatternFill("solid", bgColor=PALETTE["good"])
 amber = PatternFill("solid", bgColor=PALETTE["warn"])
 red = PatternFill("solid", bgColor=PALETTE["bad"])
-brass_soft = PatternFill("solid", bgColor=PALETTE["brass_soft"])
+brass_soft = PatternFill("solid", bgColor=PALETTE["band_soft"])
 
 def banner(ws, text, last_col, row=1):
     """Dark banner across the top, with left padding that the logo drops into."""
@@ -132,7 +134,7 @@ def section(ws, row, text, last_col):
     ws.merge_cells(start_row=row, start_column=1, end_row=row, end_column=last_col)
     c = ws.cell(row=row, column=1, value=text)
     c.font = Font(name=FONT, size=10, bold=True, color=PALETTE["dark"])
-    c.fill = PatternFill("solid", fgColor=PALETTE["brass"])
+    c.fill = PatternFill("solid", fgColor=PALETTE["band"])
     c.alignment = Alignment(horizontal="left", vertical="center", indent=1)
     ws.row_dimensions[row].height = 21
 
@@ -228,7 +230,7 @@ steps = [
 r = 10
 for n, tab, when, what in steps:
     c = ws.cell(row=r, column=1, value=n)
-    c.font = Font(name=FONT, size=14, bold=True, color=PALETTE["brass"])
+    c.font = Font(name=FONT, size=14, bold=True, color=PALETTE["ink"])
     c.alignment = Alignment(horizontal="center", vertical="center")
     ws.cell(row=r, column=2, value=tab).font = Font(name=FONT, size=11, bold=True, color=PALETTE["ink"])
     ws.cell(row=r, column=3, value=when).font = Font(name=FONT, size=9, color=PALETTE["muted"])
@@ -244,12 +246,18 @@ for n, tab, when, what in steps:
     ws.row_dimensions[r].height = 30
     r += 1
 
-section(ws, 16, "THE ONE THAT RUNS ITSELF", 8)
-ws["B17"] = "Weekly Rollup"
-ws["B17"].font = Font(name=FONT, size=10, bold=True)
-ws["D17"] = "Feeds the charts on the dashboard. Nothing to fill in, nothing to check. Leave it alone."
-ws["D17"].font = Font(name=FONT, size=10, color=PALETTE["muted"])
-ws.merge_cells("D17:H17")
+section(ws, 16, "REFERENCE — open these when you need them", 8)
+for i, (nm, desc) in enumerate((
+        ("Cheat Sheet", "What every number means, what a low one is telling you, and exactly what to "
+                        "do about it. Read it once, then whenever a number looks wrong."),
+        ("Weekly Rollup", "Feeds the charts on the dashboard. Nothing to fill in. Leave it alone."))):
+    rr = 17 + i
+    ws.cell(row=rr, column=2, value=nm).font = Font(name=FONT, size=10, bold=True)
+    d = ws.cell(row=rr, column=4, value=desc)
+    d.font = Font(name=FONT, size=10, color=PALETTE["muted"])
+    d.alignment = Alignment(wrap_text=True, vertical="center")
+    ws.merge_cells(start_row=rr, start_column=4, end_row=rr, end_column=8)
+    ws.row_dimensions[rr].height = 26
 
 section(ws, 19, "THE RULES — read once, saves you a headache", 8)
 rules = [
@@ -347,18 +355,18 @@ setup_row(19, "Your offer price", 0, "Optional — for your own maths.", fmt='"$
 # ================================================================ DAILY LOG
 dl = wb.create_sheet("Daily Log")
 dl.sheet_view.showGridLines = False
-banner(dl, "DAILY LOG — one row per day", 19)
+banner(dl, "DAILY LOG — one row per day", 20)
 
 lab = dl.cell(row=2, column=1, value="Your standard →")
 lab.font = Font(name=FONT, size=9, bold=True, color=PALETTE["dark"])
 lab.alignment = Alignment(horizontal="right")
-lab.fill = PatternFill("solid", fgColor=PALETTE["brass"])
-dl["B2"].fill = PatternFill("solid", fgColor=PALETTE["brass"])
+lab.fill = PatternFill("solid", fgColor=PALETTE["band"])
+dl["B2"].fill = PatternFill("solid", fgColor=PALETTE["band"])
 for c_, ref in (("C", S_REELS), ("D", S_STORIES), ("E", S_OPENER), ("F", S_FOLLOW)):
     cell = dl[f"{c_}2"]
     cell.value = f"=Setup!${ref[0]}${ref[1:]}"
     cell.font = Font(name=FONT, size=10, bold=True, color=PALETTE["dark"])
-    cell.fill = PatternFill("solid", fgColor=PALETTE["brass"])
+    cell.fill = PatternFill("solid", fgColor=PALETTE["band"])
     cell.alignment = Alignment(horizontal="center")
 dl.merge_cells("H2:P2")
 note = dl["H2"]
@@ -371,11 +379,11 @@ dl_headers = ["Date", "Day", "Reels /\nPosts", "Stories", "Opener\nDMs Sent",
               "Follow-Up\nDMs Sent", "Replies", "Calls\nPitched", "Calls\nBooked",
               "Calls\nShowed", "Closes", "Cash\nCollected", "Revenue\nGenerated",
               "Followers\n(end of day)", "Standards\nHit (of 4)", "Notes",
-              "Logged?\n(auto)", "Day\nStreak", "Perfect\nStreak"]
+              "Logged?\n(auto)", "Day\nStreak", "Perfect\nStreak", "Logged on\n(auto)"]
 header_row(dl, 3, dl_headers)
 widths(dl, {"A": 13, "B": 6, "C": 8, "D": 8, "E": 9, "F": 10, "G": 9, "H": 9, "I": 9,
             "J": 9, "K": 8, "L": 11, "M": 11, "N": 11, "O": 10, "P": 32, "Q": 8,
-            "R": 8, "S": 8})
+            "R": 8, "S": 8, "T": 12})
 dl.freeze_panes = "C4"
 
 money_cols = {"L", "M"}
@@ -414,7 +422,9 @@ for i in range(DAYS):
     dl.cell(row=r, column=19,
             value=(f'=IF(O{r}="",0,IF(O{r}=4,1,0))' if i == 0
                    else f'=IF(O{r}="",0,IF(O{r}=4,S{r-1}+1,0))'))
-    for cidx in (17, 18, 19):
+    t = dl.cell(row=r, column=20, value=f'=IF(Q{r}=1,A{r},"")')
+    t.number_format = "d mmm"
+    for cidx in (17, 18, 19, 20):
         c = dl.cell(row=r, column=cidx)
         c.fill = auto_fill
         c.font = Font(name=FONT, size=8, color=PALETTE["muted"])
@@ -455,7 +465,7 @@ dl.conditional_formatting.add(f"O{DL_FIRST}:O{DL_LAST}", FormulaRule(
     formula=[f'AND($Q{DL_FIRST}=1,$O{DL_FIRST}<2)'], fill=red,
     font=Font(name=FONT, bold=True, color=PALETTE["bad_text"]), stopIfTrue=False))
 for zone in (f"A{DL_FIRST}:B{DL_LAST}", f"G{DL_FIRST}:N{DL_LAST}",
-             f"P{DL_FIRST}:S{DL_LAST}"):
+             f"P{DL_FIRST}:T{DL_LAST}"):
     dl.conditional_formatting.add(zone, FormulaRule(
         formula=[f'$A{DL_FIRST}=TODAY()'], fill=brass_soft,
         font=Font(name=FONT, bold=True, color=PALETTE["dark"]), stopIfTrue=False))
@@ -485,11 +495,12 @@ for ref, val in helpers:
 c1 = tw["A5"]
 c1.value = ('=IF(SUM(B10:B13)=0,'
             '"Log a couple of days and this line tells you what to fix first.",'
+            'IF(MIN($F$10:$F$13)>=1,"Every standard is at or ahead of pace. Hold it — and push volume.",'
             '"Fix this first: "&INDEX($A$10:$A$13,MATCH(MIN($F$10:$F$13),$F$10:$F$13,0))'
-            '&" — you are at "&TEXT(MIN($F$10:$F$13),"0%")&" of your target for end of today.")')
+            '&" — you are at "&TEXT(MIN($F$10:$F$13),"0%")&" of your target for end of today."))')
 tw.merge_cells("A5:G5")
 c1.font = Font(name=FONT, size=12, bold=True, color=PALETTE["dark"])
-c1.fill = PatternFill("solid", fgColor=PALETTE["brass"])
+c1.fill = PatternFill("solid", fgColor=PALETTE["band"])
 c1.alignment = Alignment(horizontal="left", vertical="center", indent=1)
 tw.row_dimensions[5].height = 28
 
@@ -502,7 +513,7 @@ c2.value = ('=IF(COUNT(\'Weekly Rollup\'!$C$4:$C$16)<3,'
             '&", "&TEXT(ABS(MIN($D$27:$D$31)),"0.0%")&" below your usual.")))')
 tw.merge_cells("A6:G6")
 c2.font = Font(name=FONT, size=11, color=PALETTE["dark"])
-c2.fill = PatternFill("solid", fgColor=PALETTE["brass_soft"])
+c2.fill = PatternFill("solid", fgColor=PALETTE["band_soft"])
 c2.alignment = Alignment(horizontal="left", vertical="center", indent=1)
 tw.row_dimensions[6].height = 24
 
@@ -536,7 +547,7 @@ for i, (name, key, sref) in enumerate(work):
     tw_cell(f"E{r}", f"={s}*7", "#,##0")
     tw_cell(f"F{r}", f"=IFERROR(B{r}/C{r},0)", "0%", bold=True)
     tw_cell(f"G{r}", f"=IF(F{r}>=1,ROUND({s}*1.1,0),{s})", "#,##0",
-            fill=PatternFill("solid", fgColor=PALETTE["brass_soft"]), bold=True)
+            fill=PatternFill("solid", fgColor=PALETTE["band_soft"]), bold=True)
 
 section(tw, 15, "THE RESULT — this part follows", 7)
 header_row(tw, 16, ["Metric", "This week so far", "Last week", "Change"])
@@ -572,12 +583,40 @@ for i, (name, expr, wcol) in enumerate(rates):
     tw_cell(f"C{r}", f'=IFERROR(AVERAGE(\'Weekly Rollup\'!${wcol}$4:${wcol}$16),"")', "0.0%")
     tw_cell(f"D{r}", f'=IFERROR(B{r}-C{r},"")', "+0.0%;-0.0%;0.0%", bold=True)
 
-tw["A33"] = ("\"Next week: aim per day\" nudges up 10% on anything you hit this week, and holds "
-             "the standard on anything you didn't. It's a suggestion — your standards live on Setup.")
-tw.merge_cells("A33:G33")
-tw["A33"].font = Font(name=FONT, size=9, italic=True, color=PALETTE["muted"])
-tw["A33"].alignment = Alignment(wrap_text=True, vertical="center", indent=1)
-tw.row_dimensions[33].height = 26
+section(tw, 33, "AIM FOR NEXT WEEK", 7)
+head = tw["A34"]
+head.value = ('=IF(SUM(B10:B13)=0,"Log this week first — next week\'s aim builds off it.",'
+              '"Next week, the one to protect: "'
+              '&INDEX($A$10:$A$13,MATCH(MIN($F$10:$F$13),$F$10:$F$13,0))&" — "'
+              '&INDEX($G$10:$G$13,MATCH(MIN($F$10:$F$13),$F$10:$F$13,0))&" a day, every day.")')
+tw.merge_cells("A34:G34")
+head.font = Font(name=FONT, size=12, bold=True, color=PALETTE["dark"])
+head.fill = PatternFill("solid", fgColor=PALETTE["band_soft"])
+head.alignment = Alignment(horizontal="left", vertical="center", indent=1)
+tw.row_dimensions[34].height = 26
+
+header_row(tw, 35, ["Standard", "This week", "Per day", "Week total", "Why"])
+tw.merge_cells("E35:G35")
+for i, (name, key, sref) in enumerate(work):
+    r, src = 36 + i, 10 + i
+    label(tw, r, name, bold=True)
+    tw[f"A{r}"].border = BOX
+    tw_cell(f"B{r}", f"=B{src}", "#,##0")
+    tw_cell(f"C{r}", f"=G{src}", "#,##0",
+            fill=PatternFill("solid", fgColor=PALETTE["band_soft"]), bold=True)
+    tw_cell(f"D{r}", f"=C{r}*7", "#,##0", bold=True)
+    tw.merge_cells(f"E{r}:G{r}")
+    w = tw_cell(f"E{r}", f'=IF(F{src}>=1,"Held the line — push it 10%.",'
+                         f'"Missed it. Hold the standard and close the gap.")',
+                center=False)
+    w.font = Font(name=FONT, size=10, italic=True)
+
+tw["A41"] = ("Per day nudges up 10% on anything you hit this week and holds the standard on "
+             "anything you didn't. It's a suggestion — your actual standards live on Setup.")
+tw.merge_cells("A41:G41")
+tw["A41"].font = Font(name=FONT, size=9, italic=True, color=PALETTE["muted"])
+tw["A41"].alignment = Alignment(wrap_text=True, vertical="center", indent=1)
+tw.row_dimensions[41].height = 26
 
 for zone, good_f, bad_f in ((f"D10:D13", "D10>=0", "D10<0"),
                             (f"D17:D23", "D17>0", "D17<0"),
@@ -656,7 +695,7 @@ widths(kd, {"A": 32, "B": 13, "C": 13, "D": 13, "E": 13, "F": 13, "G": 11,
 
 lbl = kd["A5"]
 lbl.value = "AT A GLANCE"
-lbl.font = Font(name=FONT, size=10, bold=True, color=PALETTE["brass"])
+lbl.font = Font(name=FONT, size=10, bold=True, color=PALETTE["ink"])
 lbl.alignment = Alignment(horizontal="left", vertical="center", indent=1)
 
 tile(kd, 4, 2, 3, "CASH THIS MONTH", "=" + sumifs(M["cash"], "$D$10", "$D$11"), '"$"#,##0')
@@ -664,6 +703,25 @@ tile(kd, 4, 4, 5, "% OF MONTHLY GOAL", f"=IFERROR(B5/Setup!${S_GOAL[0]}${S_GOAL[
 tile(kd, 4, 6, 7, "CALLS BOOKED THIS WEEK", "=" + sumifs(M["booked"], "$B$10", "$B$11"))
 tile(kd, 4, 8, 9, "DAYS LOGGED IN A ROW", streak("R"))
 tile(kd, 4, 10, 11, "PERFECT DAYS IN A ROW", streak("S"))
+
+# CSM check: is this sheet current? Read before a call, not chased by the sheet.
+g7 = kd["G7"]
+g7.value = ('=IF(MAX(\'Daily Log\'!$T$4:$T$369)=0,-1,'
+            'TODAY()-MAX(\'Daily Log\'!$T$4:$T$369))')
+g7.font = Font(name=FONT, size=8, color=PALETTE["auto"])
+g7.alignment = Alignment(horizontal="center")
+kd.merge_cells("A7:E7")
+le = kd["A7"]
+le.value = ('="Last entry: "&IF($G$7=-1,"nothing logged yet",'
+            'IF($G$7=0,"today",IF($G$7=1,"yesterday",$G$7&" days ago")))')
+le.font = Font(name=FONT, size=10, bold=True)
+le.alignment = Alignment(horizontal="left", vertical="center", indent=1)
+kd.row_dimensions[7].height = 19
+kd.conditional_formatting.add("A7:E7", FormulaRule(
+    formula=["$G$7>3"], fill=red, font=Font(name=FONT, bold=True, color=PALETTE["bad_text"])))
+kd.conditional_formatting.add("A7:E7", FormulaRule(
+    formula=["AND($G$7>=0,$G$7<=1)"], fill=green,
+    font=Font(name=FONT, bold=True, color=PALETTE["good_text"])))
 
 periods = [("B", "This Week", "=TODAY()-WEEKDAY(TODAY(),2)+1", "=TODAY()"),
            ("C", "Last Week", "=B10-7", "=B10-1"),
@@ -722,7 +780,13 @@ metric_row(27, "Cash Collected", lambda L: sumifs(M["cash"], f"{L}$10", f"{L}$11
 metric_row(28, "Revenue Generated", lambda L: sumifs(M["revenue"], f"{L}$10", f"{L}$11"),
            fmt='"$"#,##0')
 
-section(kd, 30, "CONVERSION RATES — where you're actually leaking", 11)
+# band stops at F so the healthy-floor column keeps its own header cell
+section(kd, 30, "CONVERSION RATES — where you're actually leaking", 6)
+hf = kd["G30"]
+hf.value = "Healthy\nfloor"
+hf.font = Font(name=FONT, size=8, bold=True, color="FFFFFF")
+hf.fill = PatternFill("solid", fgColor=PALETTE["dark"])
+hf.alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
 rate_rows = [(31, "Reply Rate (replies ÷ DMs sent)", "20", "19", "0.0%"),
              (32, "Pitch Rate (pitched ÷ replies)", "23", "20", "0.0%"),
              (33, "Book Rate (booked ÷ pitched)", "24", "23", "0.0%"),
@@ -732,6 +796,22 @@ rate_rows = [(31, "Reply Rate (replies ÷ DMs sent)", "20", "19", "0.0%"),
              (37, "Cash per Call Booked", "27", "24", '"$"#,##0')]
 for row, lbl_text, num, den, fmt in rate_rows:
     metric_row(row, lbl_text, lambda L, n=num, d=den: f'IFERROR({L}{n}/{L}{d},"")', fmt=fmt)
+# floors mirrored onto this tab: Google Sheets conditional formatting cannot
+# reach across tabs, and these are the numbers the colour rules compare against
+for i, row in enumerate(range(31, 36)):
+    g = kd[f"G{row}"]
+    g.value = f"='Cheat Sheet'!$C${11 + i}"   # floors live in col C, rows 11-15
+    g.number_format = "0%"
+    g.font = Font(name=FONT, size=10, bold=True, color=PALETTE["ink"])
+    g.alignment = Alignment(horizontal="center")
+    g.fill = PatternFill("solid", fgColor=PALETTE["band_soft"])
+    g.border = BOX
+kd.conditional_formatting.add("B31:F35", FormulaRule(
+    formula=['AND(B31<>"",B31>=$G31)'], fill=green,
+    font=Font(name=FONT, bold=True, color=PALETTE["good_text"])))
+kd.conditional_formatting.add("B31:F35", FormulaRule(
+    formula=['AND(B31<>"",B31<$G31)'], fill=red,
+    font=Font(name=FONT, bold=True, color=PALETTE["bad_text"])))
 metric_row(38, "Cash per 100 DMs Sent", lambda L: f'IFERROR({L}27/{L}19*100,"")',
            fmt='"$"#,##0', bold=True)
 kd["A38"].comment = Comment(
@@ -755,7 +835,7 @@ for row, lbl_text, mrow, sref in ((41, "Avg Reels / day", "15", S_REELS),
     g.number_format = "0.0"
     g.font = Font(name=FONT, size=10, bold=True, color=PALETTE["dark"])
     g.alignment = Alignment(horizontal="center")
-    g.fill = PatternFill("solid", fgColor=PALETTE["brass_soft"])
+    g.fill = PatternFill("solid", fgColor=PALETTE["band_soft"])
     g.border = BOX
 metric_row(45, "Perfect Days (all 4 standards hit)",
            lambda L: (f'COUNTIFS({DATES},">="&{L}$10,{DATES},"<="&{L}$11,{col("O")},4)'))
@@ -870,14 +950,14 @@ for i, s in enumerate([
     c.font = Font(name=FONT, size=10)
     c.alignment = Alignment(horizontal="left", indent=1)
 
-drop_border = Border(*(Side(style="medium", color=PALETTE["brass"]),) * 4)
+drop_border = Border(*(Side(style="medium", color=PALETTE["band"]),) * 4)
 for start_c, end_c, title in ((1, 5, "PROFILE SCREENSHOT"), (7, 11, "INSIGHTS SCREENSHOT")):
     t = ig.cell(row=9, column=start_c, value=title)
-    t.font = Font(name=FONT, size=9, bold=True, color=PALETTE["brass"])
+    t.font = Font(name=FONT, size=9, bold=True, color=PALETTE["ink"])
     ig.merge_cells(start_row=10, start_column=start_c, end_row=16, end_column=end_c)
     box = ig.cell(row=10, column=start_c, value="drop image here")
     box.font = Font(name=FONT, size=10, italic=True, color=PALETTE["muted"])
-    box.fill = PatternFill("solid", fgColor=PALETTE["brass_soft"])
+    box.fill = PatternFill("solid", fgColor=PALETTE["band_soft"])
     box.alignment = Alignment(horizontal="center", vertical="center")
     for rr in range(10, 17):
         for cc in range(start_c, end_c + 1):
@@ -957,73 +1037,320 @@ ig["J19"].comment = Comment(
     "Posts and Stories fill in automatically from your Daily Log — don't type here.",
     "The Called")
 
+# ================================================================ CHEAT SHEET
+cs = wb.create_sheet("Cheat Sheet")
+cs.sheet_view.showGridLines = False
+widths(cs, {"A": 24, "B": 104, "C": 14, "D": 16})
+banner(cs, "CHEAT SHEET — what your numbers are telling you", 4)
+subtitle(cs, "Every number in this sheet has one job: to tell you which single thing to fix next.", 4)
+
+section(cs, 4, "HOW TO READ YOUR NUMBERS", 4)
+intro = [
+    "Your business is a chain. Content gets you seen. Stories build trust. Opener DMs start "
+    "conversations. Follow-ups rescue the ones that stalled. Replies become pitches, pitches "
+    "become booked calls, booked calls become clients.",
+    "Every link has a rate. When the money is down, one link broke — and the rates tell you "
+    "exactly which one. That is the entire point of this sheet: stop guessing, fix one thing.",
+    "Rule of thumb: fix the earliest broken link first. Working on your close rate while your "
+    "reply rate is broken just means closing a smaller number of people.",
+]
+r = 5
+for t in intro:
+    c = cs.cell(row=r, column=2, value=t)
+    c.font = Font(name=FONT, size=10)
+    c.alignment = Alignment(wrap_text=True, vertical="top")
+    cs.row_dimensions[r].height = 28
+    r += 1
+
+section(cs, 9, "HEALTHY RANGES — edit these as you learn what's true for your clients", 4)
+header_row(cs, 10, ["Rate", "What it's measuring", "Healthy\nfloor", "Healthy\nceiling"])
+ranges = [
+    ("Reply rate", "Replies ÷ DMs sent — whether your opener is worth answering.", 0.10, 0.25),
+    ("Pitch rate", "Calls pitched ÷ replies — whether you actually make the ask.", 0.30, 0.60),
+    ("Book rate", "Calls booked ÷ pitched — whether the ask lands.", 0.20, 0.40),
+    ("Show rate", "Calls showed ÷ booked — whether the booking was real.", 0.60, 0.85),
+    ("Close rate", "Closes ÷ showed — whether the offer and the call work.", 0.20, 0.40),
+]
+for i, (name, what, lo, hi) in enumerate(ranges):
+    r = 11 + i
+    label(cs, r, name, bold=True)
+    cs[f"A{r}"].border = BOX
+    w = cs.cell(row=r, column=2, value=what)
+    w.font = Font(name=FONT, size=10)
+    w.alignment = Alignment(vertical="center", indent=1)
+    w.border = BOX
+    for cidx, v in ((3, lo), (4, hi)):
+        c = cs.cell(row=r, column=cidx, value=v)
+        c.number_format = "0%"
+        c.font = Font(name=FONT, size=11, bold=True)
+        c.fill = input_fill
+        c.border = BOX
+        c.alignment = Alignment(horizontal="center")
+    cs.row_dimensions[r].height = 20
+
+n = cs.cell(row=16, column=2, value=(
+    "These are The Called's working numbers, not gospel — they are cream cells because they are "
+    "yours to change. The KPI Dashboard colours your rates against the FLOOR column: edit a "
+    "floor here and the dashboard re-grades itself. Once you have enough client history, "
+    "replace these with what you actually see."))
+n.font = Font(name=FONT, size=9, italic=True, color=PALETTE["muted"])
+n.alignment = Alignment(wrap_text=True, vertical="top")
+cs.row_dimensions[16].height = 32
+
+
+def block(row, title, items):
+    """One metric: a banded title, then label/explanation pairs."""
+    cs.merge_cells(start_row=row, start_column=1, end_row=row, end_column=2)
+    t = cs.cell(row=row, column=1, value=title)
+    t.font = Font(name=FONT, size=11, bold=True, color=PALETTE["dark"])
+    t.fill = PatternFill("solid", fgColor=PALETTE["band_soft"])
+    t.alignment = Alignment(horizontal="left", vertical="center", indent=1)
+    cs.row_dimensions[row].height = 20
+    r = row + 1
+    for lbl_text, text in items:
+        lc = cs.cell(row=r, column=1, value=lbl_text)
+        lc.font = Font(name=FONT, size=9, bold=True,
+                       color=PALETTE["bad_text"] if "low" in lbl_text.lower()
+                       else PALETTE["good_text"] if "high" in lbl_text.lower()
+                       else PALETTE["ink"])
+        lc.alignment = Alignment(horizontal="right", vertical="top", indent=1)
+        tc = cs.cell(row=r, column=2, value=text)
+        tc.font = Font(name=FONT, size=10)
+        tc.alignment = Alignment(wrap_text=True, vertical="top")
+        cs.row_dimensions[r].height = max(16, (len(text) // 100 + 1) * 13 + 4)
+        r += 1
+    return r + 1
+
+
+section(cs, 18, "THE FIVE RATES — where the money actually leaks", 4)
+r = 19
+r = block(r, "REPLY RATE — replies ÷ DMs sent", [
+    ("Measures", "Whether your opener is worth answering. Nothing downstream can beat this number."),
+    ("If it's low", "Your opener reads like a pitch, or you're messaging people who have never seen you. Cold list, or a first line about you instead of them."),
+    ("Do this", "Rewrite the first line so it's about them — something specific from their profile or content. Warm the list first: watch stories, reply to posts for 2–3 days before the DM. Change ONE thing and give it 50 DMs before you judge it."),
+    ("If it's high", "Good — but check your pitch rate. A high reply rate with a low pitch rate means you're being liked, not hired. Pleasant conversations are not pipeline."),
+])
+r = block(r, "PITCH RATE — calls pitched ÷ replies", [
+    ("Measures", "Whether you actually ask. This is the most common place the whole thing quietly dies."),
+    ("If it's low", "You're chatting. Either you're scared of the ask, or you don't have a clean line to get from conversation to call."),
+    ("Do this", "Decide the ask before you open the conversation. Two exchanges, then transition. Write one transition line, save it, use it every time until it feels boring."),
+    ("If it's high", "Check your book rate. If you're pitching almost everyone and few are booking, you're asking before you've earned it."),
+])
+r = block(r, "BOOK RATE — calls booked ÷ pitched", [
+    ("Measures", "Whether the ask lands when you make it."),
+    ("If it's low", "Three usual causes: asking too early, an unclear offer, or pitching people who were never going to buy."),
+    ("Do this", "Qualify before you ask — do they actually have the problem you solve, and can they pay? Make the call sound like a specific outcome, not \"a quick chat\". Offer two times, not an open calendar."),
+    ("If it's high", "Your ask works. The bottleneck is upstream — send more DMs."),
+])
+r = block(r, "SHOW RATE — calls showed ÷ booked", [
+    ("Measures", "Whether the booking was real. This is a confirmation problem, almost never a booking problem."),
+    ("If it's low", "Most no-shows booked in a moment of interest and then forgot. The gap between booking and call is where it died."),
+    ("Do this", "Book inside 48 hours — the further out, the colder. Confirm within an hour of booking and ask them to reply. Remind 24 hours before and the morning of. A confirmation they don't reply to isn't a confirmation."),
+    ("If it's high", "Your bookings are real. Push volume upstream."),
+])
+r = block(r, "CLOSE RATE — closes ÷ showed", [
+    ("Measures", "The offer and the call itself — but only for the people who actually turned up."),
+    ("If it's low", "Check book rate first. High book rate plus low close rate is a qualification problem, not a closing problem — you're booking the wrong people, and no call script fixes that. If qualification is fine, it's the call structure or the price framing."),
+    ("Do this", "Fix who's showing up before you fix the call. Then: diagnose longer before you present, and get the money objection on the table early rather than at the end."),
+    ("If it's high", "Your offer works and the right people are showing. Every extra DM is now worth real money — look at Cash per 100 DMs and act on it."),
+])
+
+section(cs, r, "THE VOLUME NUMBERS — the inputs you control", 4)
+r += 1
+r = block(r, "REELS / POSTS", [
+    ("What it does", "Gets you in front of people who've never heard of you, and gives your DMs a reason to be answered."),
+    ("If it's low", "Your DM volume has to do all the work, and your reply rate usually drops a week or two later."),
+    ("Do this", "Batch film. Content volume is a scheduling problem, not a creativity problem."),
+])
+r = block(r, "STORIES", [
+    ("What it does", "The trust layer. Stories are why someone recognises your name when your DM lands."),
+    ("If it's low", "Watch your reply rate about a week later — this is usually where a reply-rate drop starts."),
+    ("Do this", "Post through the day, not in one block. Behind the scenes, client wins, opinions. Low effort, high frequency."),
+])
+r = block(r, "OPENER DMS", [
+    ("What it does", "The single biggest lever on how many calls you book. Everything downstream is a percentage of this number."),
+    ("If it's low", "Nothing else matters much. A great reply rate on 5 DMs a day is still no pipeline."),
+    ("Do this", "Same time, every day, before anything else. Volume first, then optimise the opener."),
+])
+r = block(r, "FOLLOW-UP DMS", [
+    ("What it does", "Where most of the money is. Most replies come on the second or third touch, not the first."),
+    ("If it's low", "You're paying full price for leads and abandoning them. This is the cheapest fix in the whole sheet."),
+    ("Do this", "Every unanswered opener gets a follow-up 48 hours later, and another 4 days after that. Add value, don't just bump."),
+])
+r = block(r, "REPLIES", [
+    ("What it is", "An outcome, not an input. You don't control replies — you control DMs sent and how good the opener is."),
+    ("If it's low", "Don't try to fix replies. Fix the opener (reply rate) or the volume (opener DMs)."),
+])
+
+section(cs, r, "THE MONEY NUMBERS", 4)
+r += 1
+r = block(r, "CASH PER CALL BOOKED", [
+    ("What it is", "What one booked call is worth to you on average, including the ones that don't close."),
+    ("Use it", "Multiply it by the calls you didn't book this week. That's what the missed follow-ups cost you — in dollars, not vibes."),
+])
+r = block(r, "CASH PER 100 DMS SENT", [
+    ("What it is", "The number that turns your daily standard into a decision instead of a chore."),
+    ("Use it", "If 100 DMs is worth $1,200 to you, then 20 more DMs today is worth $240. That's the whole argument for hitting the standard."),
+])
+r = block(r, "CASH COLLECTED vs REVENUE GENERATED", [
+    ("What it is", "Revenue is what they agreed to pay. Cash is what actually landed in your account."),
+    ("If there's a gap", "You're running payment plans, or you have unpaid invoices. Neither is wrong — but manage cash off the cash number, never the revenue number."),
+])
+
+section(cs, r, "THE INSTAGRAM NUMBERS", 4)
+r += 1
+r = block(r, "FOLLOWERS", [
+    ("What it is", "The least useful number on the page. Followers only matter if reach and DMs move with them."),
+    ("Watch instead", "Accounts reached, and new followers per 1,000 reached."),
+])
+r = block(r, "ACCOUNTS REACHED", [
+    ("What it is", "How many people actually saw you this week. This is the real top of your funnel."),
+    ("If it's falling", "Post more, or post differently — reach follows volume and hooks far more than it follows follower count."),
+])
+r = block(r, "NEW FOLLOWERS PER 1,000 REACHED", [
+    ("What it is", "The quality number. How many people who saw you thought you were worth following."),
+    ("If it's falling while reach rises", "You're being shown to the wrong people. That's a hook and positioning problem — a viral reel that brings the wrong audience makes your DMs worse, not better."),
+])
+
+section(cs, r, "FIVE TRAPS", 4)
+r += 1
+traps = [
+    "One week is not a trend. Three weeks minimum before you change strategy off a number.",
+    "A low close rate with a high book rate is a qualification problem, not a closing problem.",
+    "Cash lags the work by two to four weeks. Don't panic in the middle of the lag — look at the activity numbers instead, they move first.",
+    "Blank is not zero. A blank day tells the sheet you didn't track; a zero tells it you didn't work. Only one of those is honest.",
+    "Don't fix two things at once. You'll never know which one worked, and you'll keep doing both forever.",
+]
+for i, t in enumerate(traps):
+    c = cs.cell(row=r + i, column=1, value=f"{i + 1}.")
+    c.font = Font(name=FONT, size=11, bold=True, color=PALETTE["ink"])
+    c.alignment = Alignment(horizontal="right", vertical="top", indent=1)
+    tc = cs.cell(row=r + i, column=2, value=t)
+    tc.font = Font(name=FONT, size=10)
+    tc.alignment = Alignment(wrap_text=True, vertical="top")
+    cs.row_dimensions[r + i].height = max(18, (len(t) // 100 + 1) * 13 + 5)
+
 # ================================================================ finish
 order = ["Start Here", "Setup", "Daily Log", "This Week", "KPI Dashboard",
-         "Instagram Tracker", "Weekly Rollup"]
+         "Instagram Tracker", "Cheat Sheet", "Weekly Rollup"]
 wb._sheets = [wb[n] for n in order]
 for n in order:
     wb[n].sheet_properties.tabColor = (
         PALETTE["tab_input"] if n in ("Setup", "Daily Log", "Instagram Tracker")
-        else PALETTE["brass"] if n == "This Week"
+        else PALETTE["ink"] if n == "Cheat Sheet"
+        else PALETTE["band"] if n == "This Week"
         else PALETTE["dark"])
 wb.active = 0
 
 DEMO = "--demo" in sys.argv
-DEMO_DAYS = 45
+DEMO_WEEKS = 17
+DEMO_DAYS = DEMO_WEEKS * 7
+
+
+def demo_phase(week):
+    """A story, not noise: a solid start, follow-ups collapse and take booked calls
+    with them, then a fix and a recovery. Every chart gets shape, and the
+    'fix this first' callout fires on a cause you can actually point at."""
+    if week <= 4:                      # finding their feet, holding the standard
+        return dict(reels=(5, 7), stories=(5, 7), opener=(20, 26), follow=(10, 13),
+                    reply=0.19, pitch=0.55, book=0.31, show=0.74, close=0.27)
+    if week <= 8:                      # follow-ups collapse — everything downstream follows
+        return dict(reels=(4, 6), stories=(3, 5), opener=(18, 24), follow=(1, 4),
+                    reply=0.11, pitch=0.44, book=0.21, show=0.63, close=0.21)
+    if week <= 10:                     # caught it, starting to fix it
+        return dict(reels=(5, 7), stories=(4, 6), opener=(20, 25), follow=(6, 9),
+                    reply=0.15, pitch=0.50, book=0.26, show=0.70, close=0.24)
+    if week < DEMO_WEEKS - 1:
+        return dict(reels=(6, 8), stories=(5, 7), opener=(23, 29), follow=(11, 15),
+                    reply=0.21, pitch=0.59, book=0.35, show=0.78, close=0.30)
+    # final week: the work is up but the book rate quietly fell. This is the
+    # story worth demoing — the standards all read green and the sheet still
+    # finds the thing costing them money.
+    return dict(reels=(6, 8), stories=(5, 7), opener=(23, 29), follow=(11, 15),
+                reply=0.21, pitch=0.57, book=0.16, show=0.76, close=0.28)
+
 
 if DEMO:
-    rnd = random.Random(7)
+    rnd = random.Random(11)
     st["C5"] = "Demo Client"
     st["C6"] = "Francis"
     st["C7"] = "@democlient"
-    st["C8"] = f"=TODAY()-{DEMO_DAYS}"
+    st["C8"] = f"=TODAY()-{DEMO_DAYS - 1}"   # last row lands on TODAY
+    first_day = datetime.date.today() - datetime.timedelta(days=DEMO_DAYS - 1)
 
     followers = 3180
     prev_booked = 0
+    blank_days = {38, 73}
+
+    def jitter(x, spread=0.35):
+        return max(0, int(round(x * (1 + rnd.uniform(-spread, spread)))))
+
     for i in range(DEMO_DAYS):
         r = DL_FIRST + i
-        light = i % 7 in (5, 6)
-        blank_day = i in (16, 31)
-        if blank_day:
-            vals = dict(reels=0, stories=0, opener=0, follow=0, replies=0, pitched=0,
-                        booked=0, showed=0, closes=0, cash=0, revenue=0)
-        elif light:
-            vals = dict(reels=rnd.randint(2, 3), stories=rnd.randint(1, 3),
-                        opener=rnd.randint(10, 15), follow=rnd.randint(3, 6),
-                        replies=rnd.randint(1, 4), pitched=rnd.randint(0, 2),
-                        booked=rnd.randint(0, 1), showed=0, closes=0, cash=0, revenue=0)
+        ph = demo_phase(i // 7)
+        weekend = (first_day + datetime.timedelta(days=i)).weekday() >= 5
+        if i in blank_days:
+            vals = {k: 0 for k in ("reels", "stories", "opener", "follow", "replies",
+                                   "pitched", "booked", "showed", "closes", "cash", "revenue")}
         else:
-            vals = dict(reels=rnd.randint(6, 8), stories=rnd.randint(4, 6),
-                        opener=rnd.randint(21, 28), follow=rnd.randint(8, 12),
-                        replies=rnd.randint(4, 8), pitched=rnd.randint(2, 5),
-                        booked=rnd.randint(0, 2), showed=0, closes=0, cash=0, revenue=0)
-        if i >= DEMO_DAYS - 3 and not blank_day and not light:
-            # finish the demo on a run of perfect days — a zero streak tile
-            # is a bad advert for the feature in the walkthrough video
-            vals["stories"] = max(vals["stories"], 6)
-            vals["follow"] = max(vals["follow"], 11)
-        vals["showed"] = prev_booked if rnd.random() > 0.28 else max(0, prev_booked - 1)
+            scale = 0.35 if weekend else 1.0
+            vals = {}
+            for key in ("reels", "stories", "opener", "follow"):
+                lo, hi = ph[key]
+                vals[key] = max(0, int(round(rnd.randint(lo, hi) * scale)))
+            dms = vals["opener"] + vals["follow"]
+            vals["replies"] = jitter(dms * ph["reply"])
+            vals["pitched"] = jitter(vals["replies"] * ph["pitch"])
+            vals["booked"] = jitter(vals["pitched"] * ph["book"])
+            vals["showed"] = 0
+            vals["closes"] = 0
+            vals["cash"] = 0
+            vals["revenue"] = 0
+        # calls booked yesterday show up (or don't) today — a real show rate
+        vals["showed"] = min(prev_booked,
+                             sum(1 for _ in range(prev_booked) if rnd.random() < ph["show"]))
         prev_booked = vals["booked"]
-        if vals["showed"] > 0 and rnd.random() < 0.34:
-            vals["closes"] = 1
-            vals["cash"] = rnd.choice([1500, 2000, 3000])
-            vals["revenue"] = vals["cash"] + rnd.choice([0, 0, 1500])
-        followers += 0 if blank_day else rnd.randint(6, 28)
+        for _ in range(vals["showed"]):
+            if rnd.random() < ph["close"]:
+                vals["closes"] += 1
+                amount = rnd.choice([1500, 2000, 2000, 3000])
+                vals["cash"] += amount
+                vals["revenue"] += amount + rnd.choice([0, 0, 1500])
+        if i >= DEMO_DAYS - 3 and i not in blank_days:
+            # finish on a run of perfect days so the streak tile isn't a zero on camera
+            vals["reels"] = max(vals["reels"], 6)
+            vals["stories"] = max(vals["stories"], 6)
+            vals["opener"] = max(vals["opener"], 22)
+            vals["follow"] = max(vals["follow"], 11)
+        followers += 0 if i in blank_days else rnd.randint(
+            4 if 5 <= i // 7 <= 8 else 9, 14 if 5 <= i // 7 <= 8 else 32)
         for key, letter in M.items():
             if key == "followers":
                 continue
             dl[f"{letter}{r}"] = vals[key]
         dl[f"N{r}"] = followers
-    dl["P4"] = "First week — found my footing"
-    dl[f"P{DL_FIRST + 16}"] = "Travel day, no work done"
+    dl["P4"] = "First week — finding the rhythm"
+    dl[f"P{DL_FIRST + 35}"] = "Slipping on follow-ups, got busy with delivery"
+    dl[f"P{DL_FIRST + 38}"] = "Travel day, nothing done"
+    dl[f"P{DL_FIRST + 70}"] = "Coach flagged follow-ups on our call — fixing it"
+    dl[f"P{DL_FIRST + 84}"] = "Back on follow-ups properly this week"
 
-    for i, row in enumerate([(3180, 9800, 480, 310, 78, 22), (3268, 12400, 620, 395, 95, 31),
-                             (3351, 11100, 540, 350, 88, 26), (3452, 14600, 710, 430, 112, 38),
-                             (3530, 10250, 505, 322, 81, 24), (3641, 15800, 780, 468, 124, 41)]):
-        r = IG_FIRST + i
-        for letter, v in zip(("B", "E", "F", "G", "H", "I"), row):
-            ig[f"{letter}{r}"] = v
-    ig[f"N{IG_FIRST + 4}"] = "Posted less — reach dropped with it"
+    # Instagram: reach sags through the slump, then climbs past where it started
+    reach_arc = [9800, 11200, 12600, 13900, 15200, 11000, 9400, 8600, 9100,
+                 11800, 13200, 15600, 17400, 19100, 21000, 23500, 26800]
+    fol = 3180
+    for w, reach in enumerate(reach_arc):
+        r = IG_FIRST + w
+        gain = int(reach * rnd.uniform(0.006, 0.009))
+        ig[f"B{r}"] = fol + gain
+        ig[f"E{r}"] = reach
+        ig[f"F{r}"] = int(reach * rnd.uniform(0.045, 0.055))
+        ig[f"G{r}"] = int(reach * rnd.uniform(0.028, 0.034))
+        ig[f"H{r}"] = gain
+        ig[f"I{r}"] = int(reach * rnd.uniform(0.002, 0.003))
+        fol += gain
+    ig[f"N{IG_FIRST + 6}"] = "Posted less this month — reach went with it"
+    ig[f"N{IG_FIRST + 11}"] = "Back to 5 a day, reach recovering"
 
 out = ("docs/The_Called_Scoreboard_DEMO.xlsx" if DEMO
        else "docs/The_Called_Scoreboard.xlsx")
