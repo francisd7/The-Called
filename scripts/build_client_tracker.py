@@ -737,8 +737,8 @@ if DEMO:
                         booked=rnd.randint(0, 1), showed=0, closes=0,
                         cash=0, revenue=0)
         else:
-            vals = dict(reels=rnd.randint(3, 5), stories=rnd.randint(28, 36),
-                        opener=rnd.randint(9, 14), follow=rnd.randint(9, 13),
+            vals = dict(reels=rnd.randint(4, 6), stories=rnd.randint(28, 36),
+                        opener=rnd.randint(11, 16), follow=rnd.randint(9, 13),
                         replies=rnd.randint(3, 7), pitched=rnd.randint(2, 4),
                         booked=rnd.randint(0, 2), showed=0, closes=0,
                         cash=0, revenue=0)
