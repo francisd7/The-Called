@@ -8,7 +8,7 @@ Rule of thumb: fix the earliest broken link first. Working on your close rate wh
 
 ## The five rates at a glance
 
-| Rate | Formula | The bar | Red below | What it measures |
+| Rate | Formula | The Called standard | Red below | What it measures |
 | --- | --- | --- | --- | --- |
 | **Reply rate** | Replies ÷ DMs sent | 50% | 15% | Whether your opener is worth answering. Nothing downstream can beat this number. |
 | **Pitch rate** | Calls pitched ÷ replies | 25% | 15% | Whether you actually ask. This is the most common place the whole thing quietly dies. |
@@ -16,7 +16,9 @@ Rule of thumb: fix the earliest broken link first. Working on your close rate wh
 | **Show rate** | Calls showed ÷ booked | 70% | 50% | Whether the booking was real. This is a confirmation problem, almost never a booking problem. |
 | **Close rate** | Closes ÷ showed | 40% | 15% | The offer and the call itself — but only for the people who actually turned up. |
 
-*Two numbers, two meanings. **The bar** is what we push you towards — hit it and your dashboard goes green. **Red below** is where something is actually broken. In between you are amber: working, not there yet. That is most people most of the time, and it is not a failure. Both live in editable cells on the Cheat Sheet tab of your Scoreboard, and your coach can tune them to you.*
+*Two numbers, two meanings. **The standard** is what we push you towards — hit it and your dashboard goes green. **Red below** is where something is actually broken. In between you are amber: working, not there yet. That is most people most of the time, and it is not a failure.*
+
+> **Your own numbers live on your Scoreboard, and they are the ones that count.** The figures above are The Called's standard. Your coach can set different ones for you — on the Cheat Sheet tab of your own sheet, columns C and D. If those differ from this page, yours win.
 
 ## Diagnosing a rate
 

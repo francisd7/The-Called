@@ -1303,16 +1303,19 @@ def notion_cheat_sheet(path):
     L = ["# Reading Your Scoreboard", ""]
     L += [esc(p_) + "\n" for p_ in INTRO]
     L += ["## The five rates at a glance", "",
-          "| Rate | Formula | The bar | Red below | What it measures |",
+          "| Rate | Formula | The Called standard | Red below | What it measures |",
           "| --- | --- | --- | --- | --- |"]
     for x in RATES:
         L.append(f'| **{x["name"]}** | {x["formula"]} | {x["bar"]:.0%} | {x["needs_work"]:.0%} '
                  f'| {esc(x["measures"])} |')
-    L += ["", "*Two numbers, two meanings. **The bar** is what we push you towards — hit it and "
-              "your dashboard goes green. **Red below** is where something is actually broken. "
-              "In between you are amber: working, not there yet. That is most people most of the "
-              "time, and it is not a failure. Both live in editable cells on the Cheat Sheet tab "
-              "of your Scoreboard, and your coach can tune them to you.*", "",
+    L += ["", "*Two numbers, two meanings. **The standard** is what we push you towards — hit it "
+              "and your dashboard goes green. **Red below** is where something is actually "
+              "broken. In between you are amber: working, not there yet. That is most people "
+              "most of the time, and it is not a failure.*", "",
+          "> **Your own numbers live on your Scoreboard, and they are the ones that count.** "
+          "The figures above are The Called's standard. Your coach can set different ones for "
+          "you — on the Cheat Sheet tab of your own sheet, columns C and D. If those differ "
+          "from this page, yours win.", "",
           "## Diagnosing a rate", "",
           "| Rate | If it's low, it usually means | Do this | If it's high |",
           "| --- | --- | --- | --- |"]
