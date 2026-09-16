@@ -237,22 +237,25 @@ test/                  unit tests (node:test, no network calls)
 docs/
   Automation_Hub_Blueprint.md   the original blueprint this hub implements
   STATUS.md                     what's built vs. pending, and why
-  Client_Tracker.md             client tracker: Notion copy, Loom scripts, rollout SOP
-  The_Called_Client_Tracker.xlsx        the tracker template itself
-  The_Called_Client_Tracker_DEMO.xlsx   same sheet with sample data, for recording videos
+  Scoreboard.md                 The Scoreboard: Notion copy, Loom scripts, rollout SOP
+  The_Called_Scoreboard.xlsx        the client template itself
+  The_Called_Scoreboard_DEMO.xlsx   same sheet with sample data, for recording videos
+  assets/the-called-logo.png    logo used in every tab banner (drop it here)
 scripts/
-  build_client_tracker.py       regenerates both tracker workbooks
+  build_scoreboard.py           regenerates both workbooks
 ```
 
-## Client tracker (not part of the server)
+## The Scoreboard (not part of the server)
 
-The client-facing tracking dashboards that replace the Notion versions live in
-`docs/`. They don't run on this server and nothing here reads them — they're
-checked in so the team has one source of truth for the template, the Notion
-page copy and the Loom scripts. Start at
-[`docs/Client_Tracker.md`](docs/Client_Tracker.md). To change the workbook, edit
-`scripts/build_client_tracker.py` (brand colours are the `PALETTE` dict at the
-top) and re-run it — don't hand-edit the .xlsx, it'll be overwritten.
+The client-facing tracking sheet that replaces the Notion dashboards lives in
+`docs/`. It doesn't run on this server and nothing here reads it — it's checked
+in so the team has one source of truth for the template, the Notion page copy
+and the Loom scripts. Start at [`docs/Scoreboard.md`](docs/Scoreboard.md).
+
+To change the workbook, edit `scripts/build_scoreboard.py` (brand colours are
+the `PALETTE` dict at the top) and re-run it — don't hand-edit the .xlsx, it
+gets overwritten. The logo is picked up automatically from
+`docs/assets/the-called-logo.png` when that file exists.
 
 To add a future automation onto this same server, add a module under
 `src/automations/` exporting `key`, `tableId`, and `formatMessage(record)`, then
