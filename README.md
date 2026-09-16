@@ -237,7 +237,22 @@ test/                  unit tests (node:test, no network calls)
 docs/
   Automation_Hub_Blueprint.md   the original blueprint this hub implements
   STATUS.md                     what's built vs. pending, and why
+  Client_Tracker.md             client tracker: Notion copy, Loom scripts, rollout SOP
+  The_Called_Client_Tracker.xlsx        the tracker template itself
+  The_Called_Client_Tracker_DEMO.xlsx   same sheet with sample data, for recording videos
+scripts/
+  build_client_tracker.py       regenerates both tracker workbooks
 ```
+
+## Client tracker (not part of the server)
+
+The client-facing tracking dashboards that replace the Notion versions live in
+`docs/`. They don't run on this server and nothing here reads them — they're
+checked in so the team has one source of truth for the template, the Notion
+page copy and the Loom scripts. Start at
+[`docs/Client_Tracker.md`](docs/Client_Tracker.md). To change the workbook, edit
+`scripts/build_client_tracker.py` (brand colours are the `PALETTE` dict at the
+top) and re-run it — don't hand-edit the .xlsx, it'll be overwritten.
 
 To add a future automation onto this same server, add a module under
 `src/automations/` exporting `key`, `tableId`, and `formatMessage(record)`, then
