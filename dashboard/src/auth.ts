@@ -17,8 +17,21 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     async signIn({ user }) {
       const email = user.email?.toLowerCase();
       if (!email) return false;
+
       const row = await db.query.users.findFirst({ where: eq(users.email, email) });
-      return Boolean(row?.active);
+      if (!row) {
+        // Logged because the browser only ever shows a generic "Access Denied":
+        // Auth.js deliberately won't tell an untrusted visitor why. Without
+        // this, working out that someone used the wrong Google account means
+        // guessing.
+        console.warn(`Sign-in rejected: ${email} is not in the users table.`);
+        return false;
+      }
+      if (!row.active) {
+        console.warn(`Sign-in rejected: ${email} exists but is not active (${row.role}).`);
+        return false;
+      }
+      return true;
     },
     async jwt({ token }) {
       const email = token.email?.toLowerCase();

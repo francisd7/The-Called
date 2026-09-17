@@ -9,8 +9,12 @@ import { offers, optionSets, users } from '../db/schema';
  * a placeholder simply means that person can't get in yet - it's never a
  * security hole, and it never overwrites a real address once one is set.
  */
+// ADMIN_EMAIL lets the first admin be set without a code change - useful when
+// the Google account someone actually signs in with isn't the one assumed here.
+const ADMIN_EMAIL = (process.env.ADMIN_EMAIL ?? 'francisduong7@gmail.com').trim().toLowerCase();
+
 const PEOPLE = [
-  { email: 'francisduong7@gmail.com', name: 'Francis', role: 'admin' as const, active: true },
+  { email: ADMIN_EMAIL, name: process.env.ADMIN_NAME ?? 'Francis', role: 'admin' as const, active: true },
   { email: 'CHANGEME.loui@example.com', name: 'Loui', role: 'setter' as const, active: true },
   { email: 'CHANGEME.alexis@example.com', name: 'Alexis', role: 'setter' as const, active: true },
   // Closers get a row so bookings can be attributed to them, but no sign-in:
@@ -92,5 +96,5 @@ export async function seedBaseline() {
     await db.insert(optionSets).values({ kind, value, label, sortOrder: i++ }).onConflictDoNothing();
   }
 
-  console.log('Baseline seed applied.');
+  console.log(`Baseline seed applied. Admin sign-in is ${ADMIN_EMAIL}.`);
 }
