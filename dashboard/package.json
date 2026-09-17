@@ -11,7 +11,9 @@
     "db:migrate": "drizzle-kit migrate",
     "db:push": "drizzle-kit push",
     "db:studio": "drizzle-kit studio",
-    "test": "node --experimental-strip-types --test test/*.test.ts"
+    "test": "node --experimental-strip-types --test test/*.test.ts",
+    "seed": "node --experimental-strip-types scripts/seed.ts",
+    "import-leads": "node --experimental-strip-types scripts/import-airtable-leads.ts"
   },
   "dependencies": {
     "drizzle-orm": "^0.38.0",

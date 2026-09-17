@@ -1,11 +1,13 @@
 import { NextResponse } from 'next/server';
-import { and, eq, isNull } from 'drizzle-orm';
+import { and, desc, eq, isNull } from 'drizzle-orm';
 import { db } from '@/db';
-import { bookingLinks, calendlyWebhookEvents, leadEvents, leads } from '@/db/schema';
+import { calendlyWebhookEvents, leadEvents, leads, offers, users } from '@/db/schema';
+import { notifyBooking } from '@/lib/discord';
 import {
+  hostFromPayload,
   igHandleFromAnswers,
   leadIdFromTracking,
-  normalizeIgHandle,
+  phoneFromPayload,
   verifyCalendlySignature,
   type CalendlyInviteePayload,
   type CalendlyWebhookBody,
@@ -16,13 +18,17 @@ export const runtime = 'nodejs';
 // be statically optimized or have its body re-serialized.
 export const dynamic = 'force-dynamic';
 
-type MatchResult = { leadId: string; strategy: string } | { leadId: null; strategy: 'unmatched' };
+type MatchResult = { leadId: string | null; strategy: string };
 
 /**
  * Three ways in, tried best-first:
  *  1. utm_content - the link came from this dashboard, so it carries the lead id
- *  2. the booking form's Instagram question - booked from a link we didn't stamp
- *  3. email - only works for a lead we already captured an email for
+ *  2. the booking form's Instagram question - booked off a link we didn't stamp
+ *  3. email - only works for a lead we already have an email for
+ *
+ * 2 and 3 can hit more than one row: the tracker has 22 duplicated handles, and
+ * nothing stops two leads sharing an email. Most recently active wins, which is
+ * the row a setter is actually working.
  */
 async function matchLead(payload: CalendlyInviteePayload): Promise<MatchResult> {
   const trackedId = leadIdFromTracking(payload);
@@ -33,47 +39,61 @@ async function matchLead(payload: CalendlyInviteePayload): Promise<MatchResult> 
 
   const handle = igHandleFromAnswers(payload);
   if (handle) {
-    const hit = await db.query.leads.findFirst({ where: eq(leads.igHandle, handle) });
+    const hit = await db.query.leads.findFirst({
+      where: eq(leads.igHandleKey, handle),
+      orderBy: [desc(leads.lastContactAt), desc(leads.leadCreatedAt)],
+    });
     if (hit) return { leadId: hit.id, strategy: 'ig_handle_answer' };
   }
 
   const email = payload.email?.trim().toLowerCase();
   if (email) {
-    const hit = await db.query.leads.findFirst({ where: eq(leads.email, email) });
+    const hit = await db.query.leads.findFirst({
+      where: eq(leads.email, email),
+      orderBy: [desc(leads.lastContactAt), desc(leads.leadCreatedAt)],
+    });
     if (hit) return { leadId: hit.id, strategy: 'email' };
   }
 
   return { leadId: null, strategy: 'unmatched' };
 }
 
-async function resolveBookingLink(payload: CalendlyInviteePayload) {
+async function resolveOffer(payload: CalendlyInviteePayload) {
   const eventTypeUri = payload.scheduled_event?.event_type;
   if (!eventTypeUri) return null;
-  return (
-    (await db.query.bookingLinks.findFirst({
-      where: eq(bookingLinks.eventTypeUri, eventTypeUri),
-    })) ?? null
-  );
+  return (await db.query.offers.findFirst({ where: eq(offers.eventTypeUri, eventTypeUri) })) ?? null;
+}
+
+/** Nigel or Andrew, by the email on their Calendly host record. */
+async function resolveCloser(email: string | null) {
+  if (!email) return null;
+  return (await db.query.users.findFirst({ where: eq(users.email, email) })) ?? null;
 }
 
 async function handleCreated(leadId: string, payload: CalendlyInviteePayload) {
-  const link = await resolveBookingLink(payload);
+  const offer = await resolveOffer(payload);
+  const host = hostFromPayload(payload);
+  const closer = await resolveCloser(host.email);
   const startTime = payload.scheduled_event?.start_time;
+  const phone = phoneFromPayload(payload);
 
-  await db
+  const [updated] = await db
     .update(leads)
     .set({
       callBooked: true,
       callBookedAt: new Date(),
       callScheduledFor: startTime ? new Date(startTime) : null,
-      bookingLinkId: link?.id ?? null,
-      closerId: link?.closerId ?? null,
+      offerId: offer?.id ?? null,
+      closerId: closer?.id ?? null,
+      closerName: closer?.name ?? host.name,
       calendlyEventUri: payload.scheduled_event?.uri ?? null,
       calendlyInviteeUri: payload.uri ?? null,
       calendlyCancelUrl: payload.cancel_url ?? null,
       calendlyRescheduleUrl: payload.reschedule_url ?? null,
       // A rebooking clears the previous cancellation and resets the setter's
-      // work - the new call needs confirming and triaging on its own.
+      // work: the new call needs confirming and triaging on its own, and a
+      // stale "triaged" flag would tell a closer the prospect was warmed up
+      // when nobody has spoken to them about this call.
       callCancelled: false,
       callCancelledAt: null,
       cancelReason: null,
@@ -84,18 +104,24 @@ async function handleCreated(leadId: string, payload: CalendlyInviteePayload) {
       triaged: false,
       triagedAt: null,
       triagedById: null,
-      name: payload.name?.trim() || undefined,
-      email: payload.email?.trim().toLowerCase() || undefined,
+      // Booking is where a phone number enters the system at all, so never
+      // overwrite one we already have with nothing.
+      ...(payload.name?.trim() ? { name: payload.name.trim() } : {}),
+      ...(payload.email?.trim() ? { email: payload.email.trim().toLowerCase() } : {}),
+      ...(phone ? { phone } : {}),
       updatedAt: new Date(),
     })
-    .where(eq(leads.id, leadId));
+    .where(eq(leads.id, leadId))
+    .returning();
 
   await db.insert(leadEvents).values({
     leadId,
     type: 'call_booked',
     toValue: startTime ?? null,
-    meta: { source: 'calendly', inviteeUri: payload.uri, closer: link?.label ?? null },
+    meta: { source: 'calendly', inviteeUri: payload.uri, offer: offer?.label ?? null },
   });
+
+  if (updated) await notifyBooking(updated, offer?.label ?? null);
 }
 
 async function handleCanceled(leadId: string, payload: CalendlyInviteePayload) {
@@ -151,8 +177,8 @@ export async function POST(request: Request) {
   const payload = body.payload ?? {};
   const inviteeUri = payload.uri ?? null;
 
-  // Calendly retries on non-2xx, so an already-processed delivery must be a
-  // no-op rather than a second booking event on the lead's timeline.
+  // Calendly retries on non-2xx, so a redelivery must be a no-op rather than a
+  // second booking event on the lead's timeline.
   if (inviteeUri) {
     const seen = await db.query.calendlyWebhookEvents.findFirst({
       where: and(
@@ -185,8 +211,8 @@ export async function POST(request: Request) {
       })
       .where(eq(calendlyWebhookEvents.id, logged.id));
 
-    // An unmatched booking is a real call on the calendar that nobody owns, so
-    // it stays queued for a human rather than being retried or dropped.
+    // An unmatched booking is a real call on someone's calendar, so it stays
+    // queued for a human rather than being retried forever or dropped.
     return NextResponse.json({ ok: true, matched: Boolean(match.leadId), strategy: match.strategy });
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
@@ -207,7 +233,7 @@ export async function GET() {
       isNull(calendlyWebhookEvents.matchedLeadId),
       eq(calendlyWebhookEvents.eventType, 'invitee.created')
     ),
-    orderBy: (t, { desc }) => [desc(t.createdAt)],
+    orderBy: [desc(calendlyWebhookEvents.createdAt)],
     limit: 100,
   });
   return NextResponse.json({

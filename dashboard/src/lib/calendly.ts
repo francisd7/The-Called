@@ -48,6 +48,7 @@ export type CalendlyInviteePayload = {
   cancel_url?: string;
   reschedule_url?: string;
   status?: string;
+  text_reminder_number?: string | null;
   scheduled_event?: {
     uri?: string;
     start_time?: string;
@@ -109,4 +110,38 @@ export function igHandleFromAnswers(payload: CalendlyInviteePayload): string | n
     }
   }
   return null;
+}
+
+/**
+ * The phone the invitee gave at booking. Calendly puts an SMS-reminder number on
+ * `text_reminder_number`, but a "Phone number" question on the booking form
+ * lands in questions_and_answers instead, so both are checked.
+ *
+ * This matters more than it looks: triage is a phone call, and this is the only
+ * point in the funnel where a number is captured at all.
+ */
+export function phoneFromPayload(payload: CalendlyInviteePayload): string | null {
+  const direct = payload.text_reminder_number?.trim();
+  if (direct) return direct;
+
+  for (const qa of payload.questions_and_answers ?? []) {
+    const q = (qa.question ?? '').toLowerCase();
+    if (q.includes('phone') || q.includes('number') || q.includes('whatsapp')) {
+      const answer = qa.answer?.trim();
+      // Require enough digits to be a real number - "no" and "n/a" show up here.
+      if (answer && (answer.match(/\d/g) ?? []).length >= 7) return answer;
+    }
+  }
+  return null;
+}
+
+/** The Calendly host of the booking - which closer is actually taking the call. */
+export function hostFromPayload(
+  payload: CalendlyInviteePayload
+): { email: string | null; name: string | null } {
+  const membership = payload.scheduled_event?.event_memberships?.[0];
+  return {
+    email: membership?.user_email?.trim().toLowerCase() ?? null,
+    name: membership?.user_name?.trim() ?? null,
+  };
 }

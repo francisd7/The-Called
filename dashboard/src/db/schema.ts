@@ -44,13 +44,16 @@ export const optionSets = pgTable(
   (t) => [uniqueIndex('option_sets_kind_value_idx').on(t.kind, t.value)]
 );
 
-// The three Calendly links setters send. Each row knows its scheduling URL, so
-// the dashboard can hand back a per-lead tracked version of it.
-export const bookingLinks = pgTable('booking_links', {
+// The three Calendly links a setter can send. They distinguish *offers*, not
+// closers - all three sit on Nigel's Calendly, and who actually hosts the call
+// comes back on the booking itself (event_memberships), so it isn't mapped here.
+export const offers = pgTable('offers', {
   id: uuid('id').defaultRandom().primaryKey(),
+  key: text('key').notNull().unique(),
   label: text('label').notNull(),
-  closerId: uuid('closer_id').references(() => users.id),
   schedulingUrl: text('scheduling_url').notNull(),
+  // Filled in once the Calendly API is reachable; how a booking is traced back
+  // to the offer it came from.
   eventTypeUri: text('event_type_uri'),
   sortOrder: integer('sort_order').notNull().default(0),
   active: boolean('active').notNull().default(true),
@@ -62,7 +65,11 @@ export const leads = pgTable(
     id: uuid('id').defaultRandom().primaryKey(),
 
     // --- identity ---
+    // As typed, for display. Some existing rows hold a person's name or two
+    // handles in one cell, so this is never assumed to be a valid handle.
     igHandle: text('ig_handle').notNull(),
+    // Normalized for matching: lowercased, @ and profile-URL wrapper stripped.
+    igHandleKey: text('ig_handle_key'),
     name: text('name'),
     email: text('email'),
     // Triage is a phone call, so this is load-bearing, not optional metadata.
@@ -85,7 +92,7 @@ export const leads = pgTable(
     nextFollowUpAt: timestamp('next_follow_up_at', { withTimezone: true }),
 
     // --- booking: written by the Calendly webhook, read-only in the UI ---
-    bookingLinkId: uuid('booking_link_id').references(() => bookingLinks.id),
+    offerId: uuid('offer_id').references(() => offers.id),
     callBooked: boolean('call_booked').notNull().default(false),
     // When they hit "confirm" in Calendly.
     callBookedAt: timestamp('call_booked_at', { withTimezone: true }),
@@ -93,7 +100,9 @@ export const leads = pgTable(
     // "Call Booked Date" field; keeping them apart is what makes a "calls today"
     // view possible at all.
     callScheduledFor: timestamp('call_scheduled_for', { withTimezone: true }),
+    // Resolved from the booking's Calendly host, matched to a user row by email.
     closerId: uuid('closer_id').references(() => users.id),
+    closerName: text('closer_name'),
     calendlyEventUri: text('calendly_event_uri'),
     calendlyInviteeUri: text('calendly_invitee_uri'),
     calendlyCancelUrl: text('calendly_cancel_url'),
@@ -116,12 +125,35 @@ export const leads = pgTable(
     // handoff the closer opens right before the call.
     triageNotes: text('triage_notes'),
 
+    // Which post/reel the lead came off, where that was recorded.
+    sourceContent: text('source_content'),
+
+    // --- outcome, owned by the closer after the call ---
+    // Not editable by setters, but carried over from Airtable rather than
+    // dropped: this is the history the team wants to look back on.
+    qualified: boolean('qualified'),
+    closed: boolean('closed'),
+    closedDate: timestamp('closed_date', { withTimezone: true }),
+    cashCollected: numeric('cash_collected', { precision: 12, scale: 2 }),
+    contractValue: numeric('contract_value', { precision: 12, scale: 2 }),
+    lostReason: text('lost_reason'),
+    postCallNotes: text('post_call_notes'),
+
     leadCreatedAt: timestamp('lead_created_at', { withTimezone: true }).notNull().defaultNow(),
+    // Set only for rows imported from Airtable, so re-running the import
+    // updates those rows instead of creating a second copy of each.
+    airtableRecordId: text('airtable_record_id').unique(),
+    // Every Airtable field with no column of its own lands here verbatim
+    // (e.g. Analytics Stage, which duplicated Conversation Stage). Nothing is
+    // surfaced from it, but nothing is lost either, and a field can be promoted
+    // to a real column later without re-running the migration.
+    legacy: jsonb('legacy'),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [
-    uniqueIndex('leads_ig_handle_idx').on(t.igHandle),
+    index('leads_ig_handle_key_idx').on(t.igHandleKey),
+    index('leads_email_idx').on(t.email),
     index('leads_setter_idx').on(t.setterId),
     index('leads_stage_idx').on(t.conversationStage),
     index('leads_scheduled_idx').on(t.callScheduledFor),

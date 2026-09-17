@@ -1,35 +1,181 @@
 :root {
-  --bg: #ffffff;
+  --bg: #f7f8fa;
+  --surface: #ffffff;
   --fg: #16181d;
   --muted: #61656e;
-  --border: #e4e6ea;
+  --border: #e2e5ea;
   --accent: #2f6fed;
+  --accent-fg: #ffffff;
+  --ok: #1a7f52;
+  --ok-bg: #e6f4ed;
+  --warn: #9a6100;
+  --warn-bg: #fdf3e2;
+  --danger: #b42318;
+  --danger-bg: #fdeceb;
+  --radius: 10px;
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --bg: #14161a;
+    --bg: #101216;
+    --surface: #191c22;
     --fg: #e9ebef;
     --muted: #9aa0aa;
-    --border: #2a2e35;
+    --border: #2b303a;
     --accent: #6f9bff;
+    --accent-fg: #0b1020;
+    --ok: #5ddba4;
+    --ok-bg: #123024;
+    --warn: #f0b95c;
+    --warn-bg: #33270f;
+    --danger: #ff8d85;
+    --danger-bg: #3a1a18;
   }
 }
 
-* {
-  box-sizing: border-box;
-}
+* { box-sizing: border-box; }
 
 body {
   margin: 0;
   background: var(--bg);
   color: var(--fg);
   font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  font-size: 15px;
+  line-height: 1.5;
   -webkit-text-size-adjust: 100%;
 }
 
-main {
-  max-width: 62rem;
-  margin: 0 auto;
-  padding: 2rem 1rem;
+a { color: var(--accent); }
+
+/* --- shell --- */
+.topbar {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
 }
+.topbar-inner {
+  max-width: 68rem;
+  margin: 0 auto;
+  padding: 0.65rem 1rem;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  justify-content: space-between;
+}
+.brand { font-weight: 650; font-size: 0.95rem; text-decoration: none; color: var(--fg); }
+.nav { display: flex; gap: 0.35rem; overflow-x: auto; }
+.nav a {
+  padding: 0.35rem 0.7rem;
+  border-radius: 99px;
+  text-decoration: none;
+  color: var(--muted);
+  font-size: 0.875rem;
+  white-space: nowrap;
+}
+.nav a:hover { background: var(--bg); }
+.nav a[aria-current="page"] { background: var(--accent); color: var(--accent-fg); }
+.whoami { font-size: 0.8rem; color: var(--muted); white-space: nowrap; }
+
+main { max-width: 68rem; margin: 0 auto; padding: 1.25rem 1rem 4rem; }
+
+h1 { font-size: 1.35rem; margin: 0 0 0.25rem; }
+h2 { font-size: 1.02rem; margin: 1.75rem 0 0.6rem; }
+h2:first-of-type { margin-top: 1rem; }
+.sub { color: var(--muted); font-size: 0.875rem; margin: 0 0 0.5rem; }
+
+/* --- cards --- */
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 0.85rem;
+  margin-bottom: 0.6rem;
+}
+.card-head { display: flex; justify-content: space-between; gap: 0.75rem; align-items: baseline; flex-wrap: wrap; }
+.card-title { font-weight: 600; text-decoration: none; color: var(--fg); }
+.card-title:hover { text-decoration: underline; }
+.card-meta { color: var(--muted); font-size: 0.82rem; }
+.card-row { display: flex; gap: 0.4rem; flex-wrap: wrap; margin-top: 0.55rem; align-items: center; }
+
+/* --- stats --- */
+.stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(8.5rem, 1fr)); gap: 0.6rem; margin: 0.9rem 0 0.25rem; }
+.stat { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 0.7rem 0.8rem; }
+.stat-n { font-size: 1.5rem; font-weight: 650; font-variant-numeric: tabular-nums; line-height: 1.15; }
+.stat-l { color: var(--muted); font-size: 0.78rem; }
+.stat.alert .stat-n { color: var(--warn); }
+
+/* --- pills --- */
+.pill {
+  display: inline-block;
+  padding: 0.12rem 0.5rem;
+  border-radius: 99px;
+  font-size: 0.74rem;
+  font-weight: 550;
+  border: 1px solid var(--border);
+  color: var(--muted);
+  white-space: nowrap;
+}
+.pill.ok { background: var(--ok-bg); color: var(--ok); border-color: transparent; }
+.pill.warn { background: var(--warn-bg); color: var(--warn); border-color: transparent; }
+.pill.danger { background: var(--danger-bg); color: var(--danger); border-color: transparent; }
+
+/* --- forms --- */
+label { display: block; font-size: 0.8rem; color: var(--muted); margin-bottom: 0.2rem; }
+input, select, textarea {
+  width: 100%;
+  padding: 0.5rem 0.6rem;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--fg);
+  font: inherit;
+  /* 16px stops iOS Safari zooming the page on focus. */
+  font-size: 16px;
+}
+textarea { min-height: 6rem; resize: vertical; }
+.field { margin-bottom: 0.7rem; }
+.grid2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr)); gap: 0.7rem; }
+
+button, .btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.45rem 0.85rem;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--fg);
+  font: inherit;
+  font-size: 0.875rem;
+  font-weight: 550;
+  cursor: pointer;
+  text-decoration: none;
+  /* Comfortable to hit on a phone, which is where setters work IG DMs. */
+  min-height: 2.35rem;
+}
+button:hover, .btn:hover { border-color: var(--accent); }
+button:disabled { opacity: 0.55; cursor: progress; }
+.btn-primary { background: var(--accent); color: var(--accent-fg); border-color: transparent; }
+.btn-primary:hover { filter: brightness(1.08); }
+
+.msg { font-size: 0.82rem; margin-top: 0.4rem; }
+.msg.ok { color: var(--ok); }
+.msg.err { color: var(--danger); }
+
+.empty { color: var(--muted); font-size: 0.875rem; padding: 1.1rem; text-align: center; background: var(--surface); border: 1px dashed var(--border); border-radius: var(--radius); }
+
+.note { border-left: 2px solid var(--border); padding: 0 0 0 0.7rem; margin-bottom: 0.9rem; }
+.note-meta { color: var(--muted); font-size: 0.76rem; margin-bottom: 0.15rem; }
+.note-body { white-space: pre-wrap; font-size: 0.9rem; }
+
+.toolbar { display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: flex-end; margin-bottom: 0.9rem; }
+.toolbar .field { margin-bottom: 0; flex: 1 1 8rem; }
+
+table { width: 100%; border-collapse: collapse; font-size: 0.875rem; }
+th, td { text-align: left; padding: 0.5rem 0.6rem; border-bottom: 1px solid var(--border); }
+th { color: var(--muted); font-weight: 550; font-size: 0.78rem; }
+.table-wrap { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); overflow-x: auto; }
+
+.signin { max-width: 22rem; margin: 15vh auto; text-align: center; }

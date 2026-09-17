@@ -17,6 +17,10 @@ one shouldn't restart the other.
 | Drizzle ORM | Schema is a TypeScript file; migrations are generated from it and reviewed in the diff. |
 | Auth.js + Google | Five named people. No passwords to manage, works on phones. Access is an allowlist against the `users` table, so a Google login alone gets nobody in. |
 
+Deployment steps (Railway, Google sign-in, Calendly webhook, loading the data)
+are in [`DEPLOYMENT.md`](DEPLOYMENT.md). Short version: keep the existing Railway
+project and add this as a second service with root directory `dashboard`.
+
 ## Setup
 
 ```bash
@@ -91,14 +95,59 @@ prospect was warmed up when they weren't.
 ## Commands
 
 ```bash
-npm run dev          # local dev server
-npm run build        # production build
-npm test             # Calendly signature + matching tests
+npm run dev           # local dev server
+npm run build         # production build
+npm test              # signature, matching, date and Discord tests
 npm run typecheck
-npm run db:generate  # write a migration from schema.ts
-npm run db:migrate   # apply migrations
-npm run db:studio    # browse the database
+npm run db:generate   # write a migration from schema.ts
+npm run db:migrate    # apply migrations
+npm run db:studio     # browse the database
+npm run seed          # people, the three offers, baseline dropdowns
+npm run import-leads  # pull the Airtable lead tracker into Postgres
 ```
+
+## Migrating the Airtable leads
+
+```bash
+AIRTABLE_PAT=... npm run import-leads
+AIRTABLE_PAT=... npm run import-leads -- --dry-run     # counts only, writes nothing
+npm run import-leads -- --from-file snapshot.json      # from a saved export
+```
+
+Idempotent: every row is keyed on its Airtable record id, so a second run
+updates rather than duplicating. Run it again immediately before cutover to pick
+up whatever changed in Airtable in the meantime.
+
+Nothing is dropped. Fields without a column of their own (Analytics Stage, which
+duplicated Conversation Stage) are kept verbatim in a `legacy` JSON column, and
+the single Airtable `Notes` blob becomes the first entry in each lead's note
+thread. Dropdown options are built from the values actually in use rather than
+Airtable's full choice lists — 110 of them, against roughly 150 defined.
+
+Two things the real data forced:
+
+- **IG handles are not unique.** 22 are duplicated across the 541 rows, and 7
+  hold a person's name rather than a handle. There is no unique constraint;
+  handle-based matching takes the most recently active row.
+- **432 of 541 leads have no setter**, including 65 of the 68 booked calls.
+  Historical attribution is mostly absent — worth knowing before reading any
+  per-setter number off imported data.
+
+## Who can sign in
+
+Access is the `users` table, not Google. A valid Google login for an address
+that isn't an active row is rejected.
+
+| | Role | Signs in? |
+|---|---|---|
+| Francis | admin | yes |
+| Loui, Alexis | setter | yes |
+| Nigel, Andrew | closer | **no** |
+
+Closers deliberately have no login. They get the pre-call brief pushed to
+Discord when a setter saves triage notes, which is where they already read
+pre-call notes. Their rows exist so bookings can be attributed to them — which
+means their email must match their Calendly account email.
 
 ## Deploying to Railway
 

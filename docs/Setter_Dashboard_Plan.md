@@ -22,9 +22,10 @@ no benefit, since the setters' problem is solved by phase 1 alone.
 
 ## Phases
 
-**Phase 1 — setter dashboard (in progress).** Lead list, Calendly booking flow,
+**Phase 1 — setter dashboard (built).** Lead list, Calendly booking flow,
 confirm, triage, notes, EOD form. Loui and Alexis stop opening Airtable. Nothing
-else moves; the hub keeps reading Airtable exactly as it does today.
+else moves; the hub keeps reading Airtable exactly as it does today, and the
+four live automations are untouched.
 
 **Phase 2 — EOD reports.** Move the four EOD tables over and repoint automation
 #1 at Postgres. Self-contained: these tables link to nothing else.
@@ -49,6 +50,37 @@ cancel reason, lost reason — is rows in the database, editable in an admin scr
 without a deploy. Adding a genuinely new *field* still needs a code change. That
 trade is the price of the rest of it, and it's the right trade at five people,
 but it's a real one.
+
+## Who uses it
+
+Setters (Loui, Alexis) and admin (Francis) sign in. **Closers do not.**
+
+Nigel and Andrew already read pre-call notes in Discord, so that stays their
+interface: saving triage notes in the dashboard posts the brief — name, call
+time, phone, confirmation status, the notes themselves — straight to a Discord
+channel. They get the handoff without a second tool to learn, and without
+seeing the rest of the pipeline. Their user rows exist only so bookings can be
+attributed to them, which means each row's email must match the email on their
+Calendly account.
+
+## What the real data turned up
+
+Worth knowing before anyone reads a number off the migrated rows:
+
+- **IG handles are not unique.** 22 are duplicated across the 541 rows, and 7
+  hold a person's name rather than a handle ("karan singh"), with one holding
+  two ("luigi_brahh / weegiee_brahh"). A unique constraint would have failed the
+  import outright, so there isn't one — handle-based matching takes the most
+  recently active row.
+- **432 of 541 leads have no setter assigned**, including 65 of the 68 booked
+  calls. Per-setter performance is essentially unanswerable from the historical
+  data. Going forward every lead carries a setter and every booking carries an
+  audit row, so this closes on its own — but it won't be backfilled.
+- **No phone numbers exist anywhere in the old tracker.** Since triage is a
+  phone call, the Calendly booking form is now the capture point, and the
+  webhook writes the number onto the lead.
+- 110 of Airtable's ~150 dropdown options are actually in use. Only those were
+  carried over.
 
 ## Schema notes
 
