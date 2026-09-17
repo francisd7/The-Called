@@ -7,6 +7,18 @@ shared infrastructure for the automation hub described in
 automations should extend this server rather than starting a new one. Current
 build status: [`docs/STATUS.md`](docs/STATUS.md).
 
+## Two services in this repo
+
+| Directory | What it is | Deploy |
+|---|---|---|
+| `src/` (root) | This automation hub — Discord bot + Airtable poller, no UI | Railway service, `npm start` |
+| [`dashboard/`](dashboard/README.md) | The setter dashboard — leads, Calendly bookings, confirm/triage, EOD | Separate Railway service, root directory `dashboard` |
+
+They deploy separately on purpose: the hub holds a live Discord gateway
+connection, and pushing a UI change shouldn't drop it. The plan for moving off
+Airtable entirely is in
+[`docs/Setter_Dashboard_Plan.md`](docs/Setter_Dashboard_Plan.md).
+
 ## What's running today
 
 | Automation | Trigger | Action |
