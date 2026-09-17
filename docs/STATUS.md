@@ -22,6 +22,37 @@ Tracks progress against the build priority in `Automation_Hub_Blueprint.md`.
   content was moved across by copying the blocks out of the existing
   standalone "THE CALLED HEADQUARTERS Template" page; icon and cover don't
   copy with the blocks and have to be set on the template by hand once.
+- **Clients must not be able to duplicate the dashboard into their own
+  Notion.** Flagged by the user as a hard requirement — the template is
+  high-value IP and the whole reason it stays in our workspace instead of
+  being handed out as a duplicatable template. Three levers, in order of how
+  much they actually protect:
+  1. **Permission level is the reliable one.** `Can edit` gives a guest the
+     Duplicate action. `Can view` / `Can comment` does not. This is the
+     lever that definitely works and costs nothing.
+  2. **Workspace security settings** — Settings → Security → *Disable
+     duplicating pages to other workspaces* and *Disable export* (blocks
+     PDF/HTML/Markdown/CSV export). ⚠️ Notion's own wording for the first one
+     says it stops **members**; whether it also binds **guests** is not
+     confirmed, and the plan it requires wasn't confirmed either (help pages
+     weren't reachable to verify). **Test both with a real guest account
+     before trusting them.** If they're greyed out, that's the plan answer.
+  3. **Nothing stops screenshots, or selecting visible text and pasting it.**
+     Any of this raises friction; none of it makes the content
+     uncopyable. Worth being honest about internally rather than assuming
+     the IP is sealed.
+
+  **Open decision, and it blocks nothing else:** the automation's Discord
+  handoff message currently says to invite the client as **Can edit**
+  (`formatDashboardCreatedMessage` in `src/dashboards/clientDashboard.js`).
+  If clients get `Can view`/`Can comment` instead, that's a one-word change
+  there — but then they can't tick boxes or write anything on their own
+  dashboard. The way out of that trade-off is the split raised earlier in
+  the design: the valuable frameworks/training live on **one shared master
+  page** granted `Can view` once, and the per-client dashboard row stays
+  `Can edit` because it only holds their own goals, tasks and check-ins.
+  That protects the IP without taking away the thing the dashboard is for.
+
 - **Guest invites stay manual, by necessity.** Notion publishes no API for
   page permissions or sharing — verified against the official SDK, which has
   no permissions endpoint — and "Share to web" can't be toggled through the
