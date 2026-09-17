@@ -2,17 +2,19 @@
  * Brings the Airtable lead tracker into Postgres. Idempotent: rows are keyed on
  * their Airtable record id, so re-running updates rather than duplicating.
  *
- *   AIRTABLE_PAT=... node --experimental-strip-types scripts/import-airtable-leads.ts
- *   node --experimental-strip-types scripts/import-airtable-leads.ts --from-file snapshot.json
- *   ... --dry-run     # report what would happen, write nothing
+ * `db` is passed in rather than imported so this runs both inside the app (from
+ * the admin screen) and against a throwaway database in tests.
  *
  * Every Airtable field is either mapped to a column or stashed in `legacy`, so
  * nothing in the tracker is dropped.
  */
 import { eq } from 'drizzle-orm';
-import { db, sql } from './db.ts';
-import { leadNotes, leads, optionSets, users } from '../src/db/schema.ts';
-import { normalizeIgHandle } from '../src/lib/calendly.ts';
+import type { PostgresJsDatabase } from 'drizzle-orm/postgres-js';
+import { leadNotes, leads, optionSets, users } from '../db/schema.ts';
+import * as schema from '../db/schema.ts';
+import { normalizeIgHandle } from './calendly.ts';
+
+type Db = PostgresJsDatabase<typeof schema>;
 
 const BASE_ID = process.env.AIRTABLE_LEAD_BASE_ID ?? 'appdiKhhb3Y8zkUdT';
 const TABLE_ID = process.env.AIRTABLE_LEAD_TABLE_ID ?? 'tblAn2LtRitBgKGDX';
@@ -114,25 +116,34 @@ async function fetchFromAirtable(pat: string): Promise<AirtableRecord[]> {
   return out;
 }
 
-async function loadRecords(fromFile: string | null): Promise<AirtableRecord[]> {
+async function loadRecords(fromFile: string | null, pat?: string): Promise<AirtableRecord[]> {
   if (fromFile) {
     const { readFile } = await import('node:fs/promises');
     const parsed = JSON.parse(await readFile(fromFile, 'utf8'));
     return parsed.records as AirtableRecord[];
   }
-  const pat = process.env.AIRTABLE_PAT;
-  if (!pat) throw new Error('AIRTABLE_PAT is not set (or pass --from-file)');
-  return fetchFromAirtable(pat);
+  const token = pat ?? process.env.AIRTABLE_PAT;
+  if (!token) throw new Error('AIRTABLE_PAT is not set');
+  return fetchFromAirtable(token);
 }
 
-async function main() {
-  const args = process.argv.slice(2);
-  const dryRun = args.includes('--dry-run');
-  const fileIdx = args.indexOf('--from-file');
-  const fromFile = fileIdx >= 0 ? args[fileIdx + 1] : null;
+export type ImportOptions = { pat?: string; fromFile?: string | null; dryRun?: boolean };
+export type ImportStats = {
+  loaded: number;
+  inserted: number;
+  updated: number;
+  notes: number;
+  options: number;
+  noSetter: number;
+  blankHandle: number;
+  dryRun: boolean;
+};
 
-  const records = await loadRecords(fromFile);
-  console.log(`Loaded ${records.length} Airtable records${fromFile ? ` from ${fromFile}` : ''}`);
+export async function importAirtableLeads(
+  db: Db,
+  { pat, fromFile = null, dryRun = false }: ImportOptions = {}
+): Promise<ImportStats> {
+  const records = await loadRecords(fromFile, pat);
 
   const setterRows = await db.select().from(users);
   const setterByName = new Map(setterRows.map((u) => [u.name.toLowerCase(), u.id]));
@@ -244,8 +255,8 @@ async function main() {
     }
   }
 
+  let optionCount = 0;
   if (!dryRun) {
-    let optionCount = 0;
     for (const [kind, options] of seenOptions) {
       let i = 100;
       for (const [value, label] of options) {
@@ -256,23 +267,7 @@ async function main() {
         optionCount += 1;
       }
     }
-    console.log(`✓ ${optionCount} dropdown options in actual use`);
   }
 
-  console.log(
-    `\n${dryRun ? '[dry run] ' : ''}` +
-      `inserted ${stats.inserted}, updated ${stats.updated}, notes migrated ${stats.notes}`
-  );
-  if (stats.blankHandle > 0) console.log(`⚠  ${stats.blankHandle} rows had no IG handle`);
-  if (stats.noSetter > 0) {
-    console.log(`⚠  ${stats.noSetter} rows name a setter with no matching user row`);
-  }
+  return { loaded: records.length, options: optionCount, dryRun, ...stats };
 }
-
-main()
-  .then(() => sql.end())
-  .catch(async (err) => {
-    console.error(err);
-    await sql.end();
-    process.exit(1);
-  });

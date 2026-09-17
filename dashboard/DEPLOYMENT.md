@@ -2,187 +2,127 @@
 
 **Keep your existing Railway project.** Add the dashboard as a *second service*
 inside it, alongside the automation hub. Two services in one project share
-variables and a database and cost one Postgres instance; a second project would
-mean a second database and no shared references.
+variables and a database; a second project would mean a second database.
 
-Order matters — the database has to exist before the dashboard boots.
-
----
-
-## 0. Where you run these commands (Windows)
-
-A few steps need a terminal. Set this up once and the rest is copy-paste.
-
-**Install [Node.js LTS](https://nodejs.org)** (skip if `node --version` already
-prints something), then open **PowerShell** and run:
-
-```powershell
-npm install -g @railway/cli
-railway login
-git clone https://github.com/francisd7/The-Called.git
-cd The-Called\dashboard
-npm install
-railway link          # pick this project, then the dashboard service
-```
-
-From then on, prefix any command with `railway run` and it executes on your
-machine with the **live Railway variables injected** — no copying secrets into a
-local file:
-
-```powershell
-railway run npm run db:migrate
-```
-
-`railway shell` opens a session with the variables already loaded if you'd
-rather not prefix every command.
-
-**One PowerShell gotcha, if you ever do run curl by hand:** PowerShell aliases
-`curl` to `Invoke-WebRequest`, which does not understand `-H` the way curl does.
-Use `curl.exe` (with the extension) or Command Prompt instead. Nothing in this
-guide needs it — the Calendly setup is a script for exactly this reason.
+There is no terminal, CLI or migration command in this process. The service
+creates its own tables and seeds itself on boot, and the two data-loading steps
+are buttons on the Admin screen.
 
 ---
 
-## 1. Add Postgres (2 min)
+## 1. Add Postgres
 
-In your existing Railway project: **New → Database → Add PostgreSQL**.
+**New → Database → Add PostgreSQL** in the existing project.
 
-Railway creates it with a `DATABASE_URL` you'll reference in step 3. Don't copy
-the value by hand — step 3 uses a reference so it stays correct if Railway ever
-rotates it.
+## 2. Add the dashboard service
 
-## 2. Add the dashboard service (3 min)
-
-**New → GitHub Repo → `francisd7/The-Called`**. Then in the new service's
-**Settings**:
+**New → GitHub Repo → `francisd7/The-Called`**, then in **Settings**:
 
 | Setting | Value |
 |---|---|
+| Source → Branch | `claude/elegant-ptolemy-5g32da` |
 | Root Directory | `dashboard` |
-| Build Command | `npm install && npm run build` |
-| Start Command | `npm start` |
 | Healthcheck Path | `/health` |
 
-Root Directory is the important one — it's what stops Railway from building the
-automation hub again.
+Branch and Root Directory are the two that matter. The dashboard lives on that
+branch and in that folder; pointing at the default branch builds the automation
+hub instead and serves a 404.
 
-Then **Settings → Networking → Generate Domain**. Note the URL; steps 3 and 5
-both need it.
+Build and start commands come from `package.json` — leave them blank.
 
-## 3. Set the variables (5 min)
+Then **Settings → Networking → Generate Domain** and note the URL.
 
-On the dashboard service, **Variables**:
+## 3. Set the variables
 
 | Variable | Value |
 |---|---|
-| `DATABASE_URL` | `${{Postgres.DATABASE_URL}}` — type it exactly, including the braces. That's a Railway reference, not a literal. |
-| `AUTH_SECRET` | Output of `openssl rand -base64 32` (or any 32+ random characters). |
-| `AUTH_URL` | The domain from step 2, e.g. `https://dashboard-production-xxxx.up.railway.app` |
+| `DATABASE_URL` | `${{Postgres.DATABASE_URL}}` — type it exactly, braces included. It's a Railway reference, not a literal. |
+| `AUTH_SECRET` | Any 32+ random characters. |
+| `AUTH_URL` | The domain from step 2, with `https://` and **no trailing slash**. |
 | `AUTH_GOOGLE_ID` | From step 4 |
 | `AUTH_GOOGLE_SECRET` | From step 4 |
-| `CALENDLY_WEBHOOK_SIGNING_KEY` | Invent one now — `openssl rand -hex 32`. Step 5 registers the same value with Calendly. |
-| `DISCORD_BOT_TOKEN` | The same token the automation hub already uses. |
-| `DISCORD_TRIAGE_CHANNEL_ID` | The channel where Nigel and Andrew should receive pre-call notes. |
+| `AIRTABLE_PAT` | The token the automation hub already uses, or a fresh read-only one. Used by the import button. |
+| `CALENDLY_PAT` | From step 5. Used by the Connect Calendly button. |
+| `CALENDLY_WEBHOOK_SIGNING_KEY` | Any 32+ random characters. The dashboard registers this with Calendly and verifies every delivery against it. |
+| `DISCORD_BOT_TOKEN` | Same token the automation hub uses. |
+| `DISCORD_TRIAGE_CHANNEL_ID` | Where Nigel and Andrew get pre-call briefs. |
 | `DISCORD_SETTER_CHANNEL_ID` | Where "call booked" notices go. Can be the same channel. |
 
-## 4. Google sign-in (5 min)
+On the first successful boot the service creates its tables and seeds the five
+people, the three offers and the baseline dropdowns. Nothing to run.
+
+Check `https://<your-domain>/health` — it should return `{"status":"ok"}`.
+
+## 4. Google sign-in
 
 1. [console.cloud.google.com](https://console.cloud.google.com) → create or pick a project.
-2. **APIs & Services → OAuth consent screen** → External → fill in the app name
-   and your email. You do **not** need to submit for verification: with fewer
-   than 100 users, adding the five of you as Test Users is enough.
-3. **APIs & Services → Credentials → Create Credentials → OAuth client ID** →
-   Web application.
-4. Under **Authorized redirect URIs** add exactly:
+2. **APIs & Services → OAuth consent screen** → External. Under 100 users means
+   no verification review is needed — add the five of you as Test Users.
+3. **Credentials → Create Credentials → OAuth client ID** → Web application.
+4. **Authorized redirect URIs**, exactly:
    `https://<your-domain>/api/auth/callback/google`
-5. Copy the client ID and secret into the variables from step 3.
+5. Copy the client ID and secret into step 3's variables.
 
-## 5. Calendly webhook (5 min)
+## 5. Calendly token
 
-Webhooks need a paid plan. Nigel's account is on Teams, so this works.
+Webhooks need a paid plan; Nigel's account is on Teams.
 
-**Get a token:** calendly.com → **Integrations & apps → API & webhooks →
-Personal Access Tokens → Generate**. It must be from the account that owns the
-three booking links — a token without organization-admin rights gets a 403 here.
-Don't paste it into chat or email; it goes straight into the command below.
+calendly.com → **Integrations & apps → API & webhooks → Personal Access Tokens
+→ Generate**. It must come from the account that **owns the three booking
+links** — a token without organization-admin rights gets a 403.
 
-**Run the setup script.** From `The-Called\dashboard` in PowerShell:
+Paste it into Railway as `CALENDLY_PAT`. Nothing else to do here; the button in
+step 6 uses it.
 
-```powershell
-$env:CALENDLY_PAT = "paste-the-token-here"
-railway run npm run setup-calendly -- --dry-run     # shows what it will do
-railway run npm run setup-calendly                  # does it
-```
+## 6. Finish in the app
 
-It finds your organization, matches the three Calendly event types to the three
-offers (storing each event type URI, which is how a booking is traced back to
-the offer it came from), and registers the webhook with the signing key from
-step 3. Re-running is safe — it won't create a second webhook.
+Sign in at your domain, go to **Admin**. There's a Setup checklist with two
+buttons:
 
-If an offer comes back unmatched, its scheduling URL in `scripts/seed.ts`
-doesn't match the real Calendly one. Fix it, re-run `npm run seed`, then re-run
-this.
+- **Import leads from Airtable** — pulls the full lead tracker across. Run
+  **Test Airtable import** first to see the counts without writing anything.
+  Safe to re-run: leads are keyed on their Airtable record id, so a second run
+  updates rather than duplicating. Run it again right before you cut over, to
+  pick up whatever changed in Airtable in the meantime.
+- **Connect Calendly** — links the three offers to their Calendly event types
+  and registers the booking webhook. Won't create a duplicate.
 
-Close the PowerShell window afterwards so the token doesn't sit in that
-session's history.
+The checklist disappears once all four items are green.
 
-**Add the booking-form questions.** For each of the three event types, edit the
-booking page and add:
+## 7. Real email addresses
 
-- **Instagram handle** — required. This is the fallback that matches a booking
-  to a lead when someone books off a link that wasn't generated in the
-  dashboard. Without it, those bookings land in the unmatched queue.
-- **Phone number** — you already have this. Leave it on: triage is a phone
-  call, and this is the only point in the funnel where a number is captured.
+The five people are seeded with `CHANGEME` placeholder emails. Until they're
+replaced:
 
-## 6. Load the data (5 min)
+- Loui and Alexis can't sign in — the allowlist matches on email.
+- Bookings won't attribute to a closer. Nigel's and Andrew's rows need the
+  **email on their Calendly account**, which is what the webhook matches.
 
-From `The-Called\dashboard` in PowerShell:
+Edit `PEOPLE` in `src/lib/seedBaseline.ts` and push; the next deploy updates
+them. (Changing an address there doesn't re-enable anyone deactivated in the
+app — the seed never touches `active`.)
 
-```powershell
-railway run npm run db:migrate        # create the tables
-railway run npm run seed              # people, the 3 offers, dropdowns
+## 8. Booking-form questions
 
-$env:AIRTABLE_PAT = "paste-the-airtable-token-here"
-railway run npm run import-leads      # all 541 leads from Airtable
-```
+On each of the three Calendly event types, check the booking page has:
 
-The Airtable token is the same one the automation hub already uses, or a fresh
-read-only one from [airtable.com/create/tokens](https://airtable.com/create/tokens)
-with `data.records:read` on the **The Called Lead Tracker** base.
-
-`import-leads` is safe to re-run: rows are keyed on their Airtable record id, so
-a second run updates rather than duplicates. Run it again right before you cut
-over, to pick up anything the setters changed in Airtable in the meantime.
-
-Add `--dry-run` to see the counts without writing.
-
-## 7. Fix the placeholder emails
-
-`scripts/seed.ts` ships with `CHANGEME` addresses for Loui, Alexis, Nigel and
-Andrew. Two things break until they're real:
-
-- Setters can't sign in — the allowlist matches on email.
-- Bookings won't attribute to a closer. Nigel's and Andrew's rows must carry the
-  **email on their Calendly account**, which is what the webhook matches against.
-
-Edit the file and re-run `npm run seed`, or update the rows directly.
+- **Instagram handle** — required. The fallback that matches a booking to a
+  lead when someone books off a link the dashboard didn't generate. Without it,
+  those land in Admin → Unmatched bookings.
+- **Phone number** — already there. Leave it on: triage is a phone call, and
+  this is the only point in the funnel that captures a number.
 
 ---
 
 ## Checking it works
 
-Open `https://<your-domain>/health` in a browser — it should show
-`{"status":"ok"}`.
-
-Then book a real test call through one of the three links and watch it appear
-under **Today**. If it lands in **Admin → Unmatched bookings** instead, the
-booking form is missing its Instagram question, or the link used wasn't one the
+Book a real test call through one of the three links and watch it appear under
+**Today**. If it lands in **Admin → Unmatched bookings** instead, the booking
+form is missing its Instagram question and the link used wasn't one the
 dashboard generated.
 
 ## What this does *not* touch
 
-The automation hub keeps running exactly as it does now, still reading Airtable.
-Nothing in this deploy changes it. Airtable stays the system of record for
-everything except the setters' lead work until you decide to move the next piece
-— see `docs/Setter_Dashboard_Plan.md`.
+The automation hub keeps running as it does now, still reading Airtable. Airtable
+stays the system of record for everything except the setters' lead work until
+you move the next piece — see `docs/Setter_Dashboard_Plan.md`.

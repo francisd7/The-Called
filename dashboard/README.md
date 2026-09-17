@@ -17,9 +17,12 @@ one shouldn't restart the other.
 | Drizzle ORM | Schema is a TypeScript file; migrations are generated from it and reviewed in the diff. |
 | Auth.js + Google | Five named people. No passwords to manage, works on phones. Access is an allowlist against the `users` table, so a Google login alone gets nobody in. |
 
-Deployment steps (Railway, Google sign-in, Calendly webhook, loading the data)
-are in [`DEPLOYMENT.md`](DEPLOYMENT.md). Short version: keep the existing Railway
-project and add this as a second service with root directory `dashboard`.
+Deployment is in [`DEPLOYMENT.md`](DEPLOYMENT.md). Short version: keep the
+existing Railway project, add this as a second service with root directory
+`dashboard` on branch `claude/elegant-ptolemy-5g32da`, set the variables, and
+finish from the Admin screen. No terminal or CLI at any point — the service
+migrates and seeds itself on boot, and loading the Airtable leads and connecting
+Calendly are buttons.
 
 ## Setup
 
@@ -47,17 +50,12 @@ Every variable is documented in `.env.example`. The three that need outside setu
 Webhooks need a paid Calendly plan (Standard, Teams or Enterprise). Nigel's
 account is on Teams, so this works.
 
-Wire it up once, against the deployed URL:
-
-```bash
-CALENDLY_PAT=... PUBLIC_URL=https://<domain> npm run setup-calendly
-```
-
-That resolves the organization, matches the three Calendly event types to the
-three offers (storing each event type URI — the webhook needs them to tell
-offers apart), and registers the `invitee.created` / `invitee.canceled`
+Set `CALENDLY_PAT` on the service, then press **Connect Calendly** on the Admin
+screen. That resolves the organization, matches the three Calendly event types
+to the three offers (storing each event type URI — the webhook needs them to
+tell offers apart), and registers the `invitee.created` / `invitee.canceled`
 subscription with `CALENDLY_WEBHOOK_SIGNING_KEY`. Re-running won't duplicate the
-webhook. `--dry-run` reports without writing.
+webhook.
 
 Every delivery is HMAC-verified against that signing key and rejected with a 401
 if it doesn't match (`src/lib/calendly.ts`). Without the key set, the endpoint
@@ -92,25 +90,34 @@ prospect was warmed up when they weren't.
 ## Commands
 
 ```bash
-npm run dev           # local dev server
-npm run build         # production build
-npm test              # signature, matching, date and Discord tests
+npm run dev          # local dev server (migrates and seeds on start)
+npm run build        # production build
+npm test             # unit tests
 npm run typecheck
-npm run db:generate   # write a migration from schema.ts
-npm run db:migrate    # apply migrations
-npm run db:studio     # browse the database
-npm run seed           # people, the three offers, baseline dropdowns
-npm run import-leads   # pull the Airtable lead tracker into Postgres
-npm run setup-calendly # link the offers to Calendly and register the webhook
+npm run db:generate  # write a migration after editing schema.ts
+npm run db:studio    # browse the database
 ```
+
+Migrations are applied automatically at boot by `src/instrumentation.ts`, using
+drizzle-orm's runtime migrator rather than the drizzle-kit CLI — drizzle-kit is
+a devDependency and can be pruned from a production install. After editing
+`src/db/schema.ts`, run `npm run db:generate` and commit the generated file in
+`drizzle/`; deploying applies it.
+
+The integration tests need a throwaway database:
+
+```bash
+TEST_DATABASE_URL=postgres://... npm test
+```
+
+They're skipped without it, so the suite still passes on a machine with no
+Postgres.
 
 ## Migrating the Airtable leads
 
-```bash
-AIRTABLE_PAT=... npm run import-leads
-AIRTABLE_PAT=... npm run import-leads -- --dry-run     # counts only, writes nothing
-npm run import-leads -- --from-file snapshot.json      # from a saved export
-```
+Set `AIRTABLE_PAT` on the service and press **Import leads from Airtable** on
+the Admin screen. **Test Airtable import** next to it reports the counts without
+writing anything.
 
 Idempotent: every row is keyed on its Airtable record id, so a second run
 updates rather than duplicating. Run it again immediately before cutover to pick

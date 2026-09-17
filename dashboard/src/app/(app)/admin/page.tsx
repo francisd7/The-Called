@@ -1,10 +1,21 @@
 import { redirect } from 'next/navigation';
-import { desc } from 'drizzle-orm';
+import { count, desc, isNotNull } from 'drizzle-orm';
 import { auth } from '@/auth';
 import { db } from '@/db';
-import { eodReports, users } from '@/db/schema';
+import { eodReports, leads, offers, users } from '@/db/schema';
+import { ActionForm } from '@/components/ActionForm';
 import { formatDay } from '@/lib/dates';
 import { getPipelineSummary, getUnmatchedBookings } from '@/lib/queries';
+import { runAirtableImport, runCalendlySetup } from '@/lib/setupActions';
+
+function Check({ done, children }: { done: boolean; children: React.ReactNode }) {
+  return (
+    <li style={{ marginBottom: '0.3rem' }}>
+      <span className={`pill ${done ? 'ok' : 'warn'}`}>{done ? '✓' : '—'}</span>{' '}
+      {children}
+    </li>
+  );
+}
 
 export const dynamic = 'force-dynamic';
 
@@ -14,16 +25,84 @@ export default async function AdminPage() {
   // too - a hidden link is not access control.
   if (session?.user?.role !== 'admin') redirect('/');
 
-  const [summary, unmatched, people, recentEod] = await Promise.all([
+  const [summary, unmatched, people, recentEod, offerRows, [{ leadCount }]] = await Promise.all([
     getPipelineSummary(),
     getUnmatchedBookings(),
     db.select().from(users).orderBy(users.name),
     db.select().from(eodReports).orderBy(desc(eodReports.reportDate)).limit(10),
+    db.select().from(offers).orderBy(offers.sortOrder),
+    db.select({ leadCount: count() }).from(leads),
   ]);
+
+  const placeholderPeople = people.filter((p) => p.email.startsWith('CHANGEME'));
+  const linkedOffers = offerRows.filter((o) => o.eventTypeUri).length;
+  const setupComplete =
+    placeholderPeople.length === 0 && linkedOffers === offerRows.length && leadCount > 0;
 
   return (
     <>
       <h1>Admin</h1>
+
+      {!setupComplete && (
+        <>
+          <h2>Setup</h2>
+          <div className="card">
+            <ul style={{ listStyle: 'none', padding: 0, margin: '0 0 0.9rem' }}>
+              <Check done>Database tables created</Check>
+              <Check done={placeholderPeople.length === 0}>
+                Real email addresses for everyone
+                {placeholderPeople.length > 0 && (
+                  <span className="card-meta">
+                    {' '}
+                    — still placeholders: {placeholderPeople.map((p) => p.name).join(', ')}
+                  </span>
+                )}
+              </Check>
+              <Check done={leadCount > 0}>
+                Leads imported from Airtable
+                {leadCount > 0 && <span className="card-meta"> — {leadCount.toLocaleString()} in</span>}
+              </Check>
+              <Check done={linkedOffers === offerRows.length}>
+                Calendly connected
+                <span className="card-meta">
+                  {' '}
+                  — {linkedOffers}/{offerRows.length} offers linked
+                </span>
+              </Check>
+            </ul>
+
+            <div className="card-row">
+              <ActionForm action={runAirtableImport}>
+                <input type="hidden" name="dryRun" value="1" />
+                <button type="submit">Test Airtable import</button>
+              </ActionForm>
+              <ActionForm action={runAirtableImport}>
+                <input type="hidden" name="dryRun" value="0" />
+                <button className="btn-primary" type="submit">
+                  Import leads from Airtable
+                </button>
+              </ActionForm>
+            </div>
+            <p className="sub" style={{ marginTop: '0.4rem' }}>
+              Safe to re-run — leads are keyed on their Airtable id, so a second run updates rather
+              than duplicating. Needs <code>AIRTABLE_PAT</code> set on this service.
+            </p>
+
+            <div className="card-row">
+              <ActionForm action={runCalendlySetup}>
+                <button className="btn-primary" type="submit">
+                  Connect Calendly
+                </button>
+              </ActionForm>
+            </div>
+            <p className="sub" style={{ marginTop: '0.4rem' }}>
+              Links the three offers to their Calendly event types and registers the booking
+              webhook. Needs <code>CALENDLY_PAT</code> set on this service. Won&apos;t create a
+              duplicate webhook.
+            </p>
+          </div>
+        </>
+      )}
 
       <div className="stats">
         <div className="stat">

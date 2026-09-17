@@ -2,7 +2,7 @@
 
 import { useState, type ReactNode } from 'react';
 
-type Result = { ok: true } | { ok: false; error: string };
+type Result = { ok: true; message?: string } | { ok: false; error: string };
 
 /**
  * Wraps a server action so the result is shown inline instead of vanishing.
@@ -33,7 +33,7 @@ export function ActionForm({
           const result = await action(formData);
           setMessage(
             result.ok
-              ? { ok: true, text: successMessage ?? 'Saved' }
+              ? { ok: true, text: result.message ?? successMessage ?? 'Saved' }
               : { ok: false, text: result.error }
           );
         } catch {
