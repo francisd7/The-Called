@@ -9,6 +9,40 @@ Order matters — the database has to exist before the dashboard boots.
 
 ---
 
+## 0. Where you run these commands (Windows)
+
+A few steps need a terminal. Set this up once and the rest is copy-paste.
+
+**Install [Node.js LTS](https://nodejs.org)** (skip if `node --version` already
+prints something), then open **PowerShell** and run:
+
+```powershell
+npm install -g @railway/cli
+railway login
+git clone https://github.com/francisd7/The-Called.git
+cd The-Called\dashboard
+npm install
+railway link          # pick this project, then the dashboard service
+```
+
+From then on, prefix any command with `railway run` and it executes on your
+machine with the **live Railway variables injected** — no copying secrets into a
+local file:
+
+```powershell
+railway run npm run db:migrate
+```
+
+`railway shell` opens a session with the variables already loaded if you'd
+rather not prefix every command.
+
+**One PowerShell gotcha, if you ever do run curl by hand:** PowerShell aliases
+`curl` to `Invoke-WebRequest`, which does not understand `-H` the way curl does.
+Use `curl.exe` (with the extension) or Command Prompt instead. Nothing in this
+guide needs it — the Calendly setup is a script for exactly this reason.
+
+---
+
 ## 1. Add Postgres (2 min)
 
 In your existing Railway project: **New → Database → Add PostgreSQL**.
@@ -68,31 +102,29 @@ On the dashboard service, **Variables**:
 Webhooks need a paid plan. Nigel's account is on Teams, so this works.
 
 **Get a token:** calendly.com → **Integrations & apps → API & webhooks →
-Personal Access Tokens → Generate**. Keep it out of chat and email — paste it
-straight into a terminal.
+Personal Access Tokens → Generate**. It must be from the account that owns the
+three booking links — a token without organization-admin rights gets a 403 here.
+Don't paste it into chat or email; it goes straight into the command below.
 
-**Find the organization URI:**
+**Run the setup script.** From `The-Called\dashboard` in PowerShell:
 
-```bash
-curl -H "Authorization: Bearer YOUR_TOKEN" https://api.calendly.com/users/me
+```powershell
+$env:CALENDLY_PAT = "paste-the-token-here"
+railway run npm run setup-calendly -- --dry-run     # shows what it will do
+railway run npm run setup-calendly                  # does it
 ```
 
-Copy `resource.current_organization` from the response.
+It finds your organization, matches the three Calendly event types to the three
+offers (storing each event type URI, which is how a booking is traced back to
+the offer it came from), and registers the webhook with the signing key from
+step 3. Re-running is safe — it won't create a second webhook.
 
-**Register the webhook:**
+If an offer comes back unmatched, its scheduling URL in `scripts/seed.ts`
+doesn't match the real Calendly one. Fix it, re-run `npm run seed`, then re-run
+this.
 
-```bash
-curl -X POST https://api.calendly.com/webhook_subscriptions \
-  -H "Authorization: Bearer YOUR_TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "url": "https://<your-domain>/api/calendly/webhook",
-    "events": ["invitee.created", "invitee.canceled"],
-    "organization": "<the organization URI>",
-    "scope": "organization",
-    "signing_key": "<the CALENDLY_WEBHOOK_SIGNING_KEY from step 3>"
-  }'
-```
+Close the PowerShell window afterwards so the token doesn't sit in that
+session's history.
 
 **Add the booking-form questions.** For each of the three event types, edit the
 booking page and add:
@@ -105,14 +137,19 @@ booking page and add:
 
 ## 6. Load the data (5 min)
 
-From Railway's shell on the dashboard service (or locally with `DATABASE_URL`
-pointed at the Railway database):
+From `The-Called\dashboard` in PowerShell:
 
-```bash
-npm run db:migrate                            # create the tables
-npm run seed                                  # people, the 3 offers, dropdowns
-AIRTABLE_PAT=... npm run import-leads         # all 541 leads from Airtable
+```powershell
+railway run npm run db:migrate        # create the tables
+railway run npm run seed              # people, the 3 offers, dropdowns
+
+$env:AIRTABLE_PAT = "paste-the-airtable-token-here"
+railway run npm run import-leads      # all 541 leads from Airtable
 ```
+
+The Airtable token is the same one the automation hub already uses, or a fresh
+read-only one from [airtable.com/create/tokens](https://airtable.com/create/tokens)
+with `data.records:read` on the **The Called Lead Tracker** base.
 
 `import-leads` is safe to re-run: rows are keyed on their Airtable record id, so
 a second run updates rather than duplicates. Run it again right before you cut
@@ -135,9 +172,8 @@ Edit the file and re-run `npm run seed`, or update the rows directly.
 
 ## Checking it works
 
-```bash
-curl https://<your-domain>/health          # {"status":"ok"}
-```
+Open `https://<your-domain>/health` in a browser — it should show
+`{"status":"ok"}`.
 
 Then book a real test call through one of the three links and watch it appear
 under **Today**. If it lands in **Admin → Unmatched bookings** instead, the

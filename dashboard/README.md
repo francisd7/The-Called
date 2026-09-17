@@ -47,20 +47,17 @@ Every variable is documented in `.env.example`. The three that need outside setu
 Webhooks need a paid Calendly plan (Standard, Teams or Enterprise). Nigel's
 account is on Teams, so this works.
 
-Create the subscription once, against the deployed URL:
+Wire it up once, against the deployed URL:
 
 ```bash
-curl -X POST https://api.calendly.com/webhook_subscriptions \
-  -H "Authorization: Bearer $CALENDLY_PAT" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "url": "https://<domain>/api/calendly/webhook",
-    "events": ["invitee.created", "invitee.canceled"],
-    "organization": "<org uri>",
-    "scope": "organization",
-    "signing_key": "<same value as CALENDLY_WEBHOOK_SIGNING_KEY>"
-  }'
+CALENDLY_PAT=... PUBLIC_URL=https://<domain> npm run setup-calendly
 ```
+
+That resolves the organization, matches the three Calendly event types to the
+three offers (storing each event type URI — the webhook needs them to tell
+offers apart), and registers the `invitee.created` / `invitee.canceled`
+subscription with `CALENDLY_WEBHOOK_SIGNING_KEY`. Re-running won't duplicate the
+webhook. `--dry-run` reports without writing.
 
 Every delivery is HMAC-verified against that signing key and rejected with a 401
 if it doesn't match (`src/lib/calendly.ts`). Without the key set, the endpoint
@@ -102,8 +99,9 @@ npm run typecheck
 npm run db:generate   # write a migration from schema.ts
 npm run db:migrate    # apply migrations
 npm run db:studio     # browse the database
-npm run seed          # people, the three offers, baseline dropdowns
-npm run import-leads  # pull the Airtable lead tracker into Postgres
+npm run seed           # people, the three offers, baseline dropdowns
+npm run import-leads   # pull the Airtable lead tracker into Postgres
+npm run setup-calendly # link the offers to Calendly and register the webhook
 ```
 
 ## Migrating the Airtable leads
