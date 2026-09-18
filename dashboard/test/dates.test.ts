@@ -50,3 +50,26 @@ test('a Sunday evening ET still belongs to the week that is ending', async () =>
   // a few hours early and blanks everyone's week on Sunday night.
   assert.equal(weekStart(new Date('2026-09-21T01:30:00Z')), '2026-09-14');
 });
+
+test('a funnel step always implies the ones before it', async () => {
+  // Guards the shape, not the numbers: if a later stage can outrank an earlier
+  // one the chart shows a conversion rate above 100%, which is what the raw
+  // Airtable flags produced (53 booked against 33 replied).
+  const rows = [
+    { responded: false, callBooked: true, showed: true, closed: true },
+    { responded: false, callBooked: true, showed: false, closed: false },
+    { responded: true, callBooked: false, showed: false, closed: false },
+    { responded: false, callBooked: false, showed: false, closed: false },
+  ];
+  const steps = [
+    rows.length,
+    rows.filter((r) => r.responded || r.callBooked || r.showed || r.closed).length,
+    rows.filter((r) => r.callBooked || r.showed || r.closed).length,
+    rows.filter((r) => r.showed || r.closed).length,
+    rows.filter((r) => r.closed).length,
+  ];
+  for (let i = 1; i < steps.length; i += 1) {
+    assert.ok(steps[i] <= steps[i - 1], `step ${i} (${steps[i]}) exceeds step ${i - 1} (${steps[i - 1]})`);
+  }
+  assert.deepEqual(steps, [4, 3, 2, 1, 1]);
+});

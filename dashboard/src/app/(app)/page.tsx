@@ -1,13 +1,15 @@
 import { auth } from '@/auth';
 import { CallTile } from '@/components/CallTile';
-import { LeadCard } from '@/components/LeadCard';
+import { MiniLeadTile } from '@/components/MiniLeadTile';
 import { PersonPanel } from '@/components/PersonPanel';
 import {
   getActiveOffers,
   getAssignableSetters,
   getClosers,
+  getActiveConvos,
   getDueFollowUps,
   getLeadCardLookups,
+  getMoneyTotals,
   getPipelineSummary,
   getTodaysCalls,
   getUpcomingCalls,
@@ -31,17 +33,24 @@ export default async function TodayPage() {
     closers,
     offers,
     board,
+    money,
+    convos,
   ] = await Promise.all([
     getPipelineSummary(),
     getTodaysCalls(),
     getUpcomingCalls(),
-    getDueFollowUps(isSetter ? userId : undefined),
+    getDueFollowUps(isSetter ? userId : undefined, 12),
     getLeadCardLookups(),
     getAssignableSetters(),
     getClosers(),
     getActiveOffers(),
     getWeekBoard(),
+    getMoneyTotals(),
+    getActiveConvos(0),
   ]);
+
+  const money0 = (n: number) =>
+    n.toLocaleString('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 });
 
   // Setters either side of the team column, so the shared list sits in the
   // middle rather than at one end. With an odd number one side just gets more.
@@ -54,8 +63,10 @@ export default async function TodayPage() {
 
   return (
     <>
-      <h1>Today</h1>
-      <p className="sub">Calls first, then anything overdue a follow-up.</p>
+      {/* Matches the nav label - "Today" in the nav and "Dashboard" on the page
+          read as two different places. */}
+      <h1>Dashboard</h1>
+      <p className="sub">Calls first, then the week, then anything overdue a follow-up.</p>
 
       <div className="stats">
         <div className="stat">
@@ -73,6 +84,20 @@ export default async function TodayPage() {
         <div className="stat">
           <div className="stat-n">{summary.bookedCalls}</div>
           <div className="stat-l">calls booked</div>
+        </div>
+        <div className="stat">
+          <div className="stat-n">{convos.teamTotal}</div>
+          <div className="stat-l">active convos</div>
+        </div>
+        {/* Summed off the leads themselves, so it ties to a person rather than
+            to what someone typed into a daily report. */}
+        <div className="stat stat-money">
+          <div className="stat-n">{money0(money.cash)}</div>
+          <div className="stat-l">cash collected</div>
+        </div>
+        <div className="stat stat-money">
+          <div className="stat-n">{money0(money.contract)}</div>
+          <div className="stat-l">revenue generated</div>
         </div>
       </div>
 
@@ -169,9 +194,11 @@ export default async function TodayPage() {
             {followUps.total} due or overdue
             {followUps.total > followUps.rows.length && ` — showing the ${followUps.rows.length} most overdue`}
           </p>
-          {followUps.rows.map((lead) => (
-            <LeadCard key={lead.id} lead={lead} {...lookups} />
-          ))}
+          <div className="mini-grid">
+            {followUps.rows.map((lead) => (
+              <MiniLeadTile key={lead.id} lead={lead} setterNames={lookups.setterNames} />
+            ))}
+          </div>
           {followUps.total > followUps.rows.length && (
             <a className="btn" href="/leads">
               See all {followUps.total} in Leads

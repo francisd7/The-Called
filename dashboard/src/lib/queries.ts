@@ -82,7 +82,11 @@ export type LeadFilters = {
   q?: string;
   setterId?: string;
   stage?: string;
+  quality?: string;
+  source?: string;
   booked?: boolean;
+  /** 'active' | 'inactive' | undefined for either */
+  activity?: string;
   page?: number;
 };
 
@@ -96,9 +100,18 @@ export async function searchLeads(filters: LeadFilters) {
       or(ilike(leads.igHandle, term), ilike(leads.name, term), ilike(leads.email, term))
     );
   }
-  if (filters.setterId) where.push(eq(leads.setterId, filters.setterId));
+  if (filters.setterId) {
+    // A named setter, or explicitly nobody.
+    where.push(
+      filters.setterId === 'none' ? isNull(leads.setterId) : eq(leads.setterId, filters.setterId)
+    );
+  }
   if (filters.stage) where.push(eq(leads.conversationStage, filters.stage));
+  if (filters.quality) where.push(eq(leads.leadQuality, filters.quality));
+  if (filters.source) where.push(eq(leads.leadSource, filters.source));
   if (filters.booked) where.push(liveCall);
+  if (filters.activity === 'active') where.push(eq(leads.isActiveConvo, true));
+  if (filters.activity === 'inactive') where.push(eq(leads.isActiveConvo, false));
 
   const clause = where.length > 0 ? and(...where) : undefined;
   const page = Math.max(1, filters.page ?? 1);
@@ -341,4 +354,70 @@ export async function getRecentCalendlyActivity(limit = 20) {
     .from(calendlyWebhookEvents)
     .orderBy(desc(calendlyWebhookEvents.createdAt))
     .limit(limit);
+}
+
+/**
+ * Active conversations grouped by who owns them, plus the totals for the board
+ * at the top. Unassigned is kept as its own group rather than hidden: most of
+ * the imported backlog has no setter on it, and a view that only showed named
+ * columns would quietly lose hundreds of live conversations.
+ */
+export async function getActiveConvos(perGroup = 25) {
+  const [setters, rows] = await Promise.all([
+    db
+      .select()
+      .from(users)
+      .where(and(eq(users.active, true), eq(users.role, 'setter')))
+      .orderBy(asc(users.createdAt)),
+    db
+      .select()
+      .from(leads)
+      .where(and(eq(leads.isActiveConvo, true), eq(leads.isTest, false)))
+      .orderBy(desc(leads.lastContactAt), desc(leads.leadCreatedAt)),
+  ]);
+
+  const groups = setters.map((s) => {
+    const owned = rows.filter((r) => r.setterId === s.id);
+    return { id: s.id, name: s.name, total: owned.length, leads: owned.slice(0, perGroup) };
+  });
+  const unassigned = rows.filter((r) => !r.setterId);
+
+  return {
+    groups,
+    unassigned: { total: unassigned.length, leads: unassigned.slice(0, perGroup) },
+    teamTotal: rows.length,
+  };
+}
+
+/** Money on the leads themselves, which is where the dashboard tiles read from. */
+export async function getMoneyTotals() {
+  const [[all], perSetter] = await Promise.all([
+    db
+      .select({
+        cash: sql<string>`COALESCE(SUM(${leads.cashCollected}), 0)`,
+        contract: sql<string>`COALESCE(SUM(${leads.contractValue}), 0)`,
+        closed: count(leads.closed),
+      })
+      .from(leads)
+      .where(eq(leads.isTest, false)),
+    db
+      .select({
+        setterId: leads.setterId,
+        cash: sql<string>`COALESCE(SUM(${leads.cashCollected}), 0)`,
+        contract: sql<string>`COALESCE(SUM(${leads.contractValue}), 0)`,
+      })
+      .from(leads)
+      .where(and(eq(leads.isTest, false), isNotNull(leads.setterId)))
+      .groupBy(leads.setterId),
+  ]);
+
+  return {
+    cash: Number(all.cash),
+    contract: Number(all.contract),
+    perSetter: perSetter.map((r) => ({
+      setterId: r.setterId,
+      cash: Number(r.cash),
+      contract: Number(r.contract),
+    })),
+  };
 }

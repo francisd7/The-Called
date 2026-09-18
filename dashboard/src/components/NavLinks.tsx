@@ -2,15 +2,20 @@
 
 import { usePathname } from 'next/navigation';
 
+// Five full labels don't fit a phone, and letting the nav scroll sideways hides
+// the last one behind a gesture nobody knows is there. The short label is
+// swapped in by CSS below the breakpoint instead.
 const LINKS = [
-  { href: '/', label: 'Today' },
-  { href: '/leads', label: 'Leads' },
-  { href: '/eod', label: 'EOD' },
+  { href: '/', label: 'Dashboard', short: 'Home' },
+  { href: '/leads', label: 'Lead Tracker', short: 'Leads' },
+  { href: '/kpis', label: 'KPIs', short: 'KPIs' },
+  { href: '/eod', label: 'EOD Reports', short: 'EOD' },
 ];
 
 export function NavLinks({ role }: { role?: string }) {
   const pathname = usePathname();
-  const links = role === 'admin' ? [...LINKS, { href: '/admin', label: 'Admin' }] : LINKS;
+  const links =
+    role === 'admin' ? [...LINKS, { href: '/admin', label: 'Admin', short: 'Admin' }] : LINKS;
 
   return (
     <nav className="nav">
@@ -18,7 +23,8 @@ export function NavLinks({ role }: { role?: string }) {
         const active = link.href === '/' ? pathname === '/' : pathname.startsWith(link.href);
         return (
           <a key={link.href} href={link.href} aria-current={active ? 'page' : undefined}>
-            {link.label}
+            <span className="nav-long">{link.label}</span>
+            <span className="nav-short">{link.short}</span>
           </a>
         );
       })}

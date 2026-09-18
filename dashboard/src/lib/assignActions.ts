@@ -132,3 +132,37 @@ export async function setCloser(formData: FormData): Promise<Result> {
     return { ok: false, error: err instanceof Error ? err.message : 'Could not change closer' };
   }
 }
+
+/**
+ * Marks a conversation live or finished. Manual rather than derived from the
+ * stage: a setter knows when a thread has actually gone quiet, and a stage
+ * nobody has updated in two weeks doesn't.
+ */
+export async function toggleActiveConvo(formData: FormData): Promise<Result> {
+  try {
+    const user = await requireUser();
+    const leadId = field(formData, 'leadId');
+    if (!leadId) return { ok: false, error: 'Missing lead' };
+
+    const lead = await db.query.leads.findFirst({ where: eq(leads.id, leadId) });
+    if (!lead) return { ok: false, error: 'Lead not found' };
+
+    const next = !lead.isActiveConvo;
+    await db
+      .update(leads)
+      .set({ isActiveConvo: next, updatedAt: new Date() })
+      .where(eq(leads.id, leadId));
+    await db.insert(leadEvents).values({
+      leadId,
+      actorId: user.id,
+      type: next ? 'convo_reopened' : 'convo_closed',
+    });
+
+    revalidatePath('/');
+    revalidatePath('/leads');
+    revalidatePath(`/leads/${leadId}`);
+    return { ok: true, message: next ? 'Marked active' : 'Marked not active' };
+  } catch (err) {
+    return { ok: false, error: err instanceof Error ? err.message : 'Could not update' };
+  }
+}

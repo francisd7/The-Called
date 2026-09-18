@@ -54,6 +54,26 @@ const F = {
 
 const MAPPED_FIELD_IDS = new Set<string>(Object.values(F));
 
+/**
+ * Stages that mean the conversation is over. Used ONCE, on import, to give the
+ * manual "active conversation" flag a sensible starting point - without it
+ * every one of the 541 imported leads would arrive unticked and somebody would
+ * have to work through the lot by hand. After import the flag is only ever
+ * changed by a person.
+ */
+const DEAD_STAGES = new Set([
+  'dq',
+  'bad_fit',
+  'no_response',
+  'no_money',
+  'closed',
+  'declined_call',
+  'lost_ghosted',
+  'nurture',
+  'ltfu',
+  'not_outreached',
+]);
+
 type Cell = string | number | boolean | null | { id?: string; name?: string };
 type AirtableRecord = { id: string; createdTime?: string; cellValuesByFieldId: Record<string, Cell> };
 
@@ -231,11 +251,17 @@ export async function importAirtableLeads(
 
     let leadId: string;
     if (existing) {
+      // isActiveConvo is deliberately left out of the update: it's a manual
+      // flag, and a re-import must not undo what a setter has ticked.
       await db.update(leads).set(values).where(eq(leads.id, existing.id));
       leadId = existing.id;
       stats.updated += 1;
     } else {
-      const [row] = await db.insert(leads).values(values).returning({ id: leads.id });
+      const stageKey = values.conversationStage ?? '';
+      const [row] = await db
+        .insert(leads)
+        .values({ ...values, isActiveConvo: stageKey !== '' && !DEAD_STAGES.has(stageKey) })
+        .returning({ id: leads.id });
       leadId = row.id;
       stats.inserted += 1;
     }

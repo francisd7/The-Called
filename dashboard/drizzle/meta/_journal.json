@@ -43,6 +43,13 @@
       "when": 1789700435222,
       "tag": "0005_striped_cannonball",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1789702759993,
+      "tag": "0006_fast_doctor_spectrum",
+      "breakpoints": true
     }
   ]
 }

@@ -3,7 +3,7 @@ import type { ReactNode } from 'react';
 import './globals.css';
 
 export const metadata: Metadata = {
-  title: 'The Called — Setter Dashboard',
+  title: 'THE CALLED — Setter Dashboard',
   description: 'Lead tracking, call confirmations and triage for the setting team.',
 };
 

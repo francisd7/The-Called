@@ -144,6 +144,10 @@ export const leads = pgTable(
     postCallNotes: text('post_call_notes'),
 
     leadCreatedAt: timestamp('lead_created_at', { withTimezone: true }).notNull().defaultNow(),
+    // Whether this conversation is live. A manual flag, not derived from the
+    // stage: setters know when a thread has actually gone quiet, and a stage
+    // that hasn't been updated in a fortnight doesn't.
+    isActiveConvo: boolean('is_active_convo').notNull().default(false),
     // Marks a lead created by the "test booking" button. Test leads never post
     // to Discord, are labelled everywhere they appear, and can be cleared out
     // in one click - so the flow can be rehearsed without anyone being pinged
@@ -162,6 +166,7 @@ export const leads = pgTable(
   },
   (t) => [
     index('leads_ig_handle_key_idx').on(t.igHandleKey),
+    index('leads_active_convo_idx').on(t.isActiveConvo, t.setterId),
     index('leads_email_idx').on(t.email),
     index('leads_setter_idx').on(t.setterId),
     index('leads_stage_idx').on(t.conversationStage),
