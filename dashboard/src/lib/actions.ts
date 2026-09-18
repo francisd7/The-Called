@@ -9,6 +9,7 @@ import { notifyEodSubmitted, notifyTriage } from './discord';
 import { getStreaks } from './streaks';
 import { recordIssue } from './issues';
 import { normalizeIgHandle } from './calendly';
+import { respondedFromStage } from './stages';
 import { parseTeamDateTime, teamDateString } from './dates';
 
 type ActionResult = { ok: true; message?: string } | { ok: false; error: string };
@@ -226,6 +227,11 @@ export async function updateLead(formData: FormData): Promise<ActionResult> {
         email: str(formData, 'email')?.toLowerCase() ?? null,
         phone: str(formData, 'phone'),
         conversationStage: stage,
+        // The stage is the reliable answer to "did they reply?" - see
+        // stages.ts. A lead who booked has replied whatever the stage says.
+        ...(respondedFromStage(stage) !== null && !before.callBooked
+          ? { responded: respondedFromStage(stage) as boolean }
+          : {}),
         leadQuality: str(formData, 'leadQuality'),
         leadSource: str(formData, 'leadSource'),
         icp: str(formData, 'icp'),

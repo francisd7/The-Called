@@ -9,6 +9,7 @@ import { teamDateString } from './dates';
 import { importSetterEod } from './eodImport';
 import { importAirtableLeads } from './airtableImport';
 import { setupCalendly } from './calendlySetup';
+import { backfillCalendly } from './calendlyBackfill';
 
 type Result = { ok: true; message: string } | { ok: false; error: string };
 
@@ -213,5 +214,50 @@ export async function runEodImport(formData: FormData): Promise<Result> {
     };
   } catch (err) {
     return { ok: false, error: err instanceof Error ? err.message : 'Import failed' };
+  }
+}
+
+/**
+ * Pulls every booking Calendly has taken since the team started using it.
+ *
+ * The webhook only hears about bookings made after it was registered, so this
+ * is the only way to recover the ones that predate it - and the only source
+ * anywhere for cancellations after the Airtable tracker stopped being filled in.
+ */
+export async function runCalendlyBackfill(formData: FormData): Promise<Result> {
+  try {
+    await requireAdmin();
+    const pat = process.env.CALENDLY_PAT;
+    if (!pat) {
+      return {
+        ok: false,
+        error: 'CALENDLY_PAT is not set on this service. Add it in Railway, then redeploy.',
+      };
+    }
+
+    const dryRun = formData.get('dryRun') === '1';
+    const since = (formData.get('since') as string | null)?.trim();
+    const from = since && /^\d{4}-\d{2}-\d{2}$/.test(since) ? `${since}T00:00:00Z` : undefined;
+
+    const stats = await backfillCalendly(db, { pat, since: from, dryRun });
+
+    const parts = [`${stats.events} booking${stats.events === 1 ? '' : 's'} read`];
+    if (stats.range) parts.push(`${stats.range.from} to ${stats.range.to}`);
+    if (stats.matched > 0) parts.push(`${stats.matched} matched a lead`);
+    if (stats.created > 0) parts.push(`${stats.created} had no lead, so one was created`);
+    if (stats.updated > 0) parts.push(`${stats.updated} already here`);
+    if (stats.cancelled > 0) parts.push(`${stats.cancelled} cancelled`);
+    if (stats.skipped > 0) parts.push(`${stats.skipped} had nothing to identify them`);
+
+    revalidatePath('/');
+    revalidatePath('/leads');
+    revalidatePath('/kpis');
+    revalidatePath('/admin');
+    return {
+      ok: true,
+      message: `${dryRun ? 'Dry run — nothing written. ' : ''}${parts.join(' · ')}`,
+    };
+  } catch (err) {
+    return { ok: false, error: err instanceof Error ? err.message : 'Backfill failed' };
   }
 }

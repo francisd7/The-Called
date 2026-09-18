@@ -17,6 +17,7 @@ import {
   clearTestData,
   createTestBooking,
   runAirtableImport,
+  runCalendlyBackfill,
   runCalendlySetup,
   runEodImport,
 } from '@/lib/setupActions';
@@ -196,6 +197,36 @@ export default async function AdminPage() {
         <div className={`stat${unmatched.length > 0 ? ' alert' : ''}`}>
           <div className="stat-n">{unmatched.length}</div>
           <div className="stat-l">unmatched bookings</div>
+        </div>
+      </div>
+
+      <h2>Calendly history</h2>
+      <p className="sub">
+        The webhook only hears about bookings made after it was registered. This pulls every booking
+        Calendly has taken since the date below — cancellations included — which is the only record
+        anywhere of the calls that never made it into the tracker. A booking with no lead behind it
+        gets one created rather than dropped. Safe to re-run.
+      </p>
+      <div className="card">
+        <div className="card-row">
+          <ActionForm action={runCalendlyBackfill}>
+            <input type="hidden" name="dryRun" value="1" />
+            <div className="field" style={{ marginBottom: '0.5rem' }}>
+              <label htmlFor="since-dry">From</label>
+              <input id="since-dry" name="since" type="date" defaultValue="2026-06-01" />
+            </div>
+            <button type="submit">Test Calendly backfill</button>
+          </ActionForm>
+          <ActionForm action={runCalendlyBackfill}>
+            <input type="hidden" name="dryRun" value="0" />
+            <div className="field" style={{ marginBottom: '0.5rem' }}>
+              <label htmlFor="since-real">From</label>
+              <input id="since-real" name="since" type="date" defaultValue="2026-06-01" />
+            </div>
+            <button className="btn-primary" type="submit">
+              Pull Calendly history
+            </button>
+          </ActionForm>
         </div>
       </div>
 
