@@ -61,8 +61,23 @@ function leadLabel(lead: Lead): string {
   return lead.name?.trim() || `@${lead.igHandle}`;
 }
 
+/**
+ * The last line of defence for test data. Every caller is also expected to
+ * check, but a forgotten guard somewhere would put a brief for a call that
+ * doesn't exist in front of the closers, so the send itself refuses too.
+ */
+function isSendable(lead: Lead): boolean {
+  if (lead.isTest) {
+    console.log(`Skipping Discord post for test lead ${lead.igHandle}.`);
+    return false;
+  }
+  return true;
+}
+
 /** Fires when Calendly tells us a call was booked. */
 export async function notifyBooking(lead: Lead, offerLabel: string | null): Promise<boolean> {
+  if (!isSendable(lead)) return false;
+
   const lines = [
     `📅 **Call booked** — ${leadLabel(lead)}`,
     offerLabel ? `**Offer:** ${offerLabel}` : null,
@@ -80,6 +95,8 @@ export async function notifyBooking(lead: Lead, offerLabel: string | null): Prom
  * where they already read pre-call notes today.
  */
 export async function notifyTriage(lead: Lead, setterName: string): Promise<boolean> {
+  if (!isSendable(lead)) return false;
+
   const lines = [
     `🧠 **Pre-call notes** — ${leadLabel(lead)}`,
     `**Call:** ${formatCallTime(lead.callScheduledFor)}${lead.closerName ? ` with ${lead.closerName}` : ''}`,

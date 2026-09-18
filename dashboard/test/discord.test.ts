@@ -42,6 +42,7 @@ function fakeLead(overrides: Record<string, unknown> = {}): any {
     phone: '647-555-0199',
     callScheduledFor: new Date('2026-09-19T15:30:00Z'),
     closerName: 'Nigel',
+    isTest: false,
     confirmed: true,
     triageNotes: 'Wants to grow his brand. Budget is tight but real.',
     ...overrides,
@@ -104,4 +105,20 @@ test('no bot token means no send, and no crash', async () => {
   assert.equal(await notifyTriage(fakeLead(), 'Alexis'), false);
   assert.equal(captured.length, 0);
   process.env.DISCORD_BOT_TOKEN = token;
+});
+
+test('a test lead never reaches Discord, from either notifier', async () => {
+  // Rehearsing the flow must not put a brief for a call that doesn't exist in
+  // front of the closers. Checked here as well as at the call sites, so a
+  // forgotten guard upstream still can't send.
+  captured = [];
+  respondWith = 200;
+
+  assert.equal(await notifyTriage(fakeLead({ isTest: true }), 'Alexis'), false);
+  assert.equal(await notifyBooking(fakeLead({ isTest: true }), 'Brotherhood'), false);
+  assert.equal(captured.length, 0, 'a test lead must produce no Discord traffic at all');
+
+  // ...and a real one still sends, so the guard isn't just blocking everything.
+  assert.equal(await notifyTriage(fakeLead(), 'Alexis'), true);
+  assert.equal(captured.length, 1);
 });

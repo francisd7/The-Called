@@ -55,6 +55,7 @@ export function LeadCard({
       </div>
 
       <div className="card-row">
+        {lead.isTest && <span className="pill danger">TEST</span>}
         {stageLabel && <span className="pill">{stageLabel}</span>}
         {/* Unassigned is called out rather than left blank - 432 of the
             imported leads have no setter, and a silent gap hides that. */}

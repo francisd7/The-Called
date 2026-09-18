@@ -9,7 +9,7 @@ import { notifyTriage } from './discord';
 import { normalizeIgHandle } from './calendly';
 import { teamDateString } from './dates';
 
-type ActionResult = { ok: true } | { ok: false; error: string };
+type ActionResult = { ok: true; message?: string } | { ok: false; error: string };
 
 /**
  * Every action goes through this. Server actions are reachable by anyone who
@@ -117,6 +117,14 @@ export async function saveTriage(formData: FormData): Promise<ActionResult> {
       .returning();
 
     await db.insert(leadEvents).values({ leadId, actorId: user.id, type: 'triaged' });
+
+    // A test lead rehearses the flow; it must not put a brief for a call that
+    // doesn't exist in front of the closers.
+    if (updated.isTest) {
+      revalidatePath('/');
+      revalidatePath(`/leads/${leadId}`);
+      return { ok: true, message: 'Triaged. No Discord post — this is a test lead.' };
+    }
 
     // A Discord outage must not cost the setter their notes, so the send is
     // reported rather than thrown.

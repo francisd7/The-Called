@@ -1,12 +1,12 @@
 import { redirect } from 'next/navigation';
-import { count, desc, isNotNull } from 'drizzle-orm';
+import { count, desc, eq } from 'drizzle-orm';
 import { auth } from '@/auth';
 import { db } from '@/db';
 import { eodReports, leads, offers, users } from '@/db/schema';
 import { ActionForm } from '@/components/ActionForm';
 import { formatDay } from '@/lib/dates';
 import { getPipelineSummary, getUnmatchedBookings } from '@/lib/queries';
-import { runAirtableImport, runCalendlySetup } from '@/lib/setupActions';
+import { clearTestData, createTestBooking, runAirtableImport, runCalendlySetup } from '@/lib/setupActions';
 
 function Check({ done, children }: { done: boolean; children: React.ReactNode }) {
   return (
@@ -33,6 +33,11 @@ export default async function AdminPage() {
     db.select().from(offers).orderBy(offers.sortOrder),
     db.select({ leadCount: count() }).from(leads),
   ]);
+
+  const [{ testCount }] = await db
+    .select({ testCount: count() })
+    .from(leads)
+    .where(eq(leads.isTest, true));
 
   // Only people who can actually sign in need a real address. A closer seeded
   // but deliberately not set up yet isn't an outstanding task, and a checklist
@@ -119,6 +124,29 @@ export default async function AdminPage() {
         <div className={`stat${unmatched.length > 0 ? ' alert' : ''}`}>
           <div className="stat-n">{unmatched.length}</div>
           <div className="stat-l">unmatched bookings</div>
+        </div>
+      </div>
+
+      <h2>Try it without telling anyone</h2>
+      <div className="card">
+        <p className="sub" style={{ marginTop: 0 }}>
+          Creates a fake booking two hours from now so you can walk the whole flow — confirm it,
+          triage it, add notes. It&apos;s labelled TEST everywhere it appears and it never posts to
+          Discord, so nobody gets pinged about a call that isn&apos;t real.
+        </p>
+        <div className="card-row">
+          <ActionForm action={createTestBooking}>
+            <button className="btn-primary" type="submit">
+              Create a test booking
+            </button>
+          </ActionForm>
+          {testCount > 0 && (
+            <ActionForm action={clearTestData}>
+              <button type="submit">
+                Delete test data ({testCount})
+              </button>
+            </ActionForm>
+          )}
         </div>
       </div>
 

@@ -140,6 +140,11 @@ export const leads = pgTable(
     postCallNotes: text('post_call_notes'),
 
     leadCreatedAt: timestamp('lead_created_at', { withTimezone: true }).notNull().defaultNow(),
+    // Marks a lead created by the "test booking" button. Test leads never post
+    // to Discord, are labelled everywhere they appear, and can be cleared out
+    // in one click - so the flow can be rehearsed without anyone being pinged
+    // about a call that isn't real.
+    isTest: boolean('is_test').notNull().default(false),
     // Set only for rows imported from Airtable, so re-running the import
     // updates those rows instead of creating a second copy of each.
     airtableRecordId: text('airtable_record_id').unique(),

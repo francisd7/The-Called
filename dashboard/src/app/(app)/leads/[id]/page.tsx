@@ -36,6 +36,15 @@ export default async function LeadPage({ params }: { params: Promise<{ id: strin
         <a href="/leads">← All leads</a>
       </p>
       <h1>{lead.name?.trim() || `@${lead.igHandle}`}</h1>
+      {lead.isTest && (
+        <div className="card" style={{ borderColor: 'var(--danger)' }}>
+          <strong>This is a test lead</strong>
+          <p className="sub" style={{ margin: '0.3rem 0 0' }}>
+            Nothing here reaches Discord — triage it, confirm it, add notes, and no one is pinged.
+            Admin → Setup has a button to delete it when you&apos;re done.
+          </p>
+        </div>
+      )}
       <p className="sub">
         @{lead.igHandle}
         {setter ? ` · ${setter.name}` : ' · unassigned'}
@@ -104,8 +113,9 @@ export default async function LeadPage({ params }: { params: Promise<{ id: strin
 
       <h2 id="triage">Triage notes</h2>
       <p className="sub">
-        Saving this posts the pre-call brief straight to Discord — that&apos;s how Nigel and Andrew
-        get it, so write it for them.
+        {lead.isTest
+          ? 'On a real lead this posts the brief straight to Discord. On this test lead it saves and posts nothing.'
+          : "Saving this posts the pre-call brief straight to Discord — that's how Nigel and Andrew get it, so write it for them."}
       </p>
       <div className="card">
         <ActionForm action={saveTriage} successMessage="Triaged and posted to Discord">
