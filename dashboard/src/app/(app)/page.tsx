@@ -9,6 +9,7 @@ import {
   getAssignableSetters,
   getClosers,
   getActiveConvos,
+  getCalendlyHealth,
   getCallsAwaitingOutcome,
   getDueFollowUps,
   getLeadCardLookups,
@@ -57,6 +58,7 @@ export default async function TodayPage({ searchParams }: { searchParams: Search
     periodStats,
     awaitingOutcome,
     postCall,
+    calendly,
   ] = await Promise.all([
     getPipelineSummary(),
     getTodaysCalls(),
@@ -72,7 +74,14 @@ export default async function TodayPage({ searchParams }: { searchParams: Search
     getPeriodSummary(period),
     getCallsAwaitingOutcome(),
     getPostCallInbox(),
+    session!.user.role === 'admin' ? getCalendlyHealth() : null,
   ]);
+
+  // A webhook that has quietly stopped delivering looks exactly like a quiet
+  // week, and only one of those is survivable. Admin-only: it's a plumbing
+  // problem, not something a setter can act on.
+  const calendlyQuiet =
+    calendly && (!calendly.everDelivered || (calendly.daysQuiet ?? 0) >= 7) ? calendly : null;
 
   const money0 = (n: number) =>
     n.toLocaleString('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 });
@@ -107,6 +116,17 @@ export default async function TodayPage({ searchParams }: { searchParams: Search
           ))}
         </div>
       </div>
+
+      {calendlyQuiet && (
+        <p className="banner-warn">
+          <strong>Calendly has gone quiet.</strong>{' '}
+          {calendlyQuiet.everDelivered
+            ? `Nothing delivered in ${calendlyQuiet.daysQuiet} days.`
+            : 'Nothing has ever been delivered.'}{' '}
+          Either nobody has booked, or the webhook has stopped — those look identical from here.{' '}
+          <a href="/admin">Check Calendly deliveries</a>.
+        </p>
+      )}
 
       {/* Period-scoped: these change with the tab above. */}
       <div className="stats">

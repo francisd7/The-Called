@@ -581,6 +581,7 @@ th { color: var(--muted); font-weight: 550; font-size: 0.78rem; }
 /* A live streak is worth looking at; a cold one shouldn't shout. */
 .streak.is-cold .streak-n { color: var(--muted); }
 .streak.is-hot .streak-n { color: var(--warn); }
+.streak-second { border-left: 1px solid var(--border); padding-left: 0.55rem; }
 
 .btn-new { background: #d6f0e2; color: #1a6b46; border-color: transparent; font-weight: 600; }
 .btn-new:hover { background: #c3e9d5; border-color: transparent; }
@@ -687,3 +688,16 @@ th { color: var(--muted); font-weight: 550; font-size: 0.78rem; }
 .pick-name { color: var(--muted); font-size: 0.82rem; }
 .pick-meta { display: flex; gap: 0.25rem; flex-wrap: wrap; }
 .pick-meta .pill { font-size: 0.68rem; }
+
+/* A plumbing problem worth interrupting the page for: loud enough to notice,
+   not so loud it looks like an error the app has already failed at. */
+.banner-warn {
+  background: var(--warn-bg);
+  color: var(--warn);
+  border-radius: var(--radius);
+  padding: 0.6rem 0.8rem;
+  font-size: 0.85rem;
+  line-height: 1.45;
+  margin: 0.9rem 0 0;
+}
+.banner-warn a { color: inherit; }

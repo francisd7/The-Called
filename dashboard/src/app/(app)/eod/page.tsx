@@ -3,22 +3,37 @@ import { auth } from '@/auth';
 import { db } from '@/db';
 import { eodReports } from '@/db/schema';
 import { ActionForm } from '@/components/ActionForm';
+import { EodReview } from '@/components/EodReview';
+import { StreakStrip } from '@/components/StreakStrip';
 import { saveEodReport } from '@/lib/actions';
-import { getDayStats } from '@/lib/queries';
-import { teamDateString } from '@/lib/dates';
+import { getDayStats, getEodWeekReview } from '@/lib/queries';
+import { getStreaks } from '@/lib/streaks';
+import { teamDateString, weekStart } from '@/lib/dates';
 
 export const dynamic = 'force-dynamic';
 
-export default async function EodPage() {
+type SearchParams = Promise<Record<string, string | string[] | undefined>>;
+
+export default async function EodPage({ searchParams }: { searchParams: SearchParams }) {
   const session = await auth();
   const userId = session!.user.id;
+  const isAdmin = session!.user.role === 'admin';
   const today = teamDateString();
+  const thisWeek = weekStart();
 
-  const [existing, stats] = await Promise.all([
+  // Anything that isn't a plain date is ignored rather than handed to Postgres,
+  // which turns a mistyped link into this week instead of a 500.
+  const asked = (await searchParams).week;
+  const week =
+    typeof asked === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(asked) ? weekStart(new Date(`${asked}T12:00:00Z`)) : thisWeek;
+
+  const [existing, stats, streaks, review] = await Promise.all([
     db.query.eodReports.findFirst({
       where: and(eq(eodReports.userId, userId), eq(eodReports.reportDate, today)),
     }),
     getDayStats(userId),
+    getStreaks(),
+    isAdmin ? getEodWeekReview(week) : null,
   ]);
 
   return (
@@ -29,6 +44,20 @@ export default async function EodPage() {
           ? 'Already submitted today. Saving again updates it.'
           : 'Numbers are yours to count — the dashboard only sees leads you logged here.'}
       </p>
+
+      {/* Everyone sees everyone's - the point of a streak is that somebody else
+          can see it. Nothing else about another person's EOD is shown here. */}
+      <StreakStrip rows={streaks} primary="eod" />
+
+      {/* An admin comes here to read the week, not to file one, so the review
+          goes first and their own form sits underneath it. */}
+      {review && (
+        <>
+          <EodReview review={review} thisWeek={thisWeek} />
+          <div className="panel-divider" style={{ margin: '1.6rem 0 1rem' }} />
+          <h2>Your own report</h2>
+        </>
+      )}
 
       {/* Shown as a reference, never prefilled: not every outbound DM becomes a
           lead row, so using these as the answer would understate the real day. */}
@@ -157,6 +186,7 @@ export default async function EodPage() {
           </button>
         </ActionForm>
       </div>
+
     </>
   );
 }

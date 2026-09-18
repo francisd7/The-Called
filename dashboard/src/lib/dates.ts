@@ -127,3 +127,15 @@ export function parseTeamDateTime(value: string): Date | null {
   const firstPass = new Date(naiveUtc.getTime() + teamOffsetMs(naiveUtc));
   return new Date(naiveUtc.getTime() + teamOffsetMs(firstPass));
 }
+
+/** Shifts a plain YYYY-MM-DD by whole days, with no timezone in the way. */
+export function shiftDateString(day: string, days: number): string {
+  const d = new Date(`${day}T12:00:00Z`);
+  d.setUTCDate(d.getUTCDate() + days);
+  return d.toISOString().slice(0, 10);
+}
+
+/** The seven YYYY-MM-DD days of the week starting at `weekOf` (a Monday). */
+export function weekDays(weekOf: string): string[] {
+  return Array.from({ length: 7 }, (_, i) => shiftDateString(weekOf, i));
+}

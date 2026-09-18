@@ -1,8 +1,9 @@
-import { and, asc, count, desc, eq, gte, ilike, isNotNull, isNull, lt, ne, or, sql } from 'drizzle-orm';
+import { and, asc, count, desc, eq, gte, ilike, isNotNull, isNull, lt, lte, ne, or, sql } from 'drizzle-orm';
 import type { PgColumn } from 'drizzle-orm/pg-core';
 import { db } from '@/db';
 import {
   calendlyWebhookEvents,
+  eodReports,
   focuses,
   leadNotes,
   leads,
@@ -12,7 +13,8 @@ import {
   todos,
   users,
 } from '@/db/schema';
-import { teamDayRange, weekStart } from './dates';
+import { teamDateString, teamDayRange, weekDays, weekStart } from './dates';
+import { summariseEodWeek } from './eodMath';
 
 export type LeadRow = typeof leads.$inferSelect;
 
@@ -613,4 +615,52 @@ export async function getAllPostCallReports() {
     .leftJoin(users, eq(users.id, postCallReports.linkedById))
     .orderBy(desc(postCallReports.callDate))
     .limit(100);
+}
+
+// --- EOD review -------------------------------------------------------------
+
+export type EodReport = typeof eodReports.$inferSelect;
+export { EOD_COUNTS, EOD_MONEY } from './eodMath';
+
+/** Everyone expected to file one. Closers don't do outreach, so they don't. */
+function eodPeople() {
+  return db
+    .select({ id: users.id, name: users.name, color: users.color })
+    .from(users)
+    .where(and(eq(users.active, true), eq(users.role, 'setter')))
+    .orderBy(users.name);
+}
+
+/** A week of EOD reports, per setter and per day. */
+export async function getEodWeekReview(weekOf: string) {
+  const days = weekDays(weekOf);
+  const [people, rows] = await Promise.all([
+    eodPeople(),
+    db
+      .select()
+      .from(eodReports)
+      .where(and(gte(eodReports.reportDate, days[0]), lte(eodReports.reportDate, days[6])))
+      .orderBy(eodReports.reportDate),
+  ]);
+
+  return { weekOf, days, today: teamDateString(), ...summariseEodWeek({ people, rows, days }) };
+}
+
+/**
+ * How long since Calendly last delivered anything.
+ *
+ * A webhook that has quietly stopped working looks exactly like a week where
+ * nobody booked, and the second one is survivable. This is how you tell them
+ * apart without going and reading a deploy log.
+ */
+export async function getCalendlyHealth() {
+  const [last] = await db
+    .select({ at: calendlyWebhookEvents.createdAt })
+    .from(calendlyWebhookEvents)
+    .orderBy(desc(calendlyWebhookEvents.createdAt))
+    .limit(1);
+
+  const lastAt = last?.at ?? null;
+  const daysQuiet = lastAt ? Math.floor((Date.now() - lastAt.getTime()) / 86_400_000) : null;
+  return { lastAt, daysQuiet, everDelivered: lastAt !== null };
 }

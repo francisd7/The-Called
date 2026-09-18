@@ -64,7 +64,7 @@ export default async function KpisPage({ searchParams }: { searchParams: SearchP
         Days in a row, right now — not affected by the date range below. Showing up is the habit
         the rest of these numbers depend on.
       </p>
-      <StreakStrip rows={streaks} showEod />
+      <StreakStrip rows={streaks} secondary="eod" />
 
       <form className="toolbar" method="get">
         <div className="field">
