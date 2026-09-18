@@ -17,65 +17,104 @@ be made to hand out our per-tier links.
 
 ---
 
-## `#start-here`
+## `#start-here` — two messages, posted back to back, both pinned
 
-Read by all four tiers *and* by veterans *and* by brand-new buyers who have no
-tier role yet — five audiences seeing between 4 and 20 channels. So it never
-says "you have X". It says "your sidebar shows what's yours", which is true for
-every one of them at once, and lets Discord do the sorting it is already doing.
+**Message 1 sets the standard. Message 2 is the reference.** Split because one
+message would blow Discord's 2,000-character limit, and because they get read at
+different moments: the first once, on day one; the second every time someone has
+a thing and isn't sure where it goes.
 
-> Welcome in. Ten minutes here saves you a month of poking around.
+Deliberately not a tour of the server. The sidebar already shows what the rooms
+are; what it can't show is how a man is expected to use them, and that is the
+thing worth pinning. An earlier draft walked the categories top to bottom and
+duplicated the private-channel welcome message's to-do list — two different
+to-do lists landing on the same client inside ten minutes.
 
-**Your sidebar is the map.**
+The voice follows `src/onboarding/welcomeMessage.js` rather than a help desk.
+That message opens "You didn't just sign up for a program. You stepped into a
+brotherhood of men who are done playing small"; a `#start-here` that opens with
+a productivity promise reads like a different company wrote it.
 
-It only shows what your package includes, so it looks different to you than to
-the guy next to you. If a section named below isn't in yours, nothing is
-broken — it just isn't part of your package yet.
+Read by all four tiers, by veterans, and by brand-new buyers with no tier role
+yet — five audiences seeing between 4 and 20 channels. So it never says "you
+have X." One line in message 2 carries the whole problem: *your sidebar only
+shows what your package includes*. True for all five at once.
 
-And if the sidebar looks short on your first day, give it a few minutes. Your
-access gets switched on shortly after you join.
+---
 
-**Start with your own channel.**
+### Message 1 — the standard (1,226 characters)
 
-Look down the sidebar for a channel with your name on it — you, your coach,
-nobody else. Your welcome message is already sitting in it with your first
-tasks. If you only ever use one channel in this server, use that one.
+You're in. Here's how men use this room.
 
-No channel with your name on it? Then `#general-chat` is your room, and that's
-where to ask anything.
+**Post the specific version.**
+"How do I get clients" gets you nothing. "I sent 40 DMs this week, 3 replied,
+here's the exact message I used" gets you a real answer — from a coach, or from
+the guy who solved it last month. Vague questions get vague answers.
 
-**Everything else, top to bottom:**
+**Post the number you don't want to post.**
+The week that went badly is worth more in here than the week that went well.
+Nobody in this room is impressed by a highlight reel, and every man here has had
+the quiet month you're having right now. Said out loud, it stops running your
+head.
 
-**THE CALLED** — what everybody shares, at every level. `#bible-study`, the
-Warrior Huddle voice room, `#general-chat`. This is the brotherhood, not the
-business.
+**Show up for other men's wins.**
+Read `#wins` even when you've got nothing to add — it's the fastest read in the
+server on what's actually working this month. And the day you post yours, you'll
+want men in there reading it.
 
-**THE FORGE** — where the work happens. Post what you're building in
-`#content-review`, pull angles out of `#reel-ideas`, put results in `#wins`.
-Read `#wins` even with nothing to post — it's the fastest read in the server on
-what's working, and everyone can see it.
+**Do the work between the calls.**
+The calls don't build the business. The five days between them do. This room
+exists so those five days aren't spent on your own.
 
-**TRAINING HUB** — sales and setting training, conversation reviews, call
-recordings.
+**You're not here to be a customer.**
+You're here to become the man who doesn't need this anymore. Move like it from
+day one.
 
-**Your package's section** — announcements for people on your package only, and
-a chat with the guys at exactly your stage.
+Your own channel is down the sidebar with your name on it. Your first tasks are
+already sitting in it. Start there.
 
-**Three things to do today:**
+---
 
-1. Say hello in your own channel — or `#general-chat` if you don't have one.
-2. Read the last ten posts in `#wins`.
-3. Open your welcome message and start on task one.
+### Message 2 — where does what go (1,442 characters)
 
-**Who's who:**
+**Where does what go?**
 
-- **Nigel** — founder
-- **Francis** — operations. Ask me when something's broken.
-- **Andrew** — marketing
-- **Noah** — client success, and most likely the name in your channel
-- **Eddie** — runs the weekly call
+Your sidebar only shows what your package includes. If something below isn't in
+yours, nothing's broken — it just isn't part of your package yet.
 
-Stuck on anything, post it. Someone will answer.
+**Your own channel** — the one with your name on it. Your numbers, your
+questions, anything personal, anything broken. You, your coach, nobody else. If
+you only use one channel in here, use this one.
+
+**`#wins`** — a result. A client closed, a post that popped, a number that
+moved. Big or small, post it.
+
+**`#content-review`** — something you built and want torn apart. Offer, script,
+landing page, post.
+
+**`#reel-ideas`** — stuck for angles, or you've got one worth stealing.
+
+**`#the-forge-chat`** — thinking out loud with the other guys. The day-to-day
+room.
+
+**`#<your package>-chat`** — men at exactly your stage. Same week, same
+problems.
+
+**`#convo-reviews`** — a DM thread you want picked apart line by line.
+
+**`#sales-general`** — anything about closing. **`#setting-general`** — anything
+about outreach and booking.
+
+**`#bible-study`** — faith, and the heavier stuff. 🔊 **Warrior Huddle** is the
+live version of it.
+
+**`#general-chat`** — everything else. Every level is in here.
+
+Read-only, nothing to post: `#announcements`, `#book-1-1`, your package's
+announcements channel, and anything ending in `-recordings`.
+
+One rule that makes all of it work: **post the specific version.** Details get
+answers. Vagueness gets silence.
 
 ---
 
@@ -153,21 +192,26 @@ Start here: what's the single biggest constraint on your business right now?
 
 ## Notes on posting these
 
-- **`#start-here` first**, before anyone new joins through an invite link.
-- **`#start-here` is 1,944 characters — Discord's single-message limit is
-  2,000.** It has about one sentence of headroom. Re-count before adding
-  anything, or it silently refuses to send.
+- **`#start-here` first.** Post message 1, then message 2, then pin both.
+- **Discord's single-message limit is 2,000 characters.** Message 1 is 1,226
+  and message 2 is 1,442, so there is real headroom in each — but re-count
+  before merging them, because together they are well over.
 - Channel names are left in backticks rather than as real `#` mentions.
-  Mentions would be clickable, but each costs ~5 more characters against that
-  limit, and one pointing at a channel the reader can't see renders greyed out.
-  Not worth it here.
-- **One name needs checking** — that Eddie's weekly call is still running. Noah
-  as CSM is confirmed: the onboarding bot already introduces him by name in
-  every welcome message.
-- `#start-here` names sections some readers can't see — TRAINING HUB to a
-  Foundations client, "your package's section" to a bible-study member. That is
+  Mentions would be clickable, but one pointing at a channel the reader can't
+  see renders greyed out, and message 2 names channels most readers can't
+  reach on purpose.
+- `#start-here` names channels some readers can't see — `#convo-reviews` to a
+  Foundations client, `#content-review` to a bible-study member. That is
   deliberate. "It just isn't part of your package **yet**" does the upsell
   quietly, without ever ranking anyone. Cut the word "yet" to turn it off.
+- Message 1 ends by pointing at their own channel rather than listing tasks.
+  The private-channel welcome message already carries the real first tasks
+  (`src/onboarding/welcomeMessage.js`), and two to-do lists arriving inside ten
+  minutes is how both get ignored.
+- **Nobody is named in `#start-here`.** The welcome message already introduces
+  Nigel, Francis, Andrew and Noah by mention, in the client's own channel,
+  where it actually lands. A second roster here would go stale the first time
+  someone leaves.
 - The tier chats open with a question on purpose. An empty channel with a
   greeting in it stays empty; one with a question in it gets an answer.
 - These deliberately avoid naming prices or tier positions. A client knows
