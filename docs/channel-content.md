@@ -6,10 +6,14 @@ pasted into Discord as-is — Discord renders `#`/`##` headers, `**bold**` and
 
 Anything in `[square brackets]` needs a real value before posting.
 
-Pin every one of these. A new client arrives via their package's invite link
-and lands in `#welcome` with their tier already assigned, so `#start-here` is
-what they read within about thirty seconds of paying. It is doing more work
-than any other channel here.
+Pin every one of these. `#start-here` is what a new client reads within about
+thirty seconds of paying, so it is doing more work than any other channel here.
+
+Note what a new client actually sees at that moment, as of 2026-09-18: they
+arrive on Whop's own invite with **no tier role yet**, so the sidebar is four
+read-only channels plus their own private channel, until someone assigns their
+tier by hand. Tier assignment is a manual step — Whop's Discord app could not
+be made to hand out our per-tier links.
 
 ---
 

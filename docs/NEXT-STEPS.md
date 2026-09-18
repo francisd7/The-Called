@@ -195,10 +195,11 @@ finding for the CSM, and the honest framing is "the check-in habit did not
 take hold", not "removing the reminder broke it" — the data cannot support
 the second claim.
 
-One thing to confirm: **is `WEEKLY_REPORT_ENABLED` actually `true` on
-Railway?** If it is not, nothing watches check-ins at all now. The boot log
-says which: `Weekly Check-in missing report armed for Sat 12:00 ET...` or
-`... is off`.
+**Railway is done** (2026-09-18, confirmed by the user): the Saturday report
+is armed, and the six variables the reminder removal and the Coach change left
+dead — `WEEKLY_REMINDER_ENABLED`, `WEEKLY_REMINDER_HOUR_ET`,
+`WEEKLY_REMINDER_MINUTE_ET`, `WEEKLY_CHECKIN_FORM_URL`,
+`DISCORD_TEST_CHANNEL_ID`, `DISCORD_CSM_ROLE_ID` — are deleted.
 
 ---
 
