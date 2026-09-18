@@ -33,13 +33,23 @@ export async function findClientByEmail(airtableClient, baseId, email) {
 // away (Name/Email/Discord ID/Start Date, Status Active) that staff then
 // fills in the rest of (Package, CSM, Contract Value, ...) - the record
 // always exists from day one, nothing needs manual linking later.
-export function buildNewClientFields({ displayName, email, discordUserId, joinDate }) {
+export function buildNewClientFields({
+  displayName,
+  email,
+  discordUserId,
+  joinDate,
+  discordChannelId,
+}) {
   return {
     'Client Name': displayName,
     Email: email,
     'Discord ID': discordUserId,
     'Start Date': joinDate,
     Status: 'Active',
+    // Only written when we have it, so the shape stays identical for callers
+    // that don't - the dashboard safety net treats a blank channel as "post to
+    // the staff channel instead" rather than an error.
+    ...(discordChannelId ? { 'Discord Channel ID': discordChannelId } : {}),
   };
 }
 
@@ -60,6 +70,11 @@ export function registerNewMemberOnboarding({
   csmRoleId,
   flagChannelId,
   notionDashboardUrl,
+  // Optional async ({ record, clientChannelId }) => ... that sends the client
+  // their Notion dashboard. Injected rather than imported so this module stays
+  // free of Notion concerns, and so it's simply absent when the dashboard
+  // automation is switched off.
+  deliverDashboard,
   state,
   saveState,
   log = console,
@@ -115,10 +130,14 @@ export function registerNewMemberOnboarding({
       const normalizedEmail = normalizeEmail(message.content);
       const client = await findClientByEmail(airtableClient, clientSuccessBaseId, message.content);
 
+      let linkedRecord;
+
       if (client) {
         await airtableClient.updateRecord(clientSuccessBaseId, CLIENTS_TABLE_ID, client.id, {
           'Discord ID': message.author.id,
+          'Discord Channel ID': message.channel.id,
         });
+        linkedRecord = client;
         await message.channel.send("You're all set! ✅ Welcome aboard.");
         log.info(`[newMemberOnboarding] matched ${message.author.id} to client ${client.id}`);
       } else {
@@ -130,14 +149,24 @@ export function registerNewMemberOnboarding({
             email: normalizedEmail,
             discordUserId: message.author.id,
             joinDate: todayDateString(),
+            discordChannelId: message.channel.id,
           })
         );
+        linkedRecord = newClient;
         await message.channel.send("You're all set! ✅ Welcome aboard.");
         await discord.sendToChannel(
           flagChannelId,
           `🆕 Created a new Client record for <@${message.author.id}> (\`${normalizedEmail}\`) — no existing match, so this is a starter record. Please review and fill in Package/CSM/Contract details. Channel: <#${message.channel.id}>`
         );
         log.info(`[newMemberOnboarding] created client ${newClient.id} for ${message.author.id}`);
+      }
+
+      // Last, and deliberately after the Airtable record is settled: this is
+      // the step that turns "you'll get your dashboard shortly" into the link
+      // itself, in the same conversation, seconds later. deliverDashboard
+      // handles its own failures so a Notion problem can't undo any of the above.
+      if (deliverDashboard && linkedRecord) {
+        await deliverDashboard({ record: linkedRecord, clientChannelId: message.channel.id });
       }
 
       delete state[PENDING_STATE_KEY][message.channel.id];

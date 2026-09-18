@@ -17,6 +17,11 @@ export const DEFAULT_FIELD_MAP = {
 // and where staff/CSMs find the dashboard.
 export const DASHBOARD_URL_FIELD = 'Notion Dashboard URL';
 
+// Their private onboarding channel, captured when they reply with their email.
+// Only used by the safety-net path — the instant send already has the channel
+// in hand from the message it's replying to.
+export const CHANNEL_ID_FIELD = 'Discord Channel ID';
+
 export const NEEDS_DASHBOARD_FORMULA = `AND({Status} = 'Active', {${DASHBOARD_URL_FIELD}} = '')`;
 
 function isEmpty(value) {
@@ -155,13 +160,30 @@ export function selectClientsNeedingDashboard(records) {
 // official SDK - there is no permissions endpoint at all), so the last step
 // stays human. This message is that handoff: it carries the link and the
 // email so it's a copy-paste, not a lookup.
-export function formatDashboardCreatedMessage({ clientName, email, url, skipped = [] }) {
+export function formatDashboardCreatedMessage({
+  clientName,
+  email,
+  url,
+  skipped = [],
+  csmRoleMention = '',
+  linkAlreadySent = false,
+}) {
+  const heading = linkAlreadySent
+    ? `${csmRoleMention ? `${csmRoleMention} ` : ''}⚡ **${clientName} has already been sent this dashboard — invite them now**`
+    : `🗂️ **Notion dashboard created for ${clientName}**`;
+
   const lines = [
-    `🗂️ **Notion dashboard created for ${clientName}**`,
+    heading,
     url,
     '',
     `Last step (30 seconds): open it → **Share** → invite \`${email}\` → **Can edit** → Invite.`,
   ];
+
+  if (linkAlreadySent) {
+    lines.push(
+      "They have the link in their own channel already, so until this is done they'll see Notion's request-access screen."
+    );
+  }
 
   if (skipped.length > 0) {
     lines.push('', 'Columns left blank:');
@@ -171,6 +193,15 @@ export function formatDashboardCreatedMessage({ clientName, email, url, skipped 
   }
 
   return lines.join('\n');
+}
+
+export function formatClientDashboardMessage({ firstName, url }) {
+  return [
+    `🎉 **Your dashboard is ready, ${firstName}** — everything for your time in The Called lives here:`,
+    url,
+    '',
+    "We're switching your access on right now. If Notion asks you to request access, give it a couple of minutes and refresh — you'll be straight in.",
+  ].join('\n');
 }
 
 export function formatDryRunSummary({ toCreate, skipped }) {

@@ -8,14 +8,14 @@ Tracks progress against the build priority in `Automation_Hub_Blueprint.md`.
 | 2 | Weekly Check-in → Discord | ✅ Live | Deployed to Railway, verified end-to-end: a real Weekly Check-in submission posted to `DISCORD_WEEKLY_CHECKIN_CHANNEL_ID` (a separate channel/server from #1, at the user's request). |
 | 3 | Discord ID field + Friday reminder DMs | ✅ Live | `WEEKLY_REMINDER_ENABLED=true` set on Railway and confirmed on 2026-09-09; deployment stable. First real send: Friday 2026-09-11, 12:00 PM ET (`America/New_York`, DST-aware). 19 of 22 active clients backfilled with a Discord ID; Wylie Hawkins, Malachi Hardware, Patric Cocos have `Skip Weekly Reminder` checked (bible-study-only clients, no personal-branding access, confirmed with the user). Message: "Hey [First Name], time for your Weekly Check-in — [link]". Dry-run path (`npm run weekly-reminder-dry-run`) still available for testing future changes without risk. |
 | 4 | New-member onboarding flow | ✅ Live | Enabled on Railway and verified end-to-end on 2026-09-09 with a real test-account join: channel creation, permissions, welcome message (mentions rendering correctly), and the no-match path were confirmed working via a real join in the client server. Design went through two iterations after that first live test: (1) no-match originally just flagged staff and waited — the user pointed out a new signup's Airtable record essentially never exists yet at join time, so that path would have fired for almost every real new member; (2) briefly fixed with a retry-on-poll-cycle mechanism, then the user clarified they actually wanted the automation to create the starter Client record itself (Name, Email, Discord ID, Start Date, Status Active) rather than wait on staff — so it does that now, and the retry mechanism was removed as unnecessary. Flag channel is a dedicated channel (`DISCORD_ONBOARDING_FLAG_CHANNEL_ID`), not the Weekly Check-in channel, per the user's request after seeing the first test flag land there. Team "new member joined" notification explicitly dropped per the user — they want a separate Whop-based notification with purchase amount instead (not built). Status `Active` on the starter record was a deliberate choice, confirmed with the user, even though it makes the client immediately eligible for automation #3's Friday reminder before a CSM is assigned. |
-| 5 | Client Notion dashboards | 🔨 Built, gated off | Code complete and unit tested; nothing has run against a real Notion workspace yet. `NOTION_DASHBOARD_ENABLED` is unset, so no page is created and nothing is written back to Airtable. The user is testing against a **mock** Notion database first, then swapping `NOTION_DASHBOARDS_DATABASE_ID` for the real one once the template is finalised — no code change involved in that swap, which is why every Notion ID is an env var. |
+| 5 | Client Notion dashboards | 🔨 Built, gated off | Delivery design settled 2026-09-18: the client gets their dashboard link automatically, in their own channel, the moment they reply with their email — chosen over a staff-gated handoff with the "client may click before the guest invite lands" trade-off explicitly understood. Mitigated rather than solved: the staff ping mentions the CSM role and states the client already has the link, and the client's message warns about the request-access screen. | Code complete and unit tested; nothing has run against a real Notion workspace yet. `NOTION_DASHBOARD_ENABLED` is unset, so no page is created and nothing is written back to Airtable. The user is testing against a **mock** Notion database first, then swapping `NOTION_DASHBOARDS_DATABASE_ID` for the real one once the template is finalised — no code change involved in that swap, which is why every Notion ID is an env var. |
 
 ### #5 — waiting on the user
 
-- **Airtable field** — the Clients table needs a `Notion Dashboard URL` field
-  (URL or single line text). It's both the destination for the finished link
-  and the "already has one" marker the whole trigger is built on. Not created
-  yet; the automation errors with `Unknown field name` until it exists.
+- ✅ **Airtable fields — done.** `Notion Dashboard URL` (url) and
+  `Discord Channel ID` (single line text) were added to the Clients table on
+  2026-09-18. Both are automation-written and carry field descriptions saying
+  so. Clearing the URL re-triggers creation (or re-links the existing page).
 - **Notion side** — a Client Dashboards database with the dashboard template
   saved as a database template and set as default, plus an internal
   integration connected to that database (`•••` → Connections). The template
@@ -63,6 +63,13 @@ Tracks progress against the build priority in `Automation_Hub_Blueprint.md`.
   brand-new client still has to be invited once to become one, so it was not
   recommended on cost grounds. Revisit if client volume makes the manual
   invite a real bottleneck.
+
+- **Welcome message copy vs `NOTION_DASHBOARD_URL`** — that variable now
+  fits the shared resources/training page, not a personal dashboard, but
+  `welcomeMessage.js` still calls it "your Notion Dashboard". Left alone
+  rather than rewritten, because it's client-facing copy and the user's call.
+  The "You will get your Notion Dashboard shortly." fallback is still exactly
+  right — the instant path is what delivers on it.
 
 ### #4 — waiting on the user
 

@@ -15,7 +15,7 @@ build status: [`docs/STATUS.md`](docs/STATUS.md).
 | Weekly Check-in → Discord | New record in **Weekly Check-ins** (`Client Success` base) | Posts "✅ **[Client Name]** submitted their Weekly Check-in — Momentum: [X]/10" to the `DISCORD_WEEKLY_CHECKIN_CHANNEL_ID` channel |
 | Weekly Check-in reminder DMs | Every Friday, `WEEKLY_REMINDER_HOUR_ET`:`WEEKLY_REMINDER_MINUTE_ET` ET (default noon) | DMs every `Status = Active` Client with a Discord ID and no opt-out: "Hey [First Name], time for your Weekly Check-in — [prefilled link]". Posts a send/skip summary to `DISCORD_WEEKLY_CHECKIN_CHANNEL_ID` right after. |
 | New-member onboarding | Someone joins the client-facing Discord server (`DISCORD_CLIENT_GUILD_ID`) | Creates a private `firstname-lastname` channel (visible to them, the bot, and the CSM role), posts the welcome message, then waits for their reply. A reply that looks like an email is matched against the Clients table's `Email` field — matched → writes their Discord ID back to that record; no match (the common case for a genuinely new signup) → creates a starter Client record (Name, Email, Discord ID, Start Date, Status Active) and flags `DISCORD_ONBOARDING_FLAG_CHANNEL_ID` so staff fills in Package/CSM/Contract Value. |
-| Client Notion dashboard | Airtable Client record with `Status = Active` and an empty `Notion Dashboard URL` | Creates a page in the **Client Dashboards** Notion database from the saved template, fills in Name / Client Email / CSM / Package / Start Date / Status, writes the new page's URL back onto the Airtable record, and posts that link (plus the client's email) to `DISCORD_DASHBOARD_CHANNEL_ID` so a human can do the single step Notion's API cannot: invite the client as a guest. |
+| Client Notion dashboard | A new member replies with their email (instant), or any Active Client record still has an empty `Notion Dashboard URL` (safety net, on the poll interval) | Creates a page in the **Client Dashboards** Notion database from the saved template, fills in Name / Client Email / CSM / Package / Start Date / Status, writes the new page's URL back onto the Airtable record, and posts that link (plus the client's email) to `DISCORD_DASHBOARD_CHANNEL_ID` so a human can do the single step Notion's API cannot: invite the client as a guest. |
 
 The first two notifications go to separate Discord channels (and can be in
 separate servers) — the bot just needs to be a member of whichever server
@@ -120,12 +120,41 @@ explicitly `true`).
 | `NOTION_DASHBOARD_TEMPLATE_NAME` | No | Build each dashboard from the template with this name. Leave unset to use whichever template is marked default on that database. |
 | `DISCORD_DASHBOARD_CHANNEL_ID` | No | Where the "created, now go invite them" message lands. Defaults to `DISCORD_ONBOARDING_FLAG_CHANNEL_ID`, then `DISCORD_WEEKLY_CHECKIN_CHANNEL_ID`. |
 
-**Two setup steps outside this repo:**
+**How a client actually gets their dashboard**
 
-1. Add a **`Notion Dashboard URL`** field (type: URL or single line text) to the
-   Clients table in the Client Success base. It's both where the finished link
-   lives and the "already done" marker — without it the automation errors with
-   `Unknown field name`.
+```
+Client joins Discord      → private channel + welcome message
+Client replies with email → Client record linked/created
+                          → dashboard created from the template
+                          → link posted in their own channel, seconds later
+                          → staff pinged (@CSM) to invite them as a guest
+```
+
+The invite is the one manual step and it can't be automated — Notion has no
+permissions API. It happens *after* the client already has the link, which is
+a deliberate choice made with that trade-off understood: the client gets an
+instant reply rather than waiting on staff. Two things soften the gap — the
+staff ping mentions the CSM role and says outright that the client is already
+holding the link, and the client's own message warns them they may see a
+request-access screen for a minute or two.
+
+There are two entry points into the same code:
+
+- **Instant** (`deliverDashboardOnSignup`) — fires off the email reply inside
+  the onboarding flow. This is the one clients experience. It never throws: a
+  Notion outage reports to the staff channel rather than breaking the "You're
+  all set!" reply or the Airtable record.
+- **Safety net** (`createClientDashboards`) — runs on the poll interval and
+  picks up any Active client still missing a dashboard: added to Airtable by
+  hand, predating this automation, or an instant send that failed. It posts to
+  the client's own channel too when `Discord Channel ID` is on the record.
+
+**Setup outside this repo:**
+
+1. ✅ **Done** — `Notion Dashboard URL` and `Discord Channel ID` fields exist on
+   the Clients table. Both are written automatically; don't fill them in by
+   hand. Clearing the URL is how you force a dashboard to be re-created or
+   re-linked.
 2. In Notion, the Client Dashboards database needs a database template
    containing the dashboard layout, set as default (`⌄` next to **New** →
    `•••` → **Set as default**), with the integration connected to it.
@@ -148,6 +177,14 @@ unless you add `--write-airtable` — writing a mock-database URL onto a real
 Client record would make the live automation skip that client later.
 
 Design notes:
+- ⚠️ **`NOTION_DASHBOARD_URL` now means something different.** It puts one
+  shared link into every welcome message, which was right when there was a
+  single dashboard for everyone and is wrong now that each client gets their
+  own. It shouldn't be deleted — it's the natural home for the link to the
+  shared resources/training page — but the welcome message copy in
+  `src/onboarding/welcomeMessage.js` still calls it "your Notion Dashboard",
+  which will read as a contradiction next to the personal one. Reword before
+  setting it.
 - **Notion has no API for sharing a page with a guest.** There is no
   permissions endpoint at all (verified against the official SDK), and
   "Share to web" can't be toggled programmatically either. So inviting the

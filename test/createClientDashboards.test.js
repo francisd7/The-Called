@@ -177,3 +177,133 @@ test('does not touch Notion at all when no client needs a dashboard', async () =
   assert.deepEqual(airtableClient.calls.updates, []);
   assert.deepEqual(discord.calls.messages, []);
 });
+
+// ---- the instant path: what a new client actually experiences ----
+
+import { deliverDashboardOnSignup } from '../src/dashboards/createClientDashboards.js';
+
+const SIGNUP_RECORD = {
+  id: 'rec1',
+  fields: { 'Client Name': 'Sarah Smith', Email: 'sarah@example.com' },
+};
+
+function deliverArgs(overrides = {}) {
+  return {
+    baseId: 'appX',
+    databaseId: 'db1',
+    record: SIGNUP_RECORD,
+    clientChannelId: 'clientChan',
+    staffChannelId: 'staffChan',
+    csmRoleId: 'csmRole',
+    log: SILENT_LOG,
+    ...overrides,
+  };
+}
+
+test('sends the client their own link and pings staff to invite them', async () => {
+  const notionClient = fakeNotion();
+  const airtableClient = fakeAirtable({ records: [] });
+  const discord = fakeDiscord();
+
+  const result = await deliverDashboardOnSignup(
+    deliverArgs({ notionClient, airtableClient, discord })
+  );
+
+  assert.equal(result.ok, true);
+  assert.equal(notionClient.calls.created.length, 1);
+
+  const toClient = discord.calls.messages.find((m) => m.channelId === 'clientChan');
+  assert.match(toClient.message, /Your dashboard is ready, Sarah/);
+  assert.match(toClient.message, /https:\/\/notion\.so\/new-page/);
+  // The access gap is named up front rather than leaving them on Notion's
+  // request-access screen wondering if the link is broken.
+  assert.match(toClient.message, /request access/);
+
+  const toStaff = discord.calls.messages.find((m) => m.channelId === 'staffChan');
+  assert.match(toStaff.message, /^<@&csmRole>/);
+  assert.match(toStaff.message, /already been sent this dashboard/);
+  assert.match(toStaff.message, /sarah@example\.com/);
+
+  assert.deepEqual(airtableClient.calls.updates, [
+    { recordId: 'rec1', fields: { 'Notion Dashboard URL': 'https://notion.so/new-page' } },
+  ]);
+});
+
+test('a client who already has a dashboard just gets the link again', async () => {
+  const notionClient = fakeNotion();
+  const airtableClient = fakeAirtable({ records: [] });
+  const discord = fakeDiscord();
+
+  const result = await deliverDashboardOnSignup(
+    deliverArgs({
+      notionClient,
+      airtableClient,
+      discord,
+      record: {
+        id: 'rec1',
+        fields: { ...SIGNUP_RECORD.fields, 'Notion Dashboard URL': 'https://notion.so/existing' },
+      },
+    })
+  );
+
+  assert.equal(result.reused, true);
+  assert.equal(notionClient.calls.created.length, 0);
+  assert.deepEqual(airtableClient.calls.updates, []);
+  assert.equal(discord.calls.messages.length, 1);
+  assert.match(discord.calls.messages[0].message, /https:\/\/notion\.so\/existing/);
+});
+
+// A Notion outage must not take down the reply the client is waiting on, or
+// the Airtable record the rest of onboarding depends on.
+test('a Notion failure never throws — it reports to staff instead', async () => {
+  const notionClient = fakeNotion();
+  notionClient.createPageFromTemplate = async () => {
+    throw new Error('Notion POST /pages failed (503): upstream unavailable');
+  };
+  const airtableClient = fakeAirtable({ records: [] });
+  const discord = fakeDiscord();
+
+  const result = await deliverDashboardOnSignup(
+    deliverArgs({ notionClient, airtableClient, discord })
+  );
+
+  assert.equal(result.ok, false);
+  assert.deepEqual(airtableClient.calls.updates, []);
+  assert.equal(discord.calls.messages.some((m) => m.channelId === 'clientChan'), false);
+
+  const toStaff = discord.calls.messages.find((m) => m.channelId === 'staffChan');
+  assert.match(toStaff.message, /Couldn't create a Notion dashboard for \*\*Sarah Smith\*\*/);
+  assert.match(toStaff.message, /needs doing by hand/);
+});
+
+test('the safety-net path also reaches the client when their channel is on record', async () => {
+  const notionClient = fakeNotion();
+  const airtableClient = fakeAirtable({
+    records: [
+      {
+        id: 'rec1',
+        fields: {
+          'Client Name': 'Sarah Smith',
+          Email: 'sarah@example.com',
+          'Discord Channel ID': 'clientChan',
+        },
+      },
+    ],
+  });
+  const discord = fakeDiscord();
+
+  await createClientDashboards({
+    airtableClient,
+    notionClient,
+    discord,
+    baseId: 'appX',
+    databaseId: 'db1',
+    notifyChannelId: 'staffChan',
+    log: SILENT_LOG,
+  });
+
+  assert.match(
+    discord.calls.messages.find((m) => m.channelId === 'clientChan').message,
+    /Your dashboard is ready, Sarah/
+  );
+});

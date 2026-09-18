@@ -122,7 +122,12 @@ test('messageCreate: matches a pending member\'s email, writes Discord ID, confi
   await new Promise((resolve) => setImmediate(resolve));
 
   assert.equal(updates.length, 1);
-  assert.deepEqual(updates[0], { recordId: 'recABC', fields: { 'Discord ID': 'member1' } });
+  assert.deepEqual(updates[0], {
+    recordId: 'recABC',
+    // The channel goes on the record too, so the dashboard safety net can
+    // still reach this client directly if the instant send ever fails.
+    fields: { 'Discord ID': 'member1', 'Discord Channel ID': 'chan1' },
+  });
   assert.equal(channel._sent.length, 1);
   assert.match(channel._sent[0], /You're all set/);
   assert.equal(state.newMemberOnboardingPending.chan1, undefined);
@@ -258,4 +263,96 @@ test('messageCreate: ignores messages from someone other than the pending member
   await new Promise((resolve) => setImmediate(resolve));
 
   assert.equal(channel._sent.length, 0);
+});
+
+test('buildNewClientFields records the channel when onboarding knows it', () => {
+  const fields = buildNewClientFields({
+    displayName: 'Jack Garcia',
+    email: 'jack@example.com',
+    discordUserId: 'member1',
+    joinDate: '2026-09-09',
+    discordChannelId: 'chan1',
+  });
+
+  assert.equal(fields['Discord Channel ID'], 'chan1');
+});
+
+// The handoff that turns "you'll get your dashboard shortly" into the link
+// itself, in the same conversation.
+test('messageCreate: hands the linked record to deliverDashboard with their channel', async () => {
+  const discord = makeDiscordStub();
+  const state = {
+    newMemberOnboardingPending: { chan1: { discordUserId: 'member1', displayName: 'Jane Doe' } },
+  };
+  const delivered = [];
+  const airtableClient = {
+    listRecords: async () => [{ id: 'recABC', fields: { 'Client Name': 'Jane Doe' } }],
+    updateRecord: async () => {},
+    createRecord: async () => {
+      throw new Error('should not create when a match was found');
+    },
+  };
+
+  registerNewMemberOnboarding({
+    discord,
+    airtableClient,
+    clientGuildId: 'guild1',
+    clientSuccessBaseId: 'appXXX',
+    csmRoleId: 'csm1',
+    flagChannelId: 'flagChan',
+    notionDashboardUrl: '',
+    deliverDashboard: async (args) => delivered.push(args),
+    state,
+    saveState: async () => {},
+    log: { info: () => {}, error: () => {} },
+  });
+
+  discord.client.emit('messageCreate', {
+    author: { id: 'member1', bot: false },
+    channel: makeChannelStub('chan1'),
+    content: 'jane@example.com',
+  });
+  await new Promise((resolve) => setImmediate(resolve));
+
+  assert.equal(delivered.length, 1);
+  assert.equal(delivered[0].record.id, 'recABC');
+  assert.equal(delivered[0].clientChannelId, 'chan1');
+});
+
+test('messageCreate: onboarding still completes when no deliverDashboard is wired up', async () => {
+  const discord = makeDiscordStub();
+  const state = {
+    newMemberOnboardingPending: { chan1: { discordUserId: 'member1', displayName: 'Jane Doe' } },
+  };
+  const airtableClient = {
+    listRecords: async () => [{ id: 'recABC' }],
+    updateRecord: async () => {},
+    createRecord: async () => {
+      throw new Error('should not create when a match was found');
+    },
+  };
+
+  registerNewMemberOnboarding({
+    discord,
+    airtableClient,
+    clientGuildId: 'guild1',
+    clientSuccessBaseId: 'appXXX',
+    csmRoleId: 'csm1',
+    flagChannelId: 'flagChan',
+    notionDashboardUrl: '',
+    state,
+    saveState: async () => {},
+    log: { info: () => {}, error: () => {} },
+  });
+
+  const channel = makeChannelStub('chan1');
+  discord.client.emit('messageCreate', {
+    author: { id: 'member1', bot: false },
+    channel,
+    content: 'jane@example.com',
+  });
+  await new Promise((resolve) => setImmediate(resolve));
+
+  assert.match(channel._sent[0], /You're all set/);
+  assert.equal(state.newMemberOnboardingPending.chan1, undefined);
 });

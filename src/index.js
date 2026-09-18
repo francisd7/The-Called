@@ -11,7 +11,10 @@ import { isTargetMinute, getLocalDateString } from './reminders/schedule.js';
 import { sendWeeklyCheckinReminders } from './reminders/sendWeeklyCheckinReminders.js';
 import { registerNewMemberOnboarding } from './onboarding/newMemberOnboarding.js';
 import { createNotionClient } from './notionClient.js';
-import { createClientDashboards } from './dashboards/createClientDashboards.js';
+import {
+  createClientDashboards,
+  deliverDashboardOnSignup,
+} from './dashboards/createClientDashboards.js';
 
 const WEEKLY_REMINDER_TIMEZONE = 'America/New_York';
 const WEEKLY_REMINDER_WEEKDAY = 'Fri';
@@ -164,6 +167,25 @@ async function main() {
       csmRoleId: config.onboardingCsmRoleId,
       flagChannelId: config.onboardingFlagChannelId,
       notionDashboardUrl: config.notionDashboardUrl,
+      // The instant path: the moment a new member's email is linked to a
+      // Client record, their own dashboard goes into their own channel. Absent
+      // entirely when the dashboard automation is off, so onboarding behaves
+      // exactly as it does today until it's switched on.
+      deliverDashboard: config.notionDashboardEnabled
+        ? ({ record, clientChannelId }) =>
+            deliverDashboardOnSignup({
+              notionClient,
+              airtableClient,
+              discord,
+              baseId: config.clientSuccessBaseId,
+              databaseId: config.notionDashboardsDatabaseId,
+              templateName: config.notionDashboardTemplateName,
+              record,
+              clientChannelId,
+              staffChannelId: config.dashboardNotifyChannelId,
+              csmRoleId: config.onboardingCsmRoleId,
+            })
+        : null,
       state,
       saveState,
     });
