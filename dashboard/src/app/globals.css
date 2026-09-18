@@ -646,3 +646,8 @@ th { color: var(--muted); font-weight: 550; font-size: 0.78rem; }
   background: var(--danger);
   box-shadow: 0 0 0 2px var(--surface);
 }
+
+/* Something the app is waiting on a person for - louder than a normal card,
+   quieter than an error. */
+.card-attention { border-color: var(--warn); }
+.mini-attention { border-color: var(--warn); }

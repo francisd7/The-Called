@@ -157,3 +157,39 @@ export async function notifyEodSubmitted(input: {
 
   return postToChannel(process.env.DISCORD_SETTER_CHANNEL_ID, lines.join('\n'));
 }
+
+/**
+ * Posts what happened on a call. A close is the thing the whole pipeline exists
+ * to produce, so it should not be something you only find out by opening a
+ * record - and a no-show is worth knowing about just as quickly.
+ */
+export async function notifyOutcome(lead: Lead, loggedBy: string): Promise<boolean> {
+  if (!isSendable(lead)) return false;
+
+  const money = (v: string | null) =>
+    v === null ? null : Number(v).toLocaleString('en-US', {
+      style: 'currency',
+      currency: 'USD',
+      maximumFractionDigits: 0,
+    });
+
+  const closed = lead.callOutcome === 'closed';
+  const headline = closed
+    ? `💰 **Closed** — ${leadLabel(lead)}`
+    : lead.callOutcome === 'no_show'
+      ? `👻 **No show** — ${leadLabel(lead)}`
+      : `📞 **Call done** — ${leadLabel(lead)}`;
+
+  const lines = [
+    headline,
+    closed && lead.contractValue ? `**Contract:** ${money(lead.contractValue)}` : null,
+    closed && lead.cashCollected ? `**Cash in:** ${money(lead.cashCollected)}` : null,
+    closed && lead.tier ? `**Tier:** ${lead.tier}` : null,
+    !closed && lead.callOutcome ? `**Outcome:** ${lead.callOutcome.replace(/_/g, ' ')}` : null,
+    lead.closerName ? `**Closer:** ${lead.closerName}` : null,
+    lead.postCallNotes?.trim() ? `\n${lead.postCallNotes.trim()}` : null,
+    `\n— logged by ${loggedBy}`,
+  ].filter(Boolean);
+
+  return postToChannel(process.env.DISCORD_SETTER_CHANNEL_ID, lines.join('\n'));
+}

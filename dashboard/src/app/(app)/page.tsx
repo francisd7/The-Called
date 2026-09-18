@@ -1,12 +1,14 @@
 import { auth } from '@/auth';
 import { CallTile } from '@/components/CallTile';
 import { MiniLeadTile } from '@/components/MiniLeadTile';
+import { formatCallTime } from '@/lib/dates';
 import { PersonPanel } from '@/components/PersonPanel';
 import {
   getActiveOffers,
   getAssignableSetters,
   getClosers,
   getActiveConvos,
+  getCallsAwaitingOutcome,
   getDueFollowUps,
   getLeadCardLookups,
   getMoneyTotals,
@@ -51,6 +53,7 @@ export default async function TodayPage({ searchParams }: { searchParams: Search
     money,
     convos,
     periodStats,
+    awaitingOutcome,
   ] = await Promise.all([
     getPipelineSummary(),
     getTodaysCalls(),
@@ -64,6 +67,7 @@ export default async function TodayPage({ searchParams }: { searchParams: Search
     getMoneyTotals(),
     getActiveConvos(0),
     getPeriodSummary(period),
+    getCallsAwaitingOutcome(),
   ]);
 
   const money0 = (n: number) =>
@@ -159,6 +163,28 @@ export default async function TodayPage({ searchParams }: { searchParams: Search
             />
           ))}
         </div>
+      )}
+
+      {awaitingOutcome.total > 0 && (
+        <>
+          <h2>Waiting on an outcome</h2>
+          <p className="sub">
+            {awaitingOutcome.total} call{awaitingOutcome.total === 1 ? ' has' : 's have'} been and
+            gone without a result recorded. Until these are logged, the funnel and the cash figures
+            are behind.
+          </p>
+          <div className="mini-grid">
+            {awaitingOutcome.rows.map((lead) => (
+              <a className="mini mini-attention" key={lead.id} href={`/leads/${lead.id}#outcome`}>
+                <span className="mini-handle">{lead.name?.trim() || `@${lead.igHandle}`}</span>
+                <span className="mini-meta">
+                  <span className="pill warn">{formatCallTime(lead.callScheduledFor)}</span>
+                  {lead.closerName && <span className="pill">{lead.closerName}</span>}
+                </span>
+              </a>
+            ))}
+          </div>
+        </>
       )}
 
       <h2>Next 7 days</h2>

@@ -135,9 +135,18 @@ export const leads = pgTable(
     // Which post/reel the lead came off, where that was recorded.
     sourceContent: text('source_content'),
 
-    // --- outcome, owned by the closer after the call ---
-    // Not editable by setters, but carried over from Airtable rather than
-    // dropped: this is the history the team wants to look back on.
+    // --- outcome, recorded after the call ---
+    // Mirrors the fields the Airtable Post Call table carried, so nothing is
+    // lost by recording it here instead - and here the lead is already known,
+    // where Post Call only had a freeform first name that could never be
+    // matched back to an Instagram handle.
+    callOutcome: text('call_outcome'),
+    tier: text('tier'),
+    paymentMethod: text('payment_method'),
+    fathomUrl: text('fathom_url'),
+    outcomeLoggedAt: timestamp('outcome_logged_at', { withTimezone: true }),
+    outcomeLoggedById: uuid('outcome_logged_by_id').references(() => users.id),
+
     qualified: boolean('qualified'),
     closed: boolean('closed'),
     closedDate: timestamp('closed_date', { withTimezone: true }),

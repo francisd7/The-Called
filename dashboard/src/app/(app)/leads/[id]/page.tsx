@@ -1,5 +1,6 @@
 import { notFound } from 'next/navigation';
 import { SetterBadge } from '@/components/SetterBadge';
+import { OutcomeForm } from '@/components/OutcomeForm';
 import { ActionForm } from '@/components/ActionForm';
 import { addNote, confirmLead, logFollowUp, saveTriage, unconfirmLead, updateLead } from '@/lib/actions';
 import { formatCallTime, formatDay } from '@/lib/dates';
@@ -22,13 +23,25 @@ export default async function LeadPage({ params }: { params: Promise<{ id: strin
   if (!data) notFound();
 
   const { lead, setter, offer, notes } = data;
-  const [setters, stages, qualities, sources, icps] = await Promise.all([
+  const [setters, stages, qualities, sources, icps, outcomes, tiers, payments, lostReasons] =
+    await Promise.all([
     getSetters(),
     getOptions('conversation_stage'),
     getOptions('lead_quality'),
     getOptions('lead_source'),
     getOptions('icp'),
+    getOptions('call_outcome'),
+    getOptions('tier'),
+    getOptions('payment_method'),
+    getOptions('lost_reason'),
   ]);
+
+  // Only once the call has actually happened - an outcome form on a call that
+  // is still hours away is just noise.
+  const callIsPast =
+    lead.callBooked &&
+    lead.callScheduledFor !== null &&
+    lead.callScheduledFor.getTime() < Date.now();
 
   const hasLiveCall = lead.callBooked && !lead.callCancelled;
 
@@ -306,18 +319,22 @@ export default async function LeadPage({ params }: { params: Promise<{ id: strin
 
 
 
-      {(lead.closed || lead.postCallNotes) && (
+      {(callIsPast || lead.outcomeLoggedAt) && (
         <>
-          <h2>Outcome</h2>
-          <div className="card">
-            <div className="card-row">
-              {lead.qualified && <span className="pill ok">Qualified</span>}
-              {lead.closed && <span className="pill ok">Closed</span>}
-              {lead.contractValue && <span className="pill">Contract ${lead.contractValue}</span>}
-              {lead.cashCollected && <span className="pill">Collected ${lead.cashCollected}</span>}
-              {lead.lostReason && <span className="pill danger">{lead.lostReason}</span>}
-            </div>
-            {lead.postCallNotes && <div className="note-body" style={{ marginTop: '0.6rem' }}>{lead.postCallNotes}</div>}
+          <h2 id="outcome">Call outcome</h2>
+          <p className="sub">
+            {lead.outcomeLoggedAt
+              ? 'Recorded after the call. Saving again updates it and reposts to Discord.'
+              : "This call has been and gone. Logging what happened is what keeps the funnel's bottom half honest."}
+          </p>
+          <div className={`card${lead.outcomeLoggedAt ? '' : ' card-attention'}`}>
+            <OutcomeForm
+              lead={lead}
+              outcomes={outcomes}
+              tiers={tiers}
+              payments={payments}
+              lostReasons={lostReasons}
+            />
           </div>
         </>
       )}

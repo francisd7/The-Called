@@ -182,3 +182,43 @@ test('a zero is reported, but a blank is left out', async () => {
   assert.doesNotMatch(content, /days in a row/);
   assert.match(content, /updated their EOD/);
 });
+
+test('a close is announced as a close, with the money', async () => {
+  captured = [];
+  respondWith = 200;
+  const { notifyOutcome } = await import('../src/lib/discord.ts');
+
+  const lead = fakeLead({
+    callOutcome: 'closed',
+    contractValue: '10000.00',
+    cashCollected: '5000.00',
+    tier: 'Momentum',
+    postCallNotes: 'Split over 5 months.',
+  });
+  assert.equal(await notifyOutcome(lead, 'Francis'), true);
+
+  const content = captured[0].body.content ?? '';
+  assert.match(content, /Closed/);
+  assert.match(content, /\$10,000/);
+  assert.match(content, /\$5,000/);
+  assert.match(content, /Momentum/);
+  assert.match(content, /logged by Francis/);
+});
+
+test('a no-show says so instead of reporting money it does not have', async () => {
+  captured = [];
+  const { notifyOutcome } = await import('../src/lib/discord.ts');
+  await notifyOutcome(fakeLead({ callOutcome: 'no_show', contractValue: null, cashCollected: null }), 'Loui');
+
+  const content = captured[0].body.content ?? '';
+  assert.match(content, /No show/);
+  assert.doesNotMatch(content, /Contract/);
+  assert.doesNotMatch(content, /Cash in/);
+});
+
+test('a test lead outcome still never reaches Discord', async () => {
+  captured = [];
+  const { notifyOutcome } = await import('../src/lib/discord.ts');
+  assert.equal(await notifyOutcome(fakeLead({ isTest: true, callOutcome: 'closed' }), 'Francis'), false);
+  assert.equal(captured.length, 0);
+});

@@ -66,6 +66,23 @@ const BASE_OPTIONS: Array<[string, string, string]> = [
   // Always available, so a source that doesn't fit the list still gets recorded
   // rather than left blank.
   ['lead_source', 'other', 'Other'],
+  // Carried over from the Airtable Post Call table so the vocabulary the team
+  // already uses survives the move.
+  ['call_outcome', 'closed', 'Closed'],
+  ['call_outcome', 'no_close', 'No Close'],
+  ['call_outcome', 'no_show', 'No Show'],
+  ['call_outcome', 'rescheduled', 'Rescheduled'],
+  ['call_outcome', 'follow_up_scheduled', 'Follow Up Scheduled'],
+  ['tier', 'the_called', 'The Called'],
+  ['tier', 'foundations', 'Foundations'],
+  ['tier', 'momentum', 'Momentum'],
+  ['tier', 'inner_circle', 'Inner Circle'],
+  ['payment_method', 'cash', 'Cash'],
+  ['payment_method', 'sezzle', 'Sezzle'],
+  ['payment_method', 'splitit', 'Splitit'],
+  ['payment_method', 'klarna', 'Klarna'],
+  ['payment_method', 'affirm', 'Affirm'],
+  ['payment_method', 'claritypay', 'Claritypay'],
   ['icp', 'yes', 'Yes'],
   ['icp', 'maybe', 'Maybe'],
   ['icp', 'no', 'No'],
