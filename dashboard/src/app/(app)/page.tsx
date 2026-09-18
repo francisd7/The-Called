@@ -230,14 +230,17 @@ export default async function TodayPage({ searchParams }: { searchParams: Search
         ))}
       </div>
 
-      <h2>Follow-ups due</h2>
+      <h2>Going quiet</h2>
       {followUps.total === 0 ? (
-        <p className="empty">Nothing overdue.</p>
+        <p className="empty">
+          Nothing has gone quiet. Active conversations are all inside a week.
+        </p>
       ) : (
         <>
           <p className="sub">
-            {followUps.total} due or overdue
-            {followUps.total > followUps.rows.length && ` — showing the ${followUps.rows.length} most overdue`}
+            {followUps.total} active conversation{followUps.total === 1 ? '' : 's'} with no contact
+            in over a week
+            {followUps.total > followUps.rows.length && ` — showing the ${followUps.rows.length} quietest`}
           </p>
           <div className="mini-grid">
             {followUps.rows.map((lead) => (
@@ -250,8 +253,8 @@ export default async function TodayPage({ searchParams }: { searchParams: Search
             ))}
           </div>
           {followUps.total > followUps.rows.length && (
-            <a className="btn" href="/leads">
-              See all {followUps.total} in Leads
+            <a className="btn" href="/leads/follow-ups">
+              Work through all {followUps.total} in Follow Ups
             </a>
           )}
         </>

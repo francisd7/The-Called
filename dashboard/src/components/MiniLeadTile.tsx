@@ -15,17 +15,15 @@ export function MiniLeadTile({
   setterColors?: Map<string, string | null>;
 }) {
   const setter = lead.setterId ? setterNames?.get(lead.setterId) : null;
-  const overdue = lead.nextFollowUpAt ? lead.nextFollowUpAt < new Date() : false;
+  // How long it's been silent, matching what the Dashboard section now selects
+  // on - a "next follow-up" date would be blank on nearly every lead.
+  const silent = lead.lastOutreachAt ?? lead.lastContactAt ?? lead.leadCreatedAt;
 
   return (
     <a className="mini" href={`/leads/${lead.id}`}>
       <span className="mini-handle">{lead.name?.trim() || `@${lead.igHandle}`}</span>
       <span className="mini-meta">
-        {lead.nextFollowUpAt && (
-          <span className={`pill${overdue ? ' warn' : ''}`}>
-            {relativeDays(lead.nextFollowUpAt)}
-          </span>
-        )}
+        <span className="pill warn">{relativeDays(silent)}</span>
         <SetterBadge name={setter} color={lead.setterId ? setterColors?.get(lead.setterId) : null} />
       </span>
     </a>

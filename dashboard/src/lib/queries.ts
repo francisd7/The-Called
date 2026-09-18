@@ -42,40 +42,34 @@ export async function getUpcomingCalls() {
  * Follow-ups that are due or overdue. Anything with a live call is excluded -
  * that lead is already in the calls list and doesn't need chasing twice.
  */
-export async function getDueFollowUps(setterId?: string, limit = 8) {
-  const { end } = teamDayRange(0);
+/**
+ * What the Dashboard shows under "needs chasing".
+ *
+ * Measured by silence since somebody last reached out - the same rule the
+ * Follow Ups page uses. It previously keyed off a manually-set "next follow-up"
+ * date, which almost no lead has, so the two screens disagreed about who was
+ * overdue and the Dashboard list was near-empty by construction.
+ */
+export async function getDueFollowUps(setterId?: string, limit = 12) {
+  const silence = sql`COALESCE(${leads.lastOutreachAt}, ${leads.lastContactAt}, ${leads.leadCreatedAt})`;
   const filters = [
-    isNotNull(leads.nextFollowUpAt),
-    lt(leads.nextFollowUpAt, end),
+    eq(leads.isActiveConvo, true),
+    eq(leads.isTest, false),
+    // A booked call isn't waiting on a follow-up; it's waiting on the call.
     or(eq(leads.callBooked, false), eq(leads.callCancelled, true)),
+    sql`${silence} <= NOW() - INTERVAL '7 days'`,
   ];
   if (setterId) filters.push(eq(leads.setterId, setterId));
   const clause = and(...filters);
 
-  // Only the most overdue are shown on Today. The imported backlog runs to
-  // dozens, and a list that long pushes everything under it off the screen -
-  // the count plus a link is more useful than the whole pile.
+  // Only the quietest are shown here; the Follow Ups page is where the whole
+  // backlog is worked through.
   const [rows, [{ total }]] = await Promise.all([
-    db.select().from(leads).where(clause).orderBy(asc(leads.nextFollowUpAt)).limit(limit),
+    db.select().from(leads).where(clause).orderBy(asc(silence)).limit(limit),
     db.select({ total: count() }).from(leads).where(clause),
   ]);
 
   return { rows, total };
-}
-
-/** Booked calls with work still outstanding on them. */
-export async function getWorkQueue() {
-  const { start } = teamDayRange(0);
-  const rows = await db
-    .select()
-    .from(leads)
-    .where(and(liveCall, gte(leads.callScheduledFor, start)))
-    .orderBy(asc(leads.callScheduledFor));
-
-  return {
-    needsConfirming: rows.filter((r) => !r.confirmed),
-    needsTriage: rows.filter((r) => !r.triaged),
-  };
 }
 
 export type LeadFilters = {

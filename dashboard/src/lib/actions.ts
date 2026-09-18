@@ -1,11 +1,12 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
-import { eq, sql } from 'drizzle-orm';
+import { and, eq, sql } from 'drizzle-orm';
 import { auth } from '@/auth';
 import { db } from '@/db';
 import { eodReports, leadEvents, leadNotes, leads } from '@/db/schema';
-import { notifyTriage } from './discord';
+import { notifyEodSubmitted, notifyTriage } from './discord';
+import { getStreaks } from './streaks';
 import { recordIssue } from './issues';
 import { normalizeIgHandle } from './calendly';
 import { teamDateString } from './dates';
@@ -321,6 +322,11 @@ export async function saveEodReport(formData: FormData): Promise<ActionResult> {
 
     // One report per person per day - resubmitting edits it rather than
     // stacking a second row for the same day.
+    const existing = await db.query.eodReports.findFirst({
+      where: and(eq(eodReports.userId, user.id), eq(eodReports.reportDate, reportDate)),
+      columns: { id: true },
+    });
+
     await db
       .insert(eodReports)
       .values(values)
@@ -329,8 +335,39 @@ export async function saveEodReport(formData: FormData): Promise<ActionResult> {
         set: values,
       });
 
+    // Replaces the notification the automation hub posts when an EOD lands in
+    // Airtable. Filing here instead would otherwise end that signal silently.
+    const streaks = await getStreaks();
+    const mine = streaks.find((s) => s.userId === user.id);
+    const sent = await notifyEodSubmitted({
+      setterName: user.name,
+      reportDate,
+      outbounds: values.totalOutbounds,
+      followUps: values.totalFollowUps,
+      replies: values.totalLeadsWithReplies,
+      callsBooked: values.callsBooked,
+      win: values.win,
+      obstacle: values.obstacle,
+      streakDays: mine?.eod.current ?? 0,
+      isUpdate: Boolean(existing),
+    });
+
+    if (!sent) {
+      await recordIssue({
+        title: 'EOD reports are not reaching Discord',
+        detail: 'A report saved, but the team notification could not be posted.',
+        remedy:
+          'Check DISCORD_BOT_TOKEN and DISCORD_SETTER_CHANNEL_ID in Railway, and that the bot can see that channel.',
+      });
+    }
+
     revalidatePath('/eod');
-    return { ok: true };
+    return {
+      ok: true,
+      message: sent
+        ? `Saved and posted to Discord.${(mine?.eod.current ?? 0) > 1 ? ` ${mine?.eod.current} days in a row.` : ''}`
+        : 'Saved, but the Discord post failed — let the team know manually.',
+    };
   } catch (err) {
     return { ok: false, error: err instanceof Error ? err.message : 'Failed' };
   }

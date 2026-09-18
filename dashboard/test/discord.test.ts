@@ -122,3 +122,63 @@ test('a test lead never reaches Discord, from either notifier', async () => {
   assert.equal(await notifyTriage(fakeLead(), 'Alexis'), true);
   assert.equal(captured.length, 1);
 });
+
+test('the EOD post carries the numbers, not just that one was filed', async () => {
+  // The Airtable version announced a submission and nothing else, so everyone
+  // had to open the record to learn anything.
+  captured = [];
+  respondWith = 200;
+  const { notifyEodSubmitted } = await import('../src/lib/discord.ts');
+
+  assert.equal(
+    await notifyEodSubmitted({
+      setterName: 'Loui',
+      reportDate: '2026-09-18',
+      outbounds: 82,
+      followUps: 31,
+      replies: 14,
+      callsBooked: 2,
+      win: 'Booked two off the fitness angle',
+      obstacle: null,
+      streakDays: 5,
+      isUpdate: false,
+    }),
+    true
+  );
+
+  const content = captured[0].body.content ?? '';
+  assert.match(content, /Loui/);
+  assert.match(content, /submitted their EOD/);
+  assert.match(content, /Outbounds 82/);
+  assert.match(content, /Booked 2/);
+  assert.match(content, /5 days in a row/);
+  assert.match(content, /fitness angle/);
+  assert.equal(captured[0].path, '/channels/setter-channel/messages');
+});
+
+test('a zero is reported, but a blank is left out', async () => {
+  // Zero outbounds is a real and meaningful number; a field nobody filled in
+  // is not, and printing "Replies 0" for it would invent data.
+  captured = [];
+  const { notifyEodSubmitted } = await import('../src/lib/discord.ts');
+  await notifyEodSubmitted({
+    setterName: 'Alexis',
+    reportDate: '2026-09-18',
+    outbounds: 0,
+    followUps: null,
+    replies: null,
+    callsBooked: null,
+    win: null,
+    obstacle: null,
+    streakDays: 1,
+    isUpdate: true,
+  });
+
+  const content = captured[0].body.content ?? '';
+  assert.match(content, /Outbounds 0/);
+  assert.doesNotMatch(content, /Follow-ups/);
+  assert.doesNotMatch(content, /Replies/);
+  // A one-day streak isn't a streak worth announcing.
+  assert.doesNotMatch(content, /days in a row/);
+  assert.match(content, /updated their EOD/);
+});

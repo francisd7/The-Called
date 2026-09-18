@@ -114,3 +114,46 @@ export async function notifyTriage(lead: Lead, setterName: string): Promise<bool
     lines.join('\n')
   );
 }
+
+/**
+ * Posts when a setter files their EOD, replacing the notification the
+ * automation hub sends when one lands in Airtable. Without this, moving EOD
+ * into the dashboard silently ends the only signal the team had that a report
+ * was filed at all.
+ *
+ * Carries the headline numbers rather than just announcing a submission: the
+ * Airtable version made everyone open the record to learn anything.
+ */
+export async function notifyEodSubmitted(input: {
+  setterName: string;
+  reportDate: string;
+  outbounds: number | null;
+  followUps: number | null;
+  replies: number | null;
+  callsBooked: number | null;
+  win: string | null;
+  obstacle: string | null;
+  streakDays: number;
+  isUpdate: boolean;
+}): Promise<boolean> {
+  const stat = (label: string, value: number | null) =>
+    value === null ? null : `${label} ${value}`;
+
+  const numbers = [
+    stat('Outbounds', input.outbounds),
+    stat('Follow-ups', input.followUps),
+    stat('Replies', input.replies),
+    stat('Booked', input.callsBooked),
+  ].filter(Boolean);
+
+  const lines = [
+    `📋 **${input.setterName}** ${input.isUpdate ? 'updated their' : 'submitted their'} EOD — ${input.reportDate}`,
+    numbers.length > 0 ? numbers.join(' · ') : null,
+    // The streak is the whole point of the habit, so it travels with the post.
+    input.streakDays > 1 ? `🔥 ${input.streakDays} days in a row` : null,
+    input.win ? `**Win:** ${input.win}` : null,
+    input.obstacle ? `**Obstacle:** ${input.obstacle}` : null,
+  ].filter(Boolean);
+
+  return postToChannel(process.env.DISCORD_SETTER_CHANNEL_ID, lines.join('\n'));
+}
