@@ -1,39 +1,74 @@
 import { ActionForm } from '@/components/ActionForm';
-import { addTodo, deleteTodo, toggleTodo } from '@/lib/planActions';
+import { addTodo, deleteTodo, saveFocus, toggleTodo } from '@/lib/planActions';
 import { relativeDays } from '@/lib/dates';
+import type { focuses } from '@/db/schema';
 import type { TodoRow } from '@/lib/queries';
 
-function dueClass(due: string | null, done: boolean) {
-  if (!due || done) return '';
-  // Compared as YYYY-MM-DD strings against the team's today, so a task due
-  // today doesn't read as overdue just because it's the afternoon.
-  const today = new Date().toLocaleDateString('en-CA', { timeZone: 'America/New_York' });
-  if (due < today) return ' warn';
-  return '';
+type Focus = typeof focuses.$inferSelect;
+
+function isOverdue(due: string | null) {
+  if (!due) return false;
+  // Compared as YYYY-MM-DD against the team's today, so something due today
+  // doesn't read as overdue just because it's the afternoon.
+  return due < new Date().toLocaleDateString('en-CA', { timeZone: 'America/New_York' });
 }
 
-export function TodoList({
-  todos,
-  scope,
+/**
+ * One person's week in a single card: what they're focused on, and what's on
+ * their list. `ownerId` null is the team's card.
+ */
+export function PersonPanel({
   title,
+  ownerId,
+  focus,
+  todos,
+  focusPlaceholder,
   emptyText,
-  showOwner = false,
+  wide = false,
 }: {
-  todos: TodoRow[];
-  scope: 'mine' | 'team';
   title: string;
+  ownerId: string | null;
+  focus: Focus | null;
+  todos: TodoRow[];
+  focusPlaceholder: string;
   emptyText: string;
-  showOwner?: boolean;
+  wide?: boolean;
 }) {
   const open = todos.filter((t) => !t.completedAt);
   const done = todos.filter((t) => t.completedAt);
+  const scopeFields = (
+    <>
+      {ownerId === null ? (
+        <input type="hidden" name="scope" value="team" />
+      ) : (
+        <input type="hidden" name="ownerId" value={ownerId} />
+      )}
+    </>
+  );
 
   return (
-    <section className="panel">
+    <section className={`panel${wide ? ' panel-wide' : ''}`}>
       <div className="panel-head">
         <h3>{title}</h3>
         <span className="card-meta">{open.length} open</span>
       </div>
+
+      <ActionForm action={saveFocus} successMessage="Focus saved">
+        {scopeFields}
+        <label htmlFor={`focus-${ownerId ?? 'team'}`}>Focus this week</label>
+        <textarea
+          id={`focus-${ownerId ?? 'team'}`}
+          name="body"
+          defaultValue={focus?.body ?? ''}
+          placeholder={focusPlaceholder}
+          rows={3}
+        />
+        <div className="card-row">
+          <button type="submit">{focus ? 'Update focus' : 'Set focus'}</button>
+        </div>
+      </ActionForm>
+
+      <div className="panel-divider" />
 
       {open.length === 0 && done.length === 0 ? (
         <p className="panel-empty">{emptyText}</p>
@@ -54,7 +89,7 @@ export function TodoList({
                   <span className="todo-title">{todo.title}</span>
                   <span className="todo-meta">
                     {todo.dueDate && (
-                      <span className={`pill${dueClass(todo.dueDate, isDone)}`}>
+                      <span className={`pill${!isDone && isOverdue(todo.dueDate) ? ' warn' : ''}`}>
                         {relativeDays(new Date(`${todo.dueDate}T12:00:00Z`))}
                       </span>
                     )}
@@ -63,7 +98,6 @@ export function TodoList({
                         @{todo.leadHandle}
                       </a>
                     )}
-                    {showOwner && todo.ownerName && <span className="pill">{todo.ownerName}</span>}
                   </span>
                 </div>
 
@@ -80,7 +114,7 @@ export function TodoList({
       )}
 
       <ActionForm action={addTodo} successMessage="Added" className="todo-add">
-        <input type="hidden" name="scope" value={scope} />
+        {scopeFields}
         <input name="title" placeholder="Add a task…" required aria-label="Task" />
         <input name="dueDate" type="date" aria-label="Due date" />
         <button type="submit">Add</button>

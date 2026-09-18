@@ -64,6 +64,22 @@ a { color: var(--accent); }
   gap: 1rem;
   justify-content: space-between;
 }
+
+/* On a phone the brand and the sign-out squeeze the nav until the later links
+   are clipped mid-word. Below this width the nav takes its own full row. */
+@media (max-width: 34rem) {
+  .topbar-inner {
+    flex-wrap: wrap;
+    gap: 0.4rem 1rem;
+    padding: 0.55rem 1rem;
+  }
+  .topbar-inner .nav {
+    order: 3;
+    flex-basis: 100%;
+    justify-content: space-between;
+  }
+  .topbar-inner .nav a { padding: 0.3rem 0.75rem; }
+}
 .brand { font-weight: 650; font-size: 0.95rem; text-decoration: none; color: var(--fg); }
 .nav { display: flex; gap: 0.35rem; overflow-x: auto; }
 .nav a {
@@ -225,7 +241,26 @@ th { color: var(--muted); font-weight: 550; font-size: 0.78rem; }
    than sitting next to it. */
 .tile-assign > form:only-child { grid-column: 1 / -1; }
 
-/* --- panels (focus, to-dos) --- */
+/* --- the week board: a column per person, team in the middle --- */
+.week-board {
+  display: grid;
+  /* One column on a phone. The side-by-side layout only appears once there is
+     genuinely room for three readable columns. */
+  grid-template-columns: 1fr;
+  gap: 0.7rem;
+}
+@media (min-width: 62rem) {
+  .week-board {
+    /* Set per render from the number of panels, with the team column wider -
+       it's shared and carries the most. Falls back to three if the variable is
+       ever missing. */
+    grid-template-columns: var(--board-columns, 1fr 1.4fr 1fr);
+  }
+  /* min-width:0 stops a long task title from forcing the column wider than its
+     share and pushing the others off. */
+  .week-board > .panel { min-width: 0; }
+}
+
 .panel-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(19rem, 1fr));
@@ -240,6 +275,9 @@ th { color: var(--muted); font-weight: 550; font-size: 0.78rem; }
 .panel-head { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 0.5rem; }
 .panel-head h3 { margin: 0; font-size: 0.92rem; }
 .panel-empty { color: var(--muted); font-size: 0.85rem; margin: 0.3rem 0 0.7rem; }
+.panel-divider { border-top: 1px solid var(--border); margin: 0.75rem 0 0.5rem; }
+/* Tall enough that a two-line focus isn't clipped in a narrow column. */
+.panel textarea { min-height: 6.2rem; }
 
 .todos { list-style: none; margin: 0 0 0.7rem; padding: 0; }
 .todo { display: flex; align-items: flex-start; gap: 0.4rem; padding: 0.3rem 0; border-bottom: 1px solid var(--border); }

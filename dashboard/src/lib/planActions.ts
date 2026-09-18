@@ -4,7 +4,7 @@ import { revalidatePath } from 'next/cache';
 import { and, eq, isNull } from 'drizzle-orm';
 import { auth } from '@/auth';
 import { db } from '@/db';
-import { focuses, todos } from '@/db/schema';
+import { focuses, todos, users } from '@/db/schema';
 import { weekStart } from './dates';
 
 type Result = { ok: true; message?: string } | { ok: false; error: string };
@@ -22,15 +22,34 @@ function field(form: FormData, key: string): string | null {
   return t.length > 0 ? t : null;
 }
 
+/**
+ * Which list this is for. Everyone can see and edit everyone's, deliberately -
+ * the whole point of showing the columns side by side is that Francis can hand
+ * Loui a task and either setter can see what the other is carrying. At five
+ * people, permissions between them would be friction with nothing behind it.
+ *
+ * The id is still checked against a real user rather than trusted, so a
+ * hand-crafted request can't create a list owned by nobody.
+ */
+async function resolveOwner(form: FormData, fallbackId: string): Promise<string | null> {
+  const scope = form.get('scope');
+  if (scope === 'team') return null;
+
+  const ownerId = field(form, 'ownerId');
+  if (!ownerId) return fallbackId;
+
+  const owner = await db.query.users.findFirst({ where: eq(users.id, ownerId) });
+  if (!owner) throw new Error('That person no longer exists');
+  return owner.id;
+}
+
 export async function addTodo(formData: FormData): Promise<Result> {
   try {
     const user = await requireUser();
     const title = field(formData, 'title');
     if (!title) return { ok: false, error: 'Write the task first' };
 
-    // "team" is the shared list; anything else is that person's own.
-    const scope = field(formData, 'scope');
-    const ownerId = scope === 'team' ? null : user.id;
+    const ownerId = await resolveOwner(formData, user.id);
 
     await db.insert(todos).values({
       ownerId,
@@ -55,10 +74,6 @@ export async function toggleTodo(formData: FormData): Promise<Result> {
 
     const todo = await db.query.todos.findFirst({ where: eq(todos.id, id) });
     if (!todo) return { ok: false, error: 'Task not found' };
-    // Someone else's personal list is theirs.
-    if (todo.ownerId && todo.ownerId !== user.id && user.role !== 'admin') {
-      return { ok: false, error: "That's on someone else's list" };
-    }
 
     const done = todo.completedAt !== null;
     await db
@@ -82,12 +97,6 @@ export async function deleteTodo(formData: FormData): Promise<Result> {
     const id = field(formData, 'id');
     if (!id) return { ok: false, error: 'Missing task' };
 
-    const todo = await db.query.todos.findFirst({ where: eq(todos.id, id) });
-    if (!todo) return { ok: true };
-    if (todo.ownerId && todo.ownerId !== user.id && user.role !== 'admin') {
-      return { ok: false, error: "That's on someone else's list" };
-    }
-
     await db.delete(todos).where(eq(todos.id, id));
     revalidatePath('/');
     return { ok: true, message: 'Removed' };
@@ -100,9 +109,8 @@ export async function saveFocus(formData: FormData): Promise<Result> {
   try {
     const user = await requireUser();
     const body = field(formData, 'body');
-    const scope = field(formData, 'scope');
-    const isTeam = scope === 'team';
-    const ownerId = isTeam ? null : user.id;
+    const ownerId = await resolveOwner(formData, user.id);
+    const isTeam = ownerId === null;
     const week = weekStart();
 
     if (!body) {

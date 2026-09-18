@@ -1,20 +1,17 @@
 import { auth } from '@/auth';
 import { CallTile } from '@/components/CallTile';
-import { FocusPanel } from '@/components/FocusPanel';
 import { LeadCard } from '@/components/LeadCard';
-import { TodoList } from '@/components/TodoList';
+import { PersonPanel } from '@/components/PersonPanel';
 import {
   getActiveOffers,
   getAssignableSetters,
   getClosers,
   getDueFollowUps,
-  getFocuses,
   getLeadCardLookups,
-  getMyTodos,
   getPipelineSummary,
-  getTeamTodos,
   getTodaysCalls,
   getUpcomingCalls,
+  getWeekBoard,
 } from '@/lib/queries';
 
 export const dynamic = 'force-dynamic';
@@ -33,9 +30,7 @@ export default async function TodayPage() {
     setters,
     closers,
     offers,
-    myTodos,
-    teamTodos,
-    focus,
+    board,
   ] = await Promise.all([
     getPipelineSummary(),
     getTodaysCalls(),
@@ -45,10 +40,14 @@ export default async function TodayPage() {
     getAssignableSetters(),
     getClosers(),
     getActiveOffers(),
-    getMyTodos(userId),
-    getTeamTodos(),
-    getFocuses(userId),
+    getWeekBoard(),
   ]);
+
+  // Setters either side of the team column, so the shared list sits in the
+  // middle rather than at one end. With an odd number one side just gets more.
+  const half = Math.ceil(board.people.length / 2);
+  const leftPeople = board.people.slice(0, half);
+  const rightPeople = board.people.slice(half);
 
   const offerLabels = new Map(offers.map((o) => [o.id, o.label]));
   const tileProps = { setters, closers };
@@ -110,46 +109,75 @@ export default async function TodayPage() {
         </div>
       )}
 
-      <h2>Focus this week</h2>
-      <div className="panel-grid">
-        <FocusPanel
-          title="Team"
-          scope="team"
-          focus={focus.team}
-          placeholder="What is the whole team pushing on this week?"
-        />
-        <FocusPanel
-          title="Mine"
-          scope="mine"
-          focus={focus.mine}
-          placeholder="Your one thing this week. One, not five."
-          others={focus.others}
-          ownerNames={lookups.setterNames}
-        />
-      </div>
+      <h2>This week</h2>
+      {/* Column count comes from how many panels there actually are. Hardcoding
+          three looked right with two setters and wrapped the moment there was
+          anyone else. The team column gets the extra width. */}
+      <div
+        className="week-board"
+        style={
+          {
+            '--board-columns': [
+              ...leftPeople.map(() => '1fr'),
+              '1.4fr',
+              ...rightPeople.map(() => '1fr'),
+            ].join(' '),
+          } as React.CSSProperties
+        }
+      >
+        {leftPeople.map((person) => (
+          <PersonPanel
+            key={person.id}
+            title={person.id === userId ? `${person.name} (you)` : person.name}
+            ownerId={person.id}
+            focus={person.focus}
+            todos={person.todos}
+            focusPlaceholder="One thing this week. One, not five."
+            emptyText="Nothing on this list yet."
+          />
+        ))}
 
-      <h2>To-do</h2>
-      <div className="panel-grid">
-        <TodoList
-          todos={myTodos}
-          scope="mine"
-          title="Mine"
-          emptyText="Nothing on your list."
-        />
-        <TodoList
-          todos={teamTodos}
-          scope="team"
+        <PersonPanel
           title="Team"
-          emptyText="Nothing on the team list."
-          showOwner
+          ownerId={null}
+          focus={board.team.focus}
+          todos={board.team.todos}
+          focusPlaceholder="What is the whole team pushing on this week?"
+          emptyText="Nothing on the team list yet."
+          wide
         />
+
+        {rightPeople.map((person) => (
+          <PersonPanel
+            key={person.id}
+            title={person.id === userId ? `${person.name} (you)` : person.name}
+            ownerId={person.id}
+            focus={person.focus}
+            todos={person.todos}
+            focusPlaceholder="One thing this week. One, not five."
+            emptyText="Nothing on this list yet."
+          />
+        ))}
       </div>
 
       <h2>Follow-ups due</h2>
-      {followUps.length === 0 ? (
+      {followUps.total === 0 ? (
         <p className="empty">Nothing overdue.</p>
       ) : (
-        followUps.map((lead) => <LeadCard key={lead.id} lead={lead} {...lookups} />)
+        <>
+          <p className="sub">
+            {followUps.total} due or overdue
+            {followUps.total > followUps.rows.length && ` — showing the ${followUps.rows.length} most overdue`}
+          </p>
+          {followUps.rows.map((lead) => (
+            <LeadCard key={lead.id} lead={lead} {...lookups} />
+          ))}
+          {followUps.total > followUps.rows.length && (
+            <a className="btn" href="/leads">
+              See all {followUps.total} in Leads
+            </a>
+          )}
+        </>
       )}
     </>
   );

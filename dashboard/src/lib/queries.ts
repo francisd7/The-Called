@@ -42,7 +42,7 @@ export async function getUpcomingCalls() {
  * Follow-ups that are due or overdue. Anything with a live call is excluded -
  * that lead is already in the calls list and doesn't need chasing twice.
  */
-export async function getDueFollowUps(setterId?: string) {
+export async function getDueFollowUps(setterId?: string, limit = 8) {
   const { end } = teamDayRange(0);
   const filters = [
     isNotNull(leads.nextFollowUpAt),
@@ -50,13 +50,17 @@ export async function getDueFollowUps(setterId?: string) {
     or(eq(leads.callBooked, false), eq(leads.callCancelled, true)),
   ];
   if (setterId) filters.push(eq(leads.setterId, setterId));
+  const clause = and(...filters);
 
-  return db
-    .select()
-    .from(leads)
-    .where(and(...filters))
-    .orderBy(asc(leads.nextFollowUpAt))
-    .limit(50);
+  // Only the most overdue are shown on Today. The imported backlog runs to
+  // dozens, and a list that long pushes everything under it off the screen -
+  // the count plus a link is more useful than the whole pile.
+  const [rows, [{ total }]] = await Promise.all([
+    db.select().from(leads).where(clause).orderBy(asc(leads.nextFollowUpAt)).limit(limit),
+    db.select({ total: count() }).from(leads).where(clause),
+  ]);
+
+  return { rows, total };
 }
 
 /** Booked calls with work still outstanding on them. */
@@ -292,24 +296,37 @@ async function todosWhere(clause: ReturnType<typeof eq> | undefined): Promise<To
   return rows.map((r) => ({ ...r.todo, leadHandle: r.leadHandle, ownerName: r.ownerName }));
 }
 
-export async function getMyTodos(userId: string) {
-  return todosWhere(eq(todos.ownerId, userId));
-}
-
-export async function getTeamTodos() {
-  return todosWhere(isNull(todos.ownerId));
-}
-
-/** This week's focus for the team and for one person. */
-export async function getFocuses(userId: string) {
+/**
+ * Everything the week-planning row needs, in one pass: a column per setter plus
+ * a team column, each with its focus and its list. Fetched together rather than
+ * per column so adding a third setter doesn't add three more round trips.
+ */
+export async function getWeekBoard() {
   const week = weekStart();
-  const rows = await db.select().from(focuses).where(eq(focuses.weekOf, week));
+  const [people, allTodos, allFocuses] = await Promise.all([
+    // Setters only. Giving admins a column too meant four panels where three
+    // were asked for, and pushed the shared team column off centre. An admin
+    // can still edit any column and use the team list.
+    db
+      .select()
+      .from(users)
+      .where(and(eq(users.active, true), eq(users.role, 'setter')))
+      // Insertion order, not alphabetical, so the columns keep the order the
+      // team was set up in rather than reshuffling when someone is renamed.
+      .orderBy(asc(users.createdAt)),
+    todosWhere(undefined),
+    db.select().from(focuses).where(eq(focuses.weekOf, week)),
+  ]);
+
+  const byOwner = (ownerId: string | null) => ({
+    focus: allFocuses.find((f) => f.ownerId === ownerId) ?? null,
+    todos: allTodos.filter((t) => t.ownerId === ownerId),
+  });
+
   return {
     week,
-    team: rows.find((r) => r.ownerId === null) ?? null,
-    mine: rows.find((r) => r.ownerId === userId) ?? null,
-    // Everyone else's, so an admin can see what each setter committed to.
-    others: rows.filter((r) => r.ownerId !== null && r.ownerId !== userId),
+    team: { id: null, name: 'Team', ...byOwner(null) },
+    people: people.map((p) => ({ id: p.id, name: p.name, ...byOwner(p.id) })),
   };
 }
 
