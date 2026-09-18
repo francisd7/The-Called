@@ -8,7 +8,13 @@ import { formatCallTime, formatDay } from '@/lib/dates';
 import { getPipelineSummary, getRecentCalendlyActivity, getUnmatchedBookings } from '@/lib/queries';
 import { getIssues } from '@/lib/issues';
 import { resolveIssue } from '@/lib/issueActions';
-import { clearTestData, createTestBooking, runAirtableImport, runCalendlySetup } from '@/lib/setupActions';
+import {
+  clearTestData,
+  createTestBooking,
+  runAirtableImport,
+  runCalendlySetup,
+  runPostCallImport,
+} from '@/lib/setupActions';
 
 function Check({ done, children }: { done: boolean; children: React.ReactNode }) {
   return (
@@ -174,6 +180,29 @@ export default async function AdminPage() {
         <div className={`stat${unmatched.length > 0 ? ' alert' : ''}`}>
           <div className="stat-n">{unmatched.length}</div>
           <div className="stat-l">unmatched bookings</div>
+        </div>
+      </div>
+
+      <h2>Post Call outcomes</h2>
+      <p className="sub">
+        Pulls the Airtable Post Call table across. These arrive as new leads rather than updates:
+        Post Call records a freeform first name, and the two tables cover different periods — the
+        tracker&apos;s bookings stop on 25 August, Post Call starts on 9 September — so the calls it
+        describes were never in the tracker at all. Anything created is flagged as needing an
+        Instagram handle rather than given a made-up one. Safe to re-run.
+      </p>
+      <div className="card">
+        <div className="card-row">
+          <ActionForm action={runPostCallImport}>
+            <input type="hidden" name="dryRun" value="1" />
+            <button type="submit">Test Post Call import</button>
+          </ActionForm>
+          <ActionForm action={runPostCallImport}>
+            <input type="hidden" name="dryRun" value="0" />
+            <button className="btn-primary" type="submit">
+              Import Post Call outcomes
+            </button>
+          </ActionForm>
         </div>
       </div>
 

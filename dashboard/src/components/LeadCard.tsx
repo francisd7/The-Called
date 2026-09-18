@@ -59,6 +59,9 @@ export function LeadCard({
 
       <div className="card-row">
         {lead.isTest && <span className="pill danger">TEST</span>}
+        {/* Came from Post Call, which has a name but no handle. Saying so beats
+            showing an invented one as though it were real. */}
+        {lead.needsHandle && <span className="pill warn">Needs IG handle</span>}
         {stageLabel && <span className="pill">{stageLabel}</span>}
         <SetterBadge
           name={setterName}

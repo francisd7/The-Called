@@ -59,6 +59,15 @@ export default async function LeadPage({ params }: { params: Promise<{ id: strin
         <a href="/leads">← All leads</a>
       </p>
       <h1>@{lead.igHandle}</h1>
+      {lead.needsHandle && (
+        <div className="card card-attention">
+          <strong>This lead has no Instagram handle</strong>
+          <p className="sub" style={{ margin: '0.3rem 0 0' }}>
+            It came from the Airtable Post Call table, which records a name and nothing else. Put
+            the real handle in under Details and this notice goes away.
+          </p>
+        </div>
+      )}
       {lead.isTest && (
         <div className="card" style={{ borderColor: 'var(--danger)' }}>
           <strong>This is a test lead</strong>

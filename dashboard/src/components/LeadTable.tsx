@@ -53,6 +53,7 @@ export function LeadTable({
                 <td>{lead.lastContactAt ? relativeDays(lead.lastContactAt) : '—'}</td>
                 <td>
                   <span className="mini-meta">
+                    {lead.needsHandle && <span className="pill warn">Needs IG handle</span>}
                     {lead.isActiveConvo && <span className="pill ok">Active</span>}
                     {lead.callBooked && !lead.callCancelled && <span className="pill">Booked</span>}
                     {lead.callCancelled && <span className="pill danger">Cancelled</span>}

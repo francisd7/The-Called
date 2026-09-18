@@ -172,6 +172,13 @@ export const leads = pgTable(
     // Set only for rows imported from Airtable, so re-running the import
     // updates those rows instead of creating a second copy of each.
     airtableRecordId: text('airtable_record_id').unique(),
+    // Separate from airtableRecordId, which points at the lead tracker row.
+    // A lead can have both: one from the tracker, one from Post Call.
+    postCallRecordId: text('post_call_record_id').unique(),
+    // True for a lead created from a Post Call record, which carries a person's
+    // name but no Instagram handle. Flags it for someone to fill in rather than
+    // leaving a made-up handle looking real.
+    needsHandle: boolean('needs_handle').notNull().default(false),
     // Every Airtable field with no column of its own lands here verbatim
     // (e.g. Analytics Stage, which duplicated Conversation Stage). Nothing is
     // surfaced from it, but nothing is lost either, and a field can be promoted

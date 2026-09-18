@@ -71,9 +71,10 @@ export async function logCallOutcome(formData: FormData): Promise<Result> {
         fathomUrl: field(formData, 'fathomUrl'),
         postCallNotes: field(formData, 'postCallNotes'),
         lostReason: closed ? null : field(formData, 'lostReason'),
-        // A call that happened is no longer a live conversation unless it was
-        // rescheduled or left with a follow-up booked.
-        isActiveConvo: outcome === 'rescheduled' || outcome === 'follow_up_scheduled',
+        // isActiveConvo is deliberately untouched. Rapport carries on after a
+        // call - a close becomes a client relationship, a no-close is often
+        // still being worked - so the call outcome is not the team's signal for
+        // whether the conversation is over. Only a person decides that.
         outcomeLoggedAt: new Date(),
         outcomeLoggedById: user.id,
         updatedAt: new Date(),

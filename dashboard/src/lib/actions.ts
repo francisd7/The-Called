@@ -218,7 +218,10 @@ export async function updateLead(formData: FormData): Promise<ActionResult> {
     await db
       .update(leads)
       .set({
-        ...(igHandle ? { igHandle, igHandleKey: normalizeIgHandle(igHandle) } : {}),
+        // Setting a real handle is what clears the "needs handle" notice.
+        ...(igHandle
+          ? { igHandle, igHandleKey: normalizeIgHandle(igHandle), needsHandle: false }
+          : {}),
         name: str(formData, 'name'),
         email: str(formData, 'email')?.toLowerCase() ?? null,
         phone: str(formData, 'phone'),

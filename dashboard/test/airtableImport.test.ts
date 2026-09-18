@@ -6,6 +6,7 @@ import { count, eq, isNotNull, isNull } from 'drizzle-orm';
 import * as schema from '../src/db/schema.ts';
 import { leadNotes, leads, optionSets, users } from '../src/db/schema.ts';
 import { importAirtableLeads } from '../src/lib/airtableImport.ts';
+import type { PostCallRecord } from '../src/lib/postCallImport.ts';
 
 // Runs against a real Postgres when one is configured. Skipped otherwise so
 // the suite still passes on a machine without a database.
@@ -136,4 +137,75 @@ test('a re-import never resets the manual active flag', { skip }, async () => {
 
   const after = await db.query.leads.findFirst({ where: eq(leads.id, lead.id) });
   assert.equal(after?.isActiveConvo, true, 'the re-import cleared a manual flag');
+});
+
+test('Post Call records arrive as leads with the outcome recorded', { skip }, async () => {
+  const { importPostCall } = await import('../src/lib/postCallImport.ts');
+  const records: PostCallRecord[] = [
+    {
+      id: 'recTESTclose',
+      fields: {
+        fldoKwFzHYAUpXPre: 'Gavin Test',
+        fldNz6hFtSdkT5sFU: '2026-09-10',
+        flducCunxzZ08ZJxD: { name: 'Nigel' },
+        fldN5bRlNhGA58J33: { name: 'Loui' },
+        fld79p1lPISYwNRpi: { name: 'Closed' },
+        fld8vpPRdacNoF4E5: { name: 'Momentum' },
+        fldtETT2XDthDXhcb: { name: 'Splitit' },
+        fldDfGJABBrqos4sQ: 5000,
+        fldWQ2MDlZDH4HLRL: 10000,
+        fldBvetzSMDYJRAJm: 'Split over five months.',
+        fld6E6FpFUUnEZBi9: 'https://fathom.video/share/abc',
+      },
+    },
+    {
+      id: 'recTESTnoclose',
+      fields: {
+        fldoKwFzHYAUpXPre: 'Nobody Closed',
+        fldNz6hFtSdkT5sFU: '2026-09-11',
+        fld79p1lPISYwNRpi: { name: 'No Close' },
+        // Airtable writes the literal string "No Close" into tier and payment
+        // rather than leaving them empty.
+        fld8vpPRdacNoF4E5: { name: 'No Close' },
+        fldtETT2XDthDXhcb: { name: 'No Close' },
+        fldDfGJABBrqos4sQ: 0,
+        fldWQ2MDlZDH4HLRL: 0,
+        fld6E6FpFUUnEZBi9: 'Will add once home ',
+      },
+    },
+  ];
+
+  const first = await importPostCall(db, { records });
+  assert.equal(first.created, 2);
+  assert.equal(first.updated, 0);
+
+  const won = await db.query.leads.findFirst({ where: eq(leads.postCallRecordId, 'recTESTclose') });
+  assert.ok(won);
+  assert.equal(won.closed, true);
+  assert.equal(won.showed, true);
+  assert.equal(won.callOutcome, 'closed');
+  assert.equal(won.contractValue, '10000.00');
+  assert.equal(won.tier, 'Momentum');
+  assert.equal(won.fathomUrl, 'https://fathom.video/share/abc');
+  // Rapport carries on after a call, so the conversation stays live.
+  assert.equal(won.isActiveConvo, true);
+  // Post Call has no handle, so this is flagged rather than faked.
+  assert.equal(won.needsHandle, true);
+
+  const lost = await db.query.leads.findFirst({
+    where: eq(leads.postCallRecordId, 'recTESTnoclose'),
+  });
+  assert.ok(lost);
+  assert.equal(lost.closed, false);
+  assert.equal(lost.showed, true, 'a no-close is still someone who turned up');
+  // "No Close" is Airtable's placeholder, not a real tier or payment method.
+  assert.equal(lost.tier, null);
+  assert.equal(lost.paymentMethod, null);
+  // The Fathom column sometimes holds a note rather than a link.
+  assert.equal(lost.fathomUrl, null);
+
+  // Re-running updates rather than duplicating.
+  const second = await importPostCall(db, { records });
+  assert.equal(second.created, 0);
+  assert.equal(second.updated, 2);
 });
