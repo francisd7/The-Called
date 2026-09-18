@@ -179,3 +179,92 @@ th { color: var(--muted); font-weight: 550; font-size: 0.78rem; }
 .table-wrap { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); overflow-x: auto; }
 
 .signin { max-width: 22rem; margin: 15vh auto; text-align: center; }
+
+/* --- call tiles --- */
+.tile-grid {
+  display: grid;
+  /* Square-ish cards that reflow to one column on a phone. */
+  grid-template-columns: repeat(auto-fill, minmax(17rem, 1fr));
+  gap: 0.7rem;
+  margin-bottom: 0.5rem;
+}
+
+.tile {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 0.8rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+/* An unowned booking is the one thing on this screen that needs a decision
+   before anything else can happen to it. */
+.tile-unclaimed { border-color: var(--warn); }
+
+.tile-head { display: flex; justify-content: space-between; gap: 0.5rem; align-items: baseline; }
+.tile-title { font-weight: 600; text-decoration: none; color: var(--fg); }
+.tile-title:hover { text-decoration: underline; }
+.tile-when { color: var(--muted); font-size: 0.78rem; white-space: nowrap; }
+.tile-sub { color: var(--muted); font-size: 0.8rem; line-height: 1.35; }
+.tile-pills, .tile-actions { display: flex; flex-wrap: wrap; gap: 0.3rem; align-items: center; }
+.tile-actions { margin-top: auto; padding-top: 0.2rem; }
+.tile-actions button, .tile-actions .btn { font-size: 0.8rem; padding: 0.3rem 0.6rem; min-height: 2rem; }
+
+.tile-assign {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.4rem;
+  padding-top: 0.5rem;
+  border-top: 1px solid var(--border);
+}
+.tile-assign label { font-size: 0.7rem; margin-bottom: 0.1rem; }
+.tile-assign select { padding: 0.3rem 0.4rem; font-size: 0.82rem; }
+.tile-assign button { width: 100%; justify-content: center; }
+/* The claim button spans both columns - it replaces the setter picker rather
+   than sitting next to it. */
+.tile-assign > form:only-child { grid-column: 1 / -1; }
+
+/* --- panels (focus, to-dos) --- */
+.panel-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(19rem, 1fr));
+  gap: 0.7rem;
+}
+.panel {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 0.85rem;
+}
+.panel-head { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 0.5rem; }
+.panel-head h3 { margin: 0; font-size: 0.92rem; }
+.panel-empty { color: var(--muted); font-size: 0.85rem; margin: 0.3rem 0 0.7rem; }
+
+.todos { list-style: none; margin: 0 0 0.7rem; padding: 0; }
+.todo { display: flex; align-items: flex-start; gap: 0.4rem; padding: 0.3rem 0; border-bottom: 1px solid var(--border); }
+.todo:last-child { border-bottom: 0; }
+.todo-done .todo-title { text-decoration: line-through; color: var(--muted); }
+.todo-body { flex: 1; min-width: 0; }
+.todo-title { font-size: 0.88rem; overflow-wrap: anywhere; }
+.todo-meta { display: flex; gap: 0.25rem; flex-wrap: wrap; margin-top: 0.15rem; }
+.todo-meta .pill { font-size: 0.68rem; text-decoration: none; }
+.todo-check, .todo-x {
+  border: 0;
+  background: none;
+  padding: 0 0.15rem;
+  min-height: auto;
+  font-size: 1rem;
+  line-height: 1.3;
+  color: var(--muted);
+}
+.todo-check:hover, .todo-x:hover { color: var(--fg); border: 0; }
+.todo-x { font-size: 1.1rem; }
+
+.todo-add { display: flex; gap: 0.35rem; flex-wrap: wrap; }
+.todo-add input[name="title"] { flex: 2 1 9rem; }
+.todo-add input[type="date"] { flex: 1 1 8rem; }
+
+.focus-others { margin-top: 0.8rem; padding-top: 0.6rem; border-top: 1px solid var(--border); }
+.focus-other { margin-bottom: 0.6rem; }
+.focus-other:last-child { margin-bottom: 0; }

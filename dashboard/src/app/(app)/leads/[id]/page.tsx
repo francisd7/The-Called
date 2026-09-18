@@ -30,6 +30,14 @@ export default async function LeadPage({ params }: { params: Promise<{ id: strin
 
   const hasLiveCall = lead.callBooked && !lead.callCancelled;
 
+  // Stored verbatim from the booking webhook, so treat every field as
+  // optional rather than trusting a shape.
+  const bookingAnswers = Array.isArray(lead.calendlyAnswers)
+    ? (lead.calendlyAnswers as Array<{ question?: string; answer?: string }>)
+        .filter((qa) => qa?.question)
+        .map((qa) => ({ question: String(qa.question), answer: qa.answer ? String(qa.answer) : '' }))
+    : [];
+
   return (
     <>
       <p className="sub">
@@ -109,6 +117,21 @@ export default async function LeadPage({ params }: { params: Promise<{ id: strin
             {lead.cancelReason ? ` · ${lead.cancelReason}` : ''}
           </div>
         </div>
+      )}
+
+      {bookingAnswers.length > 0 && (
+        <>
+          <h2>What they said when booking</h2>
+          <p className="sub">Straight from the Calendly form — read this before you call them.</p>
+          <div className="card">
+            {bookingAnswers.map((qa, i) => (
+              <div key={i} className="note" style={{ marginBottom: i === bookingAnswers.length - 1 ? 0 : '0.9rem' }}>
+                <div className="note-meta">{qa.question}</div>
+                <div className="note-body">{qa.answer || '—'}</div>
+              </div>
+            ))}
+          </div>
+        </>
       )}
 
       <h2 id="triage">Triage notes</h2>

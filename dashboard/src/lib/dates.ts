@@ -69,3 +69,18 @@ export function relativeDays(date: Date | null | undefined): string {
   if (days === -1) return 'tomorrow';
   return `in ${Math.abs(days)}d`;
 }
+
+/**
+ * The Monday of the week a moment falls in, YYYY-MM-DD in the team's timezone.
+ * Focus rows are keyed on this so last week's stays readable instead of being
+ * overwritten by this week's.
+ */
+export function weekStart(date: Date = new Date()): string {
+  const day = teamDateString(date);
+  const noonUtc = new Date(`${day}T12:00:00Z`);
+  // getUTCDay on a midday anchor avoids the date shifting under the offset.
+  const weekday = noonUtc.getUTCDay(); // 0 = Sunday
+  const backToMonday = (weekday + 6) % 7;
+  noonUtc.setUTCDate(noonUtc.getUTCDate() - backToMonday);
+  return noonUtc.toISOString().slice(0, 10);
+}

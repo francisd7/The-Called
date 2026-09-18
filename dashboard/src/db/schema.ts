@@ -8,6 +8,7 @@ import {
   pgTable,
   text,
   timestamp,
+  unique,
   uniqueIndex,
   uuid,
 } from 'drizzle-orm/pg-core';
@@ -105,6 +106,9 @@ export const leads = pgTable(
     closerName: text('closer_name'),
     calendlyEventUri: text('calendly_event_uri'),
     calendlyInviteeUri: text('calendly_invitee_uri'),
+    // What they typed into the booking form. Kept on the lead rather than left
+    // in the raw webhook log so a setter can read it before the call.
+    calendlyAnswers: jsonb('calendly_answers'),
     calendlyCancelUrl: text('calendly_cancel_url'),
     calendlyRescheduleUrl: text('calendly_reschedule_url'),
     callCancelled: boolean('call_cancelled').notNull().default(false),
@@ -244,4 +248,47 @@ export const eodReports = pgTable(
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [uniqueIndex('eod_user_date_idx').on(t.userId, t.reportDate)]
+);
+
+/**
+ * Shared and personal task lists. `ownerId` null means the team list, which
+ * anyone signed in can add to.
+ */
+export const todos = pgTable(
+  'todos',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    ownerId: uuid('owner_id').references(() => users.id, { onDelete: 'cascade' }),
+    title: text('title').notNull(),
+    dueDate: text('due_date'), // YYYY-MM-DD in ET; a day, not a moment
+    // Lets "follow up with @handle" click through to the actual lead.
+    leadId: uuid('lead_id').references(() => leads.id, { onDelete: 'set null' }),
+    createdById: uuid('created_by_id').references(() => users.id),
+    completedAt: timestamp('completed_at', { withTimezone: true }),
+    completedById: uuid('completed_by_id').references(() => users.id),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index('todos_owner_idx').on(t.ownerId, t.completedAt), index('todos_due_idx').on(t.dueDate)]
+);
+
+/**
+ * One focus per person per week, plus a team one (ownerId null). Keyed on the
+ * week so last week's focus stays readable instead of being overwritten.
+ */
+export const focuses = pgTable(
+  'focuses',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    ownerId: uuid('owner_id').references(() => users.id, { onDelete: 'cascade' }),
+    weekOf: text('week_of').notNull(), // the Monday, YYYY-MM-DD in ET
+    body: text('body').notNull(),
+    updatedById: uuid('updated_by_id').references(() => users.id),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  // A unique CONSTRAINT rather than a unique index, because only the
+  // constraint builder exposes nullsNotDistinct - and that is the whole point
+  // here. The team focus has owner_id NULL, and Postgres counts NULLs as
+  // distinct by default, so without it "one focus per owner per week" silently
+  // wouldn't hold for the team row and every save would insert another copy.
+  (t) => [unique('focus_owner_week_key').on(t.ownerId, t.weekOf).nullsNotDistinct()]
 );

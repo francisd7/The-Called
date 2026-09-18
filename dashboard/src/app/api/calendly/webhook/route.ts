@@ -88,6 +88,12 @@ async function handleCreated(leadId: string, payload: CalendlyInviteePayload) {
       closerName: closer?.name ?? host.name,
       calendlyEventUri: payload.scheduled_event?.uri ?? null,
       calendlyInviteeUri: payload.uri ?? null,
+      // Kept on the lead so a setter can read what they wrote before the call,
+      // instead of it being buried in the raw webhook log.
+      calendlyAnswers:
+        payload.questions_and_answers && payload.questions_and_answers.length > 0
+          ? payload.questions_and_answers
+          : null,
       calendlyCancelUrl: payload.cancel_url ?? null,
       calendlyRescheduleUrl: payload.reschedule_url ?? null,
       // A rebooking clears the previous cancellation and resets the setter's

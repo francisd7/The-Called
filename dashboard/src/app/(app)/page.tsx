@@ -1,45 +1,57 @@
 import { auth } from '@/auth';
-import { ActionForm } from '@/components/ActionForm';
+import { CallTile } from '@/components/CallTile';
+import { FocusPanel } from '@/components/FocusPanel';
 import { LeadCard } from '@/components/LeadCard';
-import { confirmLead } from '@/lib/actions';
+import { TodoList } from '@/components/TodoList';
 import {
+  getActiveOffers,
+  getAssignableSetters,
+  getClosers,
   getDueFollowUps,
+  getFocuses,
   getLeadCardLookups,
+  getMyTodos,
   getPipelineSummary,
+  getTeamTodos,
   getTodaysCalls,
   getUpcomingCalls,
 } from '@/lib/queries';
 
 export const dynamic = 'force-dynamic';
 
-function ConfirmButtons({ leadId }: { leadId: string }) {
-  return (
-    <>
-      {/* Two buttons rather than a dropdown: a confirmation arrives either in
-          the DMs or on a call, and which one it was is worth recording. */}
-      <ActionForm action={confirmLead} successMessage="Confirmed">
-        <input type="hidden" name="leadId" value={leadId} />
-        <input type="hidden" name="method" value="dm" />
-        <button type="submit">Confirmed in DMs</button>
-      </ActionForm>
-      <ActionForm action={confirmLead} successMessage="Confirmed">
-        <input type="hidden" name="leadId" value={leadId} />
-        <input type="hidden" name="method" value="phone" />
-        <button type="submit">Confirmed by phone</button>
-      </ActionForm>
-    </>
-  );
-}
-
 export default async function TodayPage() {
   const session = await auth();
-  const [summary, todaysCalls, upcoming, followUps, lookups] = await Promise.all([
+  const userId = session!.user.id;
+  const isSetter = session!.user.role === 'setter';
+
+  const [
+    summary,
+    todaysCalls,
+    upcoming,
+    followUps,
+    lookups,
+    setters,
+    closers,
+    offers,
+    myTodos,
+    teamTodos,
+    focus,
+  ] = await Promise.all([
     getPipelineSummary(),
     getTodaysCalls(),
     getUpcomingCalls(),
-    getDueFollowUps(session?.user?.role === 'setter' ? session.user.id : undefined),
+    getDueFollowUps(isSetter ? userId : undefined),
     getLeadCardLookups(),
+    getAssignableSetters(),
+    getClosers(),
+    getActiveOffers(),
+    getMyTodos(userId),
+    getTeamTodos(),
+    getFocuses(userId),
   ]);
+
+  const offerLabels = new Map(offers.map((o) => [o.id, o.label]));
+  const tileProps = { setters, closers };
 
   return (
     <>
@@ -69,32 +81,73 @@ export default async function TodayPage() {
       {todaysCalls.length === 0 ? (
         <p className="empty">No calls booked for today.</p>
       ) : (
-        todaysCalls.map((lead) => (
-          <LeadCard key={lead.id} lead={lead} {...lookups}>
-            {!lead.confirmed && <ConfirmButtons leadId={lead.id} />}
-            {!lead.triaged && (
-              <a className="btn" href={`/leads/${lead.id}#triage`}>
-                Triage
-              </a>
-            )}
-          </LeadCard>
-        ))
+        <div className="tile-grid">
+          {todaysCalls.map((lead) => (
+            <CallTile
+              key={lead.id}
+              lead={lead}
+              offerLabel={lead.offerId ? offerLabels.get(lead.offerId) : null}
+              {...tileProps}
+            />
+          ))}
+        </div>
       )}
 
       <h2>Next 7 days</h2>
       {upcoming.length === 0 ? (
         <p className="empty">Nothing booked in the next week.</p>
       ) : (
-        upcoming.map((lead) => (
-          <LeadCard key={lead.id} lead={lead} showDate {...lookups}>
-            {!lead.confirmed && <ConfirmButtons leadId={lead.id} />}
-          </LeadCard>
-        ))
+        <div className="tile-grid">
+          {upcoming.map((lead) => (
+            <CallTile
+              key={lead.id}
+              lead={lead}
+              offerLabel={lead.offerId ? offerLabels.get(lead.offerId) : null}
+              showDate
+              {...tileProps}
+            />
+          ))}
+        </div>
       )}
+
+      <h2>Focus this week</h2>
+      <div className="panel-grid">
+        <FocusPanel
+          title="Team"
+          scope="team"
+          focus={focus.team}
+          placeholder="What is the whole team pushing on this week?"
+        />
+        <FocusPanel
+          title="Mine"
+          scope="mine"
+          focus={focus.mine}
+          placeholder="Your one thing this week. One, not five."
+          others={focus.others}
+          ownerNames={lookups.setterNames}
+        />
+      </div>
+
+      <h2>To-do</h2>
+      <div className="panel-grid">
+        <TodoList
+          todos={myTodos}
+          scope="mine"
+          title="Mine"
+          emptyText="Nothing on your list."
+        />
+        <TodoList
+          todos={teamTodos}
+          scope="team"
+          title="Team"
+          emptyText="Nothing on the team list."
+          showOwner
+        />
+      </div>
 
       <h2>Follow-ups due</h2>
       {followUps.length === 0 ? (
-        <p className="empty">Nothing overdue. </p>
+        <p className="empty">Nothing overdue.</p>
       ) : (
         followUps.map((lead) => <LeadCard key={lead.id} lead={lead} {...lookups} />)
       )}

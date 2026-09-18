@@ -1,8 +1,17 @@
-import { and, asc, count, desc, eq, gte, ilike, isNotNull, lt, or, sql } from 'drizzle-orm';
+import { and, asc, count, desc, eq, gte, ilike, isNotNull, isNull, lt, ne, or, sql } from 'drizzle-orm';
 import type { PgColumn } from 'drizzle-orm/pg-core';
 import { db } from '@/db';
-import { calendlyWebhookEvents, leadNotes, leads, offers, optionSets, users } from '@/db/schema';
-import { teamDayRange } from './dates';
+import {
+  calendlyWebhookEvents,
+  focuses,
+  leadNotes,
+  leads,
+  offers,
+  optionSets,
+  todos,
+  users,
+} from '@/db/schema';
+import { teamDayRange, weekStart } from './dates';
 
 export type LeadRow = typeof leads.$inferSelect;
 
@@ -239,5 +248,67 @@ export async function getLeadCardLookups() {
     setterNames: new Map(people.map((p) => [p.id, p.name])),
     stageLabels: new Map(stages.map((s) => [s.value, s.label])),
     qualityLabels: new Map(qualities.map((s) => [s.value, s.label])),
+  };
+}
+
+/** People who can be picked as the closer on a call. */
+export async function getClosers() {
+  return db
+    .select()
+    .from(users)
+    .where(eq(users.role, 'closer'))
+    .orderBy(asc(users.name));
+}
+
+/** Setters and admins - anyone who can own a lead. */
+export async function getAssignableSetters() {
+  return db
+    .select()
+    .from(users)
+    .where(and(eq(users.active, true), ne(users.role, 'closer')))
+    .orderBy(asc(users.name));
+}
+
+export type TodoRow = typeof todos.$inferSelect & {
+  leadHandle: string | null;
+  ownerName: string | null;
+};
+
+async function todosWhere(clause: ReturnType<typeof eq> | undefined): Promise<TodoRow[]> {
+  const rows = await db
+    .select({
+      todo: todos,
+      leadHandle: leads.igHandle,
+      ownerName: users.name,
+    })
+    .from(todos)
+    .leftJoin(leads, eq(todos.leadId, leads.id))
+    .leftJoin(users, eq(todos.ownerId, users.id))
+    .where(clause)
+    // Open items first, then soonest due. A list that buries what's due under
+    // what's finished stops getting read.
+    .orderBy(asc(todos.completedAt), asc(todos.dueDate), desc(todos.createdAt));
+
+  return rows.map((r) => ({ ...r.todo, leadHandle: r.leadHandle, ownerName: r.ownerName }));
+}
+
+export async function getMyTodos(userId: string) {
+  return todosWhere(eq(todos.ownerId, userId));
+}
+
+export async function getTeamTodos() {
+  return todosWhere(isNull(todos.ownerId));
+}
+
+/** This week's focus for the team and for one person. */
+export async function getFocuses(userId: string) {
+  const week = weekStart();
+  const rows = await db.select().from(focuses).where(eq(focuses.weekOf, week));
+  return {
+    week,
+    team: rows.find((r) => r.ownerId === null) ?? null,
+    mine: rows.find((r) => r.ownerId === userId) ?? null,
+    // Everyone else's, so an admin can see what each setter committed to.
+    others: rows.filter((r) => r.ownerId !== null && r.ownerId !== userId),
   };
 }

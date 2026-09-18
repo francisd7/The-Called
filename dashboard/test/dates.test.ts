@@ -33,3 +33,20 @@ test('an evening ET moment still reports the ET calendar day, not the UTC one', 
   assert.equal(teamDateString(new Date('2026-03-05T01:30:00Z')), '2026-03-04');
   assert.equal(teamDateString(new Date('2026-07-05T01:30:00Z')), '2026-07-04');
 });
+
+test('a week runs Monday to Sunday in the team timezone', async () => {
+  const { weekStart } = await import('../src/lib/dates.ts');
+  // Mon 14 Sep 2026 through Sun 20 Sep all belong to the same week.
+  assert.equal(weekStart(new Date('2026-09-14T16:00:00Z')), '2026-09-14');
+  assert.equal(weekStart(new Date('2026-09-17T16:00:00Z')), '2026-09-14');
+  assert.equal(weekStart(new Date('2026-09-20T16:00:00Z')), '2026-09-14');
+  // Monday the 21st starts the next one.
+  assert.equal(weekStart(new Date('2026-09-21T16:00:00Z')), '2026-09-21');
+});
+
+test('a Sunday evening ET still belongs to the week that is ending', async () => {
+  const { weekStart } = await import('../src/lib/dates.ts');
+  // 01:30 UTC Monday is 21:30 ET Sunday. Read naively this rolls the focus over
+  // a few hours early and blanks everyone's week on Sunday night.
+  assert.equal(weekStart(new Date('2026-09-21T01:30:00Z')), '2026-09-14');
+});
