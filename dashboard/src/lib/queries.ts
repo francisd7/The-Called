@@ -312,3 +312,16 @@ export async function getFocuses(userId: string) {
     others: rows.filter((r) => r.ownerId !== null && r.ownerId !== userId),
   };
 }
+
+/**
+ * The last few Calendly deliveries, whatever happened to them. This is the
+ * answer to "is the webhook actually working" - a registered webhook that never
+ * delivers looks exactly like nobody booking.
+ */
+export async function getRecentCalendlyActivity(limit = 20) {
+  return db
+    .select()
+    .from(calendlyWebhookEvents)
+    .orderBy(desc(calendlyWebhookEvents.createdAt))
+    .limit(limit);
+}

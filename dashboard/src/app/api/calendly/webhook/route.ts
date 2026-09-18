@@ -169,6 +169,22 @@ export async function POST(request: Request) {
   );
   if (!verdict.ok) {
     console.warn('Rejected Calendly webhook:', verdict.reason);
+    // Recorded so a rejection is visible in the app rather than only in the
+    // deploy logs. The most likely cause is a signing key that no longer
+    // matches the one Calendly was registered with, and the symptom of that is
+    // bookings silently never arriving - which looks identical to nobody
+    // booking. The body is deliberately NOT stored: it failed verification, so
+    // nothing in it is trustworthy.
+    try {
+      await db.insert(calendlyWebhookEvents).values({
+        eventType: 'rejected',
+        payload: { reason: verdict.reason },
+        error: `Signature rejected: ${verdict.reason}`,
+        processedAt: new Date(),
+      });
+    } catch (err) {
+      console.error('Could not record the rejected delivery:', err);
+    }
     return NextResponse.json({ error: 'invalid signature' }, { status: 401 });
   }
 

@@ -4,8 +4,8 @@ import { auth } from '@/auth';
 import { db } from '@/db';
 import { eodReports, leads, offers, users } from '@/db/schema';
 import { ActionForm } from '@/components/ActionForm';
-import { formatDay } from '@/lib/dates';
-import { getPipelineSummary, getUnmatchedBookings } from '@/lib/queries';
+import { formatCallTime, formatDay } from '@/lib/dates';
+import { getPipelineSummary, getRecentCalendlyActivity, getUnmatchedBookings } from '@/lib/queries';
 import { clearTestData, createTestBooking, runAirtableImport, runCalendlySetup } from '@/lib/setupActions';
 
 function Check({ done, children }: { done: boolean; children: React.ReactNode }) {
@@ -25,9 +25,11 @@ export default async function AdminPage() {
   // too - a hidden link is not access control.
   if (session?.user?.role !== 'admin') redirect('/');
 
-  const [summary, unmatched, people, recentEod, offerRows, [{ leadCount }]] = await Promise.all([
+  const [summary, unmatched, activity, people, recentEod, offerRows, [{ leadCount }]] =
+    await Promise.all([
     getPipelineSummary(),
     getUnmatchedBookings(),
+    getRecentCalendlyActivity(),
     db.select().from(users).orderBy(users.name),
     db.select().from(eodReports).orderBy(desc(eodReports.reportDate)).limit(10),
     db.select().from(offers).orderBy(offers.sortOrder),
@@ -126,6 +128,56 @@ export default async function AdminPage() {
           <div className="stat-l">unmatched bookings</div>
         </div>
       </div>
+
+      <h2>Calendly deliveries</h2>
+      <p className="sub">
+        Every booking Calendly has sent, and what happened to it. A registered webhook that never
+        delivers looks exactly like nobody booking — this is how you tell the difference.
+      </p>
+      {activity.length === 0 ? (
+        <p className="empty">
+          Nothing received yet. Expected until the first real booking comes through.
+        </p>
+      ) : (
+        <div className="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>When</th>
+                <th>Event</th>
+                <th>Result</th>
+              </tr>
+            </thead>
+            <tbody>
+              {activity.map((row) => {
+                const rejected = row.eventType === 'rejected';
+                const invitee = (
+                  row.payload as { payload?: { name?: string; email?: string }; reason?: string }
+                );
+                return (
+                  <tr key={row.id}>
+                    <td>{formatCallTime(row.createdAt)}</td>
+                    <td>{rejected ? 'rejected' : row.eventType.replace('invitee.', '')}</td>
+                    <td>
+                      {rejected ? (
+                        <span className="pill danger">{invitee?.reason ?? 'bad signature'}</span>
+                      ) : row.matchedLeadId ? (
+                        <a className="pill ok" href={`/leads/${row.matchedLeadId}`}>
+                          matched · {row.matchStrategy}
+                        </a>
+                      ) : (
+                        <span className="pill warn">
+                          no lead matched{invitee?.payload?.email ? ` · ${invitee.payload.email}` : ''}
+                        </span>
+                      )}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
 
       <h2>Try it without telling anyone</h2>
       <div className="card">
