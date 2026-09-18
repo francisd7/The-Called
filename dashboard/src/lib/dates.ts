@@ -84,3 +84,46 @@ export function weekStart(date: Date = new Date()): string {
   noonUtc.setUTCDate(noonUtc.getUTCDate() - backToMonday);
   return noonUtc.toISOString().slice(0, 10);
 }
+
+/** How far the team's clock sits from UTC at a given moment, in ms. */
+function teamOffsetMs(at: Date): number {
+  const local = new Date(at.toLocaleString('en-US', { timeZone: TEAM_TZ }));
+  const utc = new Date(at.toLocaleString('en-US', { timeZone: 'UTC' }));
+  return utc.getTime() - local.getTime();
+}
+
+/**
+ * A moment as `YYYY-MM-DDTHH:mm` on the team's clock, which is what a
+ * datetime-local input wants. Everything else on the page is shown in the
+ * team's timezone, so a form that quietly used UTC would be reading four or
+ * five hours off from the time printed next to it.
+ */
+export function teamDateTimeInputValue(date: Date | null | undefined): string {
+  if (!date) return '';
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: TEAM_TZ,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  }).formatToParts(date);
+  const get = (type: string) => parts.find((p) => p.type === type)?.value ?? '00';
+  // Some runtimes render midnight as hour 24 rather than 00.
+  const hour = get('hour') === '24' ? '00' : get('hour');
+  return `${get('year')}-${get('month')}-${get('day')}T${hour}:${get('minute')}`;
+}
+
+/**
+ * The reverse: a team-local `YYYY-MM-DDTHH:mm` back to the instant it names.
+ * The offset is resolved twice, so a time just either side of a daylight-saving
+ * change lands on the offset actually in force rather than the one before it.
+ */
+export function parseTeamDateTime(value: string): Date | null {
+  if (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(value)) return null;
+  const naiveUtc = new Date(`${value.slice(0, 16)}:00Z`);
+  if (Number.isNaN(naiveUtc.getTime())) return null;
+  const firstPass = new Date(naiveUtc.getTime() + teamOffsetMs(naiveUtc));
+  return new Date(naiveUtc.getTime() + teamOffsetMs(firstPass));
+}

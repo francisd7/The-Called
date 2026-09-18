@@ -351,3 +351,63 @@ export const appIssues = pgTable(
   },
   (t) => [index('app_issues_open_idx').on(t.status, t.lastSeenAt)]
 );
+
+export const postCallReportStatus = pgEnum('post_call_report_status', [
+  'pending',
+  'linked',
+  'ignored',
+]);
+
+/**
+ * A closer's post-call form, as filled in, before anyone has said who it was
+ * about.
+ *
+ * The form asks for a first name and nothing that identifies the lead, so a
+ * report cannot be matched to a conversation automatically - and guessing from
+ * a name across 500 leads gets it wrong often enough to be worse than useless.
+ * So reports land here on their own, wait in plain sight, and a person spends
+ * the five seconds it takes to point each one at the right lead.
+ *
+ * The invariant this buys: nothing pending means the numbers are complete.
+ * That is the whole reason the reports aren't written straight onto leads.
+ */
+export const postCallReports = pgTable(
+  'post_call_reports',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    // The Airtable row behind this. Sync upserts on it, so re-running never
+    // produces a second copy of the same call.
+    airtableRecordId: text('airtable_record_id').notNull().unique(),
+
+    // --- the form, as submitted ---
+    leadName: text('lead_name').notNull(),
+    callDate: timestamp('call_date', { withTimezone: true }),
+    closerName: text('closer_name'),
+    setterName: text('setter_name'),
+    outcome: text('outcome'),
+    tier: text('tier'),
+    paymentMethod: text('payment_method'),
+    cashCollected: numeric('cash_collected', { precision: 12, scale: 2 }),
+    contractValue: numeric('contract_value', { precision: 12, scale: 2 }),
+    notes: text('notes'),
+    fathomUrl: text('fathom_url'),
+
+    // --- what's been done about it ---
+    status: postCallReportStatus('status').notNull().default('pending'),
+    leadId: uuid('lead_id').references(() => leads.id, { onDelete: 'set null' }),
+    // Whether the lead above was created from this report rather than matched to
+    // one that already existed. That's what makes it safe to remove the lead
+    // again if the report is later pointed at the real conversation.
+    leadWasCreated: boolean('lead_was_created').notNull().default(false),
+    linkedById: uuid('linked_by_id').references(() => users.id),
+    linkedAt: timestamp('linked_at', { withTimezone: true }),
+
+    // The form's answers as last seen in Airtable, joined into one string. A
+    // change here means a closer edited their submission, which is the only
+    // reason to push an already-linked report onto its lead a second time.
+    fingerprint: text('fingerprint'),
+    fetchedAt: timestamp('fetched_at', { withTimezone: true }).notNull().defaultNow(),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index('post_call_reports_status_idx').on(t.status, t.callDate)]
+);

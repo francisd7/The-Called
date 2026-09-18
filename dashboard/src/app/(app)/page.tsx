@@ -3,6 +3,7 @@ import { CallTile } from '@/components/CallTile';
 import { MiniLeadTile } from '@/components/MiniLeadTile';
 import { formatCallTime } from '@/lib/dates';
 import { PersonPanel } from '@/components/PersonPanel';
+import { PostCallInbox } from '@/components/PostCallInbox';
 import {
   getActiveOffers,
   getAssignableSetters,
@@ -14,6 +15,7 @@ import {
   getMoneyTotals,
   getPeriodSummary,
   getPipelineSummary,
+  getPostCallInbox,
   getTodaysCalls,
   getUpcomingCalls,
   getWeekBoard,
@@ -54,6 +56,7 @@ export default async function TodayPage({ searchParams }: { searchParams: Search
     convos,
     periodStats,
     awaitingOutcome,
+    postCall,
   ] = await Promise.all([
     getPipelineSummary(),
     getTodaysCalls(),
@@ -68,6 +71,7 @@ export default async function TodayPage({ searchParams }: { searchParams: Search
     getActiveConvos(0),
     getPeriodSummary(period),
     getCallsAwaitingOutcome(),
+    getPostCallInbox(),
   ]);
 
   const money0 = (n: number) =>
@@ -147,6 +151,8 @@ export default async function TodayPage({ searchParams }: { searchParams: Search
           <div className="stat-l">active convos</div>
         </div>
       </div>
+
+      <PostCallInbox reports={postCall.pending} staleMinutes={postCall.staleMinutes} />
 
       <h2>Calls today</h2>
       {todaysCalls.length === 0 ? (

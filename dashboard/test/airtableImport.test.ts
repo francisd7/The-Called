@@ -4,9 +4,9 @@ import { drizzle } from 'drizzle-orm/postgres-js';
 import postgres from 'postgres';
 import { count, eq, isNotNull, isNull } from 'drizzle-orm';
 import * as schema from '../src/db/schema.ts';
-import { leadNotes, leads, optionSets, users } from '../src/db/schema.ts';
+import { leadNotes, leads, optionSets, postCallReports, users } from '../src/db/schema.ts';
 import { importAirtableLeads } from '../src/lib/airtableImport.ts';
-import type { PostCallRecord } from '../src/lib/postCallImport.ts';
+import type { PostCallRecord } from '../src/lib/postCall.ts';
 
 // Runs against a real Postgres when one is configured. Skipped otherwise so
 // the suite still passes on a machine without a database.
@@ -28,6 +28,7 @@ before(async () => {
   }
   sql = postgres(url, { max: 2 });
   db = drizzle(sql, { schema });
+  await db.delete(postCallReports);
   await db.delete(leadNotes);
   await db.delete(leads);
 });
@@ -90,6 +91,7 @@ test('dropdowns come from values in use, not the full Airtable lists', { skip },
 });
 
 test('a dry run reports without writing', { skip }, async () => {
+  await db.delete(postCallReports);
   await db.delete(leadNotes);
   await db.delete(leads);
   const stats = await importAirtableLeads(db, { fromFile: SNAPSHOT, dryRun: true });
@@ -139,73 +141,188 @@ test('a re-import never resets the manual active flag', { skip }, async () => {
   assert.equal(after?.isActiveConvo, true, 'the re-import cleared a manual flag');
 });
 
-test('Post Call records arrive as leads with the outcome recorded', { skip }, async () => {
-  const { importPostCall } = await import('../src/lib/postCallImport.ts');
-  const records: PostCallRecord[] = [
-    {
-      id: 'recTESTclose',
-      fields: {
-        fldoKwFzHYAUpXPre: 'Gavin Test',
-        fldNz6hFtSdkT5sFU: '2026-09-10',
-        flducCunxzZ08ZJxD: { name: 'Nigel' },
-        fldN5bRlNhGA58J33: { name: 'Loui' },
-        fld79p1lPISYwNRpi: { name: 'Closed' },
-        fld8vpPRdacNoF4E5: { name: 'Momentum' },
-        fldtETT2XDthDXhcb: { name: 'Splitit' },
-        fldDfGJABBrqos4sQ: 5000,
-        fldWQ2MDlZDH4HLRL: 10000,
-        fldBvetzSMDYJRAJm: 'Split over five months.',
-        fld6E6FpFUUnEZBi9: 'https://fathom.video/share/abc',
-      },
+const POST_CALL: PostCallRecord[] = [
+  {
+    id: 'recTESTclose',
+    fields: {
+      fldoKwFzHYAUpXPre: 'Gavin Test',
+      fldNz6hFtSdkT5sFU: '2026-09-10',
+      flducCunxzZ08ZJxD: { name: 'Nigel' },
+      fldN5bRlNhGA58J33: { name: 'Loui' },
+      fld79p1lPISYwNRpi: { name: 'Closed' },
+      fld8vpPRdacNoF4E5: { name: 'Momentum' },
+      fldtETT2XDthDXhcb: { name: 'Splitit' },
+      fldDfGJABBrqos4sQ: 5000,
+      fldWQ2MDlZDH4HLRL: 10000,
+      fldBvetzSMDYJRAJm: 'Split over five months.',
+      fld6E6FpFUUnEZBi9: 'https://fathom.video/share/abc',
     },
-    {
-      id: 'recTESTnoclose',
-      fields: {
-        fldoKwFzHYAUpXPre: 'Nobody Closed',
-        fldNz6hFtSdkT5sFU: '2026-09-11',
-        fld79p1lPISYwNRpi: { name: 'No Close' },
-        // Airtable writes the literal string "No Close" into tier and payment
-        // rather than leaving them empty.
-        fld8vpPRdacNoF4E5: { name: 'No Close' },
-        fldtETT2XDthDXhcb: { name: 'No Close' },
-        fldDfGJABBrqos4sQ: 0,
-        fldWQ2MDlZDH4HLRL: 0,
-        fld6E6FpFUUnEZBi9: 'Will add once home ',
-      },
+  },
+  {
+    id: 'recTESTnoclose',
+    fields: {
+      fldoKwFzHYAUpXPre: 'Nobody Closed',
+      fldNz6hFtSdkT5sFU: '2026-09-11',
+      fld79p1lPISYwNRpi: { name: 'No Close' },
+      fld8vpPRdacNoF4E5: { name: 'No Close' },
+      fldtETT2XDthDXhcb: { name: 'No Close' },
+      fldDfGJABBrqos4sQ: 0,
+      fldWQ2MDlZDH4HLRL: 0,
+      fld6E6FpFUUnEZBi9: 'Will add once home ',
     },
-  ];
+  },
+];
 
-  const first = await importPostCall(db, { records });
-  assert.equal(first.created, 2);
-  assert.equal(first.updated, 0);
+test('post-call reports queue up rather than writing themselves onto leads', { skip }, async () => {
+  const { syncPostCallReports } = await import('../src/lib/postCall.ts');
 
-  const won = await db.query.leads.findFirst({ where: eq(leads.postCallRecordId, 'recTESTclose') });
+  const before = await db.select({ n: count() }).from(leads);
+  const stats = await syncPostCallReports(db, { records: POST_CALL });
+  const afterCount = await db.select({ n: count() }).from(leads);
+
+  assert.equal(stats.added, 2);
+  assert.equal(
+    afterCount[0].n,
+    before[0].n,
+    'a report created a lead on its own - nothing should touch leads until somebody links it'
+  );
+
+  const won = await db.query.postCallReports.findFirst({
+    where: eq(postCallReports.airtableRecordId, 'recTESTclose'),
+  });
   assert.ok(won);
-  assert.equal(won.closed, true);
-  assert.equal(won.showed, true);
-  assert.equal(won.callOutcome, 'closed');
+  assert.equal(won.status, 'pending');
+  assert.equal(won.outcome, 'closed');
   assert.equal(won.contractValue, '10000.00');
   assert.equal(won.tier, 'Momentum');
   assert.equal(won.fathomUrl, 'https://fathom.video/share/abc');
-  // Rapport carries on after a call, so the conversation stays live.
-  assert.equal(won.isActiveConvo, true);
-  // Post Call has no handle, so this is flagged rather than faked.
-  assert.equal(won.needsHandle, true);
 
-  const lost = await db.query.leads.findFirst({
-    where: eq(leads.postCallRecordId, 'recTESTnoclose'),
+  const lost = await db.query.postCallReports.findFirst({
+    where: eq(postCallReports.airtableRecordId, 'recTESTnoclose'),
   });
   assert.ok(lost);
-  assert.equal(lost.closed, false);
-  assert.equal(lost.showed, true, 'a no-close is still someone who turned up');
   // "No Close" is Airtable's placeholder, not a real tier or payment method.
   assert.equal(lost.tier, null);
   assert.equal(lost.paymentMethod, null);
   // The Fathom column sometimes holds a note rather than a link.
   assert.equal(lost.fathomUrl, null);
 
-  // Re-running updates rather than duplicating.
-  const second = await importPostCall(db, { records });
-  assert.equal(second.created, 0);
-  assert.equal(second.updated, 2);
+  // Re-syncing changes nothing.
+  const again = await syncPostCallReports(db, { records: POST_CALL });
+  assert.equal(again.added, 0);
+  assert.equal(again.changed, 0);
+});
+
+test('linking a report records the outcome and the booking it implies', { skip }, async () => {
+  const { applyToLead, syncPostCallReports } = await import('../src/lib/postCall.ts');
+  await syncPostCallReports(db, { records: POST_CALL });
+
+  const report = await db.query.postCallReports.findFirst({
+    where: eq(postCallReports.airtableRecordId, 'recTESTclose'),
+  });
+  assert.ok(report);
+
+  // A lead nobody ever recorded a booking for - which is the whole reason
+  // these reports exist.
+  const [target] = await db
+    .insert(leads)
+    .values({ igHandle: 'link_me_test', igHandleKey: 'link_me_test' })
+    .returning({ id: leads.id });
+
+  await applyToLead(db, { report, leadId: target.id });
+
+  const lead = await db.query.leads.findFirst({ where: eq(leads.id, target.id) });
+  assert.ok(lead);
+  assert.equal(lead.closed, true);
+  assert.equal(lead.showed, true);
+  assert.equal(lead.cashCollected, '5000.00');
+  assert.equal(lead.conversationStage, 'closed');
+  assert.equal(lead.callBooked, true, 'a call happened, so the booking should be filled in');
+  assert.ok(lead.callScheduledFor);
+
+  // A lead flagged as booked but carrying no date - which the Airtable import
+  // left plenty of - gets the date filled in too.
+  const other = await db.query.postCallReports.findFirst({
+    where: eq(postCallReports.airtableRecordId, 'recTESTnoclose'),
+  });
+  assert.ok(other);
+  const [dateless] = await db
+    .insert(leads)
+    .values({
+      igHandle: 'dateless_test',
+      igHandleKey: 'dateless_test',
+      callBooked: true,
+    })
+    .returning({ id: leads.id });
+  await applyToLead(db, { report: other, leadId: dateless.id });
+  const filled = await db.query.leads.findFirst({ where: eq(leads.id, dateless.id) });
+  assert.ok(filled?.callScheduledFor, 'a booked lead with no date should get the call date');
+  await db.delete(leads).where(eq(leads.id, dateless.id));
+  assert.equal(lead.postCallRecordId, 'recTESTclose');
+
+  await db.delete(leads).where(eq(leads.id, target.id));
+});
+
+test('moving a report to another lead takes it off the first one', { skip }, async () => {
+  const { applyToLead, syncPostCallReports } = await import('../src/lib/postCall.ts');
+  await syncPostCallReports(db, { records: POST_CALL });
+
+  const report = await db.query.postCallReports.findFirst({
+    where: eq(postCallReports.airtableRecordId, 'recTESTclose'),
+  });
+  assert.ok(report);
+
+  const [wrong] = await db
+    .insert(leads)
+    .values({ igHandle: 'wrong_person', igHandleKey: 'wrong_person' })
+    .returning({ id: leads.id });
+  const [right] = await db
+    .insert(leads)
+    .values({ igHandle: 'right_person', igHandleKey: 'right_person' })
+    .returning({ id: leads.id });
+
+  await applyToLead(db, { report, leadId: wrong.id });
+  // Only one lead may hold a report, so this has to release the first rather
+  // than fail on the unique column.
+  await applyToLead(db, { report, leadId: right.id });
+
+  const a = await db.query.leads.findFirst({ where: eq(leads.id, wrong.id) });
+  const b = await db.query.leads.findFirst({ where: eq(leads.id, right.id) });
+  assert.equal(a?.postCallRecordId, null);
+  assert.equal(b?.postCallRecordId, 'recTESTclose');
+
+  await db.delete(leads).where(eq(leads.id, wrong.id));
+  await db.delete(leads).where(eq(leads.id, right.id));
+});
+
+test('an edit in Airtable reaches a lead the report is already linked to', { skip }, async () => {
+  const { applyToLead, syncPostCallReports } = await import('../src/lib/postCall.ts');
+  await syncPostCallReports(db, { records: POST_CALL });
+
+  const [target] = await db
+    .insert(leads)
+    .values({ igHandle: 'edit_me_test', igHandleKey: 'edit_me_test' })
+    .returning({ id: leads.id });
+
+  const report = await db.query.postCallReports.findFirst({
+    where: eq(postCallReports.airtableRecordId, 'recTESTclose'),
+  });
+  assert.ok(report);
+  await applyToLead(db, { report, leadId: target.id });
+  await db
+    .update(postCallReports)
+    .set({ status: 'linked', leadId: target.id })
+    .where(eq(postCallReports.id, report.id));
+
+  const corrected = structuredClone(POST_CALL);
+  corrected[0].fields.fldDfGJABBrqos4sQ = 7500;
+  const stats = await syncPostCallReports(db, { records: corrected });
+
+  assert.equal(stats.changed, 1);
+  assert.equal(stats.reapplied, 1);
+
+  const lead = await db.query.leads.findFirst({ where: eq(leads.id, target.id) });
+  assert.equal(lead?.cashCollected, '7500.00');
+
+  await db.delete(leads).where(eq(leads.id, target.id));
 });

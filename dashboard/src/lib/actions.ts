@@ -4,12 +4,12 @@ import { revalidatePath } from 'next/cache';
 import { and, eq, sql } from 'drizzle-orm';
 import { auth } from '@/auth';
 import { db } from '@/db';
-import { eodReports, leadEvents, leadNotes, leads } from '@/db/schema';
+import { eodReports, leadEvents, leadNotes, leads, users } from '@/db/schema';
 import { notifyEodSubmitted, notifyTriage } from './discord';
 import { getStreaks } from './streaks';
 import { recordIssue } from './issues';
 import { normalizeIgHandle } from './calendly';
-import { teamDateString } from './dates';
+import { parseTeamDateTime, teamDateString } from './dates';
 
 type ActionResult = { ok: true; message?: string } | { ok: false; error: string };
 
@@ -371,6 +371,83 @@ export async function saveEodReport(formData: FormData): Promise<ActionResult> {
         ? `Saved and posted to Discord.${(mine?.eod.current ?? 0) > 1 ? ` ${mine?.eod.current} days in a row.` : ''}`
         : 'Saved, but the Discord post failed — let the team know manually.',
     };
+  } catch (err) {
+    return { ok: false, error: err instanceof Error ? err.message : 'Failed' };
+  }
+}
+
+/**
+ * Records a call that Calendly never told us about.
+ *
+ * Most bookings arrive on their own, but not all: a call booked before the
+ * dashboard existed, one moved by hand, or one from a setter who never entered
+ * the conversation. Without this there is no way to enter a booking at all, and
+ * the funnel stays short by however many of those there are.
+ */
+export async function logBooking(formData: FormData): Promise<ActionResult> {
+  try {
+    const user = await requireUser();
+    const leadId = str(formData, 'leadId');
+    const when = str(formData, 'callScheduledFor');
+    if (!leadId) return { ok: false, error: 'Missing lead' };
+    if (!when) return { ok: false, error: 'Say when the call is' };
+
+    // Typed on the team's clock, like every time shown on the page.
+    const scheduledFor = parseTeamDateTime(when);
+    if (!scheduledFor) return { ok: false, error: "That date didn't parse" };
+
+    const before = await db.query.leads.findFirst({ where: eq(leads.id, leadId) });
+    if (!before) return { ok: false, error: 'Lead not found' };
+    if (before.calendlyEventUri) {
+      return {
+        ok: false,
+        error: 'Calendly owns this booking — reschedule it there and the change comes through.',
+      };
+    }
+
+    const closerId = str(formData, 'closerId');
+    const closer = closerId
+      ? await db.query.users.findFirst({ where: eq(users.id, closerId) })
+      : null;
+
+    await db
+      .update(leads)
+      .set({
+        callBooked: true,
+        // Nobody records the moment a backfilled call was agreed, so the call
+        // itself stands in for it. That keeps a booking counted in the period
+        // it belongs to rather than in the week somebody typed it up.
+        callBookedAt: before.callBookedAt ?? scheduledFor,
+        callScheduledFor: scheduledFor,
+        closerId,
+        // Kept in step with the id, so the card and the Discord brief don't
+        // disagree about who is taking the call.
+        closerName: closer?.name ?? null,
+        offerId: str(formData, 'offerId'),
+        callCancelled: false,
+        callCancelledAt: null,
+        responded: true,
+        respondedAt: before.respondedAt ?? scheduledFor,
+        ...(before.conversationStage === 'closed'
+          ? {}
+          : { conversationStage: 'call_booked' }),
+        lastContactAt: new Date(),
+        updatedAt: new Date(),
+      })
+      .where(eq(leads.id, leadId));
+
+    await db.insert(leadEvents).values({
+      leadId,
+      actorId: user.id,
+      type: 'call_booked',
+      toValue: scheduledFor.toISOString(),
+      meta: { source: 'manual' } as never,
+    });
+
+    revalidatePath('/');
+    revalidatePath('/leads');
+    revalidatePath(`/leads/${leadId}`);
+    return { ok: true, message: 'Booking recorded' };
   } catch (err) {
     return { ok: false, error: err instanceof Error ? err.message : 'Failed' };
   }

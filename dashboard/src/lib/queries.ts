@@ -8,6 +8,7 @@ import {
   leads,
   offers,
   optionSets,
+  postCallReports,
   todos,
   users,
 } from '@/db/schema';
@@ -559,4 +560,57 @@ export async function getCallsAwaitingOutcome(limit = 20) {
     db.select({ total: count() }).from(leads).where(clause),
   ]);
   return { rows, total };
+}
+
+/**
+ * The post-call forms nobody has placed yet, and how stale the last pull is.
+ *
+ * `staleMinutes` is what the dashboard uses to decide whether to go and look
+ * for more - so a report a closer submits shows up without anybody pressing
+ * anything.
+ */
+export async function getPostCallInbox() {
+  const [pending, linked, last] = await Promise.all([
+    db
+      .select()
+      .from(postCallReports)
+      .where(eq(postCallReports.status, 'pending'))
+      .orderBy(desc(postCallReports.callDate)),
+    db
+      .select({ n: count() })
+      .from(postCallReports)
+      .where(eq(postCallReports.status, 'linked')),
+    db
+      .select({ at: postCallReports.fetchedAt })
+      .from(postCallReports)
+      .orderBy(desc(postCallReports.fetchedAt))
+      .limit(1),
+  ]);
+
+  const lastFetchedAt = last[0]?.at ?? null;
+  return {
+    pending,
+    linkedCount: linked[0]?.n ?? 0,
+    lastFetchedAt,
+    // Capped rather than Infinity: this crosses to the browser as a prop, and
+    // a plain number is one less thing to go wrong on the way.
+    staleMinutes: lastFetchedAt
+      ? Math.floor((Date.now() - lastFetchedAt.getTime()) / 60000)
+      : 99999,
+  };
+}
+
+/** Every report, newest first, for the Admin page's full view. */
+export async function getAllPostCallReports() {
+  return db
+    .select({
+      report: postCallReports,
+      leadHandle: leads.igHandle,
+      linkedBy: users.name,
+    })
+    .from(postCallReports)
+    .leftJoin(leads, eq(leads.id, postCallReports.leadId))
+    .leftJoin(users, eq(users.id, postCallReports.linkedById))
+    .orderBy(desc(postCallReports.callDate))
+    .limit(100);
 }

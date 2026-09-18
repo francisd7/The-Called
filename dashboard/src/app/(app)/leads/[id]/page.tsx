@@ -2,9 +2,17 @@ import { notFound } from 'next/navigation';
 import { SetterBadge } from '@/components/SetterBadge';
 import { OutcomeForm } from '@/components/OutcomeForm';
 import { ActionForm } from '@/components/ActionForm';
-import { addNote, confirmLead, logFollowUp, saveTriage, unconfirmLead, updateLead } from '@/lib/actions';
-import { formatCallTime, formatDay } from '@/lib/dates';
-import { getLead, getOptions, getSetters } from '@/lib/queries';
+import {
+  addNote,
+  confirmLead,
+  logBooking,
+  logFollowUp,
+  saveTriage,
+  unconfirmLead,
+  updateLead,
+} from '@/lib/actions';
+import { formatCallTime, formatDay, teamDateTimeInputValue } from '@/lib/dates';
+import { getActiveOffers, getClosers, getLead, getOptions, getSetters } from '@/lib/queries';
 
 export const dynamic = 'force-dynamic';
 
@@ -12,6 +20,7 @@ export const dynamic = 'force-dynamic';
 function dateInputValue(date: Date | null) {
   return date ? date.toISOString().slice(0, 10) : '';
 }
+
 
 export default async function LeadPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -23,8 +32,19 @@ export default async function LeadPage({ params }: { params: Promise<{ id: strin
   if (!data) notFound();
 
   const { lead, setter, offer, notes } = data;
-  const [setters, stages, qualities, sources, icps, outcomes, tiers, payments, lostReasons] =
-    await Promise.all([
+  const [
+    setters,
+    stages,
+    qualities,
+    sources,
+    icps,
+    outcomes,
+    tiers,
+    payments,
+    lostReasons,
+    closers,
+    offers,
+  ] = await Promise.all([
     getSetters(),
     getOptions('conversation_stage'),
     getOptions('lead_quality'),
@@ -34,6 +54,8 @@ export default async function LeadPage({ params }: { params: Promise<{ id: strin
     getOptions('tier'),
     getOptions('payment_method'),
     getOptions('lost_reason'),
+    getClosers(),
+    getActiveOffers(),
   ]);
 
   // Only once the call has actually happened - an outcome form on a call that
@@ -327,6 +349,62 @@ export default async function LeadPage({ params }: { params: Promise<{ id: strin
 
 
 
+
+      {/* Calendly writes most bookings. This is for the ones it never saw: a
+          call booked before the dashboard existed, or one a setter never
+          entered. Without it there is no way to record a booking at all. */}
+      {!lead.calendlyEventUri && (
+        <>
+          <h2 id="booking">{lead.callBooked ? 'Booked call' : 'Was a call booked?'}</h2>
+          <p className="sub">
+            {lead.callBooked
+              ? 'Entered by hand rather than by Calendly, so it can be corrected here.'
+              : 'Calendly never sent a booking for this lead. If a call happened anyway, record it here and it counts in the funnel.'}
+          </p>
+          <div className="card">
+            <ActionForm action={logBooking} successMessage="Booking recorded">
+              <input type="hidden" name="leadId" value={lead.id} />
+              <div className="grid2">
+                <div className="field">
+                  <label htmlFor="callScheduledFor">Call date &amp; time (ET) *</label>
+                  <input
+                    id="callScheduledFor"
+                    name="callScheduledFor"
+                    type="datetime-local"
+                    required
+                    defaultValue={teamDateTimeInputValue(lead.callScheduledFor)}
+                  />
+                </div>
+                <div className="field">
+                  <label htmlFor="closerId">Closer</label>
+                  <select id="closerId" name="closerId" defaultValue={lead.closerId ?? ''}>
+                    <option value="">&mdash;</option>
+                    {closers.map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {c.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div className="field">
+                  <label htmlFor="offerId">Offer</label>
+                  <select id="offerId" name="offerId" defaultValue={lead.offerId ?? ''}>
+                    <option value="">&mdash;</option>
+                    {offers.map((o) => (
+                      <option key={o.id} value={o.id}>
+                        {o.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+              <button type="submit">
+                {lead.callBooked ? 'Update booking' : 'Record this booking'}
+              </button>
+            </ActionForm>
+          </div>
+        </>
+      )}
 
       {(callIsPast || lead.outcomeLoggedAt) && (
         <>

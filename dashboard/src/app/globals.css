@@ -255,6 +255,7 @@ th { color: var(--muted); font-weight: 550; font-size: 0.78rem; }
 .tile.tone-orange { border-top-color: #eb6834; }
 .tile.tone-blue   { border-top-color: #2a78d6; }
 .tile.tone-grey   { border-top-color: var(--border); }
+.tile.tone-violet { border-top-color: #7a5af0; }
 /* An unowned booking is the one thing here needing a decision before anything
    else can happen to it. */
 .tile-unclaimed { border-color: var(--warn); }
@@ -651,3 +652,38 @@ th { color: var(--muted); font-weight: 550; font-size: 0.78rem; }
    quieter than an error. */
 .card-attention { border-color: var(--warn); }
 .mini-attention { border-color: var(--warn); }
+
+/* A post-call report's own notes, shown on the card so the call can be
+   recognised without opening anything. Long ones are cut off rather than
+   pushing the buttons off the bottom of the tile. */
+.tile-notes {
+  font-size: 0.8rem;
+  color: var(--muted);
+  margin: 0.15rem 0 0;
+  line-height: 1.4;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* Search results inside a picker: whole rows are the button, so there is a
+   large target on a phone rather than a link to aim at. */
+.pick-list { list-style: none; margin: 0; padding: 0; max-height: 45vh; overflow-y: auto; }
+.pick {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.25rem;
+  text-align: left;
+  padding: 0.5rem 0.6rem;
+  margin-bottom: 0.3rem;
+  min-height: 2.6rem;
+}
+.pick-main { display: flex; gap: 0.4rem; align-items: baseline; flex-wrap: wrap; }
+.pick-handle { font-weight: 600; overflow-wrap: anywhere; }
+.pick-name { color: var(--muted); font-size: 0.82rem; }
+.pick-meta { display: flex; gap: 0.25rem; flex-wrap: wrap; }
+.pick-meta .pill { font-size: 0.68rem; }

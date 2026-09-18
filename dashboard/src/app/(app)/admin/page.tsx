@@ -5,7 +5,12 @@ import { db } from '@/db';
 import { eodReports, leads, offers, users } from '@/db/schema';
 import { ActionForm } from '@/components/ActionForm';
 import { formatCallTime, formatDay } from '@/lib/dates';
-import { getPipelineSummary, getRecentCalendlyActivity, getUnmatchedBookings } from '@/lib/queries';
+import {
+  getAllPostCallReports,
+  getPipelineSummary,
+  getRecentCalendlyActivity,
+  getUnmatchedBookings,
+} from '@/lib/queries';
 import { getIssues } from '@/lib/issues';
 import { resolveIssue } from '@/lib/issueActions';
 import {
@@ -13,8 +18,8 @@ import {
   createTestBooking,
   runAirtableImport,
   runCalendlySetup,
-  runPostCallImport,
 } from '@/lib/setupActions';
+import { syncPostCall, unlinkReport } from '@/lib/postCallActions';
 
 function Check({ done, children }: { done: boolean; children: React.ReactNode }) {
   return (
@@ -33,8 +38,17 @@ export default async function AdminPage() {
   // too - a hidden link is not access control.
   if (session?.user?.role !== 'admin') redirect('/');
 
-  const [summary, unmatched, activity, issues, people, recentEod, offerRows, [{ leadCount }]] =
-    await Promise.all([
+  const [
+    summary,
+    unmatched,
+    activity,
+    issues,
+    people,
+    recentEod,
+    offerRows,
+    [{ leadCount }],
+    reports,
+  ] = await Promise.all([
     getPipelineSummary(),
     getUnmatchedBookings(),
     getRecentCalendlyActivity(),
@@ -43,6 +57,7 @@ export default async function AdminPage() {
     db.select().from(eodReports).orderBy(desc(eodReports.reportDate)).limit(10),
     db.select().from(offers).orderBy(offers.sortOrder),
     db.select({ leadCount: count() }).from(leads),
+    getAllPostCallReports(),
   ]);
 
   const [{ testCount }] = await db
@@ -183,28 +198,66 @@ export default async function AdminPage() {
         </div>
       </div>
 
-      <h2>Post Call outcomes</h2>
+      <h2>Post-call reports</h2>
       <p className="sub">
-        Pulls the Airtable Post Call table across. These arrive as new leads rather than updates:
-        Post Call records a freeform first name, and the two tables cover different periods — the
-        tracker&apos;s bookings stop on 25 August, Post Call starts on 9 September — so the calls it
-        describes were never in the tracker at all. Anything created is flagged as needing an
-        Instagram handle rather than given a made-up one. Safe to re-run.
+        Every submission of the closers&apos; Airtable form, and which lead it ended up on. New ones
+        show up on the dashboard waiting to be linked; the dashboard also checks for them on its
+        own, so this button is only needed when you don&apos;t want to wait.
       </p>
       <div className="card">
         <div className="card-row">
-          <ActionForm action={runPostCallImport}>
-            <input type="hidden" name="dryRun" value="1" />
-            <button type="submit">Test Post Call import</button>
-          </ActionForm>
-          <ActionForm action={runPostCallImport}>
-            <input type="hidden" name="dryRun" value="0" />
+          <ActionForm action={syncPostCall}>
             <button className="btn-primary" type="submit">
-              Import Post Call outcomes
+              Check Airtable now
             </button>
           </ActionForm>
         </div>
       </div>
+      {reports.length === 0 ? (
+        <p className="empty">Nothing pulled across yet.</p>
+      ) : (
+        <div className="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Call</th>
+                <th>Name</th>
+                <th>Outcome</th>
+                <th>Cash</th>
+                <th>On</th>
+                <th />
+              </tr>
+            </thead>
+            <tbody>
+              {reports.map(({ report, leadHandle }) => (
+                <tr key={report.id}>
+                  <td>{formatDay(report.callDate)}</td>
+                  <td>{report.leadName}</td>
+                  <td>{report.outcome ?? '—'}</td>
+                  <td>{report.cashCollected ? `$${report.cashCollected}` : '—'}</td>
+                  <td>
+                    {report.status === 'linked' && report.leadId ? (
+                      <a href={`/leads/${report.leadId}`}>@{leadHandle}</a>
+                    ) : (
+                      <span className={`pill ${report.status === 'pending' ? 'warn' : ''}`}>
+                        {report.status === 'pending' ? 'waiting' : 'set aside'}
+                      </span>
+                    )}
+                  </td>
+                  <td>
+                    {report.status === 'linked' && (
+                      <ActionForm action={unlinkReport}>
+                        <input type="hidden" name="reportId" value={report.id} />
+                        <button type="submit">Unlink</button>
+                      </ActionForm>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
 
       <h2>Calendly deliveries</h2>
       <p className="sub">

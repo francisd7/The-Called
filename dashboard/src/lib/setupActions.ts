@@ -7,7 +7,6 @@ import { db } from '@/db';
 import { leadEvents, leadNotes, leads, offers, users } from '@/db/schema';
 import { teamDateString } from './dates';
 import { importAirtableLeads } from './airtableImport';
-import { importPostCall } from './postCallImport';
 import { setupCalendly } from './calendlySetup';
 
 type Result = { ok: true; message: string } | { ok: false; error: string };
@@ -175,38 +174,3 @@ export async function clearTestData(): Promise<Result> {
   }
 }
 
-/**
- * Brings the Airtable Post Call table across. These become leads rather than
- * updates to existing ones: the two tables cover different periods, so the
- * calls Post Call describes were never in the lead tracker at all.
- */
-export async function runPostCallImport(formData: FormData): Promise<Result> {
-  try {
-    await requireAdmin();
-    const pat = process.env.AIRTABLE_PAT;
-    if (!pat) {
-      return {
-        ok: false,
-        error: 'AIRTABLE_PAT is not set on this service. Add it in Railway, then redeploy.',
-      };
-    }
-
-    const dryRun = formData.get('dryRun') === '1';
-    const stats = await importPostCall(db, { pat, dryRun });
-
-    const parts = [`${stats.loaded} call${stats.loaded === 1 ? '' : 's'} read`];
-    if (stats.matched > 0) parts.push(`${stats.matched} matched an existing lead`);
-    if (stats.created > 0) parts.push(`${stats.created} added as new leads`);
-    if (stats.updated > 0) parts.push(`${stats.updated} updated`);
-
-    revalidatePath('/admin');
-    revalidatePath('/leads');
-    revalidatePath('/');
-    return {
-      ok: true,
-      message: `${dryRun ? 'Dry run — nothing written. ' : ''}${parts.join(' · ')}`,
-    };
-  } catch (err) {
-    return { ok: false, error: err instanceof Error ? err.message : 'Import failed' };
-  }
-}
