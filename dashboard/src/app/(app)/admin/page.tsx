@@ -50,7 +50,7 @@ export default async function AdminPage() {
             <ul style={{ listStyle: 'none', padding: 0, margin: '0 0 0.9rem' }}>
               <Check done>Database tables created</Check>
               <Check done={placeholderPeople.length === 0}>
-                Real email addresses for everyone
+                <a href="/admin/people">Real email addresses for everyone</a>
                 {placeholderPeople.length > 0 && (
                   <span className="card-meta">
                     {' '}
@@ -154,6 +154,9 @@ export default async function AdminPage() {
       )}
 
       <h2>People</h2>
+      <p className="sub">
+        <a href="/admin/people">Add someone, change an address or revoke access →</a>
+      </p>
       <div className="table-wrap">
         <table>
           <thead>

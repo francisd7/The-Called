@@ -1,3 +1,4 @@
+import { count } from 'drizzle-orm';
 import { db } from '../db';
 import { offers, optionSets, users } from '../db/schema';
 
@@ -68,17 +69,28 @@ const BASE_OPTIONS: Array<[string, string, string]> = [
 ];
 
 export async function seedBaseline() {
-  for (const person of PEOPLE) {
-    await db
-      .insert(users)
-      .values(person)
-      .onConflictDoUpdate({
-        target: users.email,
-        // Never touches `active`: someone deactivated in the app must not come
-        // back on the next deploy.
-        set: { name: person.name, role: person.role },
-      });
+  // People are seeded ONCE, on an empty table. Upserting them on every boot
+  // looked right but wasn't: the upsert keys on email, so as soon as someone
+  // replaced a placeholder address the next deploy found no conflict and
+  // inserted the placeholder back alongside the real row - two Nigels, and the
+  // wrong one attached to the bookings.
+  const [{ existing }] = await db.select({ existing: count() }).from(users);
+  if (existing === 0) {
+    await db.insert(users).values(PEOPLE);
+    console.log(`Seeded ${PEOPLE.length} people.`);
   }
+
+  // The admin row is the exception, always reconciled: it's the only way back
+  // in, and locking yourself out of your own dashboard should not be possible.
+  await db
+    .insert(users)
+    .values({
+      email: ADMIN_EMAIL,
+      name: process.env.ADMIN_NAME ?? 'Francis',
+      role: 'admin',
+      active: true,
+    })
+    .onConflictDoUpdate({ target: users.email, set: { role: 'admin', active: true } });
 
   for (const offer of OFFERS) {
     await db
