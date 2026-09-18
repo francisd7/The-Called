@@ -4,6 +4,7 @@ import { LeadCard } from '@/components/LeadCard';
 import { confirmLead } from '@/lib/actions';
 import {
   getDueFollowUps,
+  getLeadCardLookups,
   getPipelineSummary,
   getTodaysCalls,
   getUpcomingCalls,
@@ -32,11 +33,12 @@ function ConfirmButtons({ leadId }: { leadId: string }) {
 
 export default async function TodayPage() {
   const session = await auth();
-  const [summary, todaysCalls, upcoming, followUps] = await Promise.all([
+  const [summary, todaysCalls, upcoming, followUps, lookups] = await Promise.all([
     getPipelineSummary(),
     getTodaysCalls(),
     getUpcomingCalls(),
     getDueFollowUps(session?.user?.role === 'setter' ? session.user.id : undefined),
+    getLeadCardLookups(),
   ]);
 
   return (
@@ -68,7 +70,7 @@ export default async function TodayPage() {
         <p className="empty">No calls booked for today.</p>
       ) : (
         todaysCalls.map((lead) => (
-          <LeadCard key={lead.id} lead={lead}>
+          <LeadCard key={lead.id} lead={lead} {...lookups}>
             {!lead.confirmed && <ConfirmButtons leadId={lead.id} />}
             {!lead.triaged && (
               <a className="btn" href={`/leads/${lead.id}#triage`}>
@@ -84,7 +86,7 @@ export default async function TodayPage() {
         <p className="empty">Nothing booked in the next week.</p>
       ) : (
         upcoming.map((lead) => (
-          <LeadCard key={lead.id} lead={lead} showDate>
+          <LeadCard key={lead.id} lead={lead} showDate {...lookups}>
             {!lead.confirmed && <ConfirmButtons leadId={lead.id} />}
           </LeadCard>
         ))
@@ -94,7 +96,7 @@ export default async function TodayPage() {
       {followUps.length === 0 ? (
         <p className="empty">Nothing overdue. </p>
       ) : (
-        followUps.map((lead) => <LeadCard key={lead.id} lead={lead} />)
+        followUps.map((lead) => <LeadCard key={lead.id} lead={lead} {...lookups} />)
       )}
     </>
   );

@@ -1,5 +1,5 @@
 import { LeadCard } from '@/components/LeadCard';
-import { getOptions, getSetters, searchLeads } from '@/lib/queries';
+import { getLeadCardLookups, getOptions, getSetters, searchLeads } from '@/lib/queries';
 
 export const dynamic = 'force-dynamic';
 
@@ -14,7 +14,7 @@ export default async function LeadsPage({ searchParams }: { searchParams: Search
   const params = await searchParams;
   const page = Number.parseInt(one(params, 'page') ?? '1', 10) || 1;
 
-  const [result, setters, stages] = await Promise.all([
+  const [result, setters, stages, lookups] = await Promise.all([
     searchLeads({
       q: one(params, 'q'),
       setterId: one(params, 'setterId'),
@@ -24,6 +24,7 @@ export default async function LeadsPage({ searchParams }: { searchParams: Search
     }),
     getSetters(),
     getOptions('conversation_stage'),
+    getLeadCardLookups(),
   ]);
 
   const qs = (overrides: Record<string, string | undefined>) => {
@@ -80,7 +81,7 @@ export default async function LeadsPage({ searchParams }: { searchParams: Search
       {result.rows.length === 0 ? (
         <p className="empty">No leads match those filters.</p>
       ) : (
-        result.rows.map((lead) => <LeadCard key={lead.id} lead={lead} showDate />)
+        result.rows.map((lead) => <LeadCard key={lead.id} lead={lead} showDate {...lookups} />)
       )}
 
       {result.pages > 1 && (

@@ -224,3 +224,20 @@ export async function getPipelineSummary() {
     needsTriage: untriaged.n,
   };
 }
+
+/**
+ * The name and label maps the lead cards need, fetched once per page rather
+ * than once per card.
+ */
+export async function getLeadCardLookups() {
+  const [people, stages, qualities] = await Promise.all([
+    db.select().from(users),
+    getOptions('conversation_stage'),
+    getOptions('lead_quality'),
+  ]);
+  return {
+    setterNames: new Map(people.map((p) => [p.id, p.name])),
+    stageLabels: new Map(stages.map((s) => [s.value, s.label])),
+    qualityLabels: new Map(qualities.map((s) => [s.value, s.label])),
+  };
+}
