@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import { SetterBadge } from '@/components/SetterBadge';
 import { shiftDateString } from '@/lib/dates';
 import { EOD_COUNTS, EOD_MONEY } from '@/lib/eodMath';
@@ -32,7 +33,18 @@ function money(n: number) {
  * nothing is a row of blanks instead of quietly missing from the page - which
  * is the thing worth seeing.
  */
-export function EodReview({ review, thisWeek }: { review: Review; thisWeek: string }) {
+export function EodReview({
+  review,
+  thisWeek,
+  charts,
+  bucketQuery = '',
+}: {
+  review: Review;
+  thisWeek: string;
+  charts?: ReactNode;
+  /** Carried through the week links so changing week keeps the chart bucket. */
+  bucketQuery?: string;
+}) {
   const { days, people, team, weekOf, today } = review;
   const prev = shiftDateString(weekOf, -7);
   const next = shiftDateString(weekOf, 7);
@@ -63,15 +75,15 @@ export function EodReview({ review, thisWeek }: { review: Review; thisWeek: stri
           </p>
         </div>
         <div className="period-tabs">
-          <a className="btn" href={`/eod?week=${prev}`}>
+          <a className="btn" href={`/eod?week=${prev}${bucketQuery}`}>
             ← Previous
           </a>
           {!isThisWeek && (
-            <a className="btn" href="/eod">
+            <a className="btn" href={`/eod${bucketQuery ? `?${bucketQuery.slice(1)}` : ''}`}>
               This week
             </a>
           )}
-          <a className="btn" href={`/eod?week=${next}`}>
+          <a className="btn" href={`/eod?week=${next}${bucketQuery}`}>
             Next →
           </a>
         </div>
@@ -188,6 +200,8 @@ export function EodReview({ review, thisWeek }: { review: Review; thisWeek: stri
           </tbody>
         </table>
       </div>
+
+      {charts}
 
       <h3>What they said</h3>
       {written.length === 0 ? (

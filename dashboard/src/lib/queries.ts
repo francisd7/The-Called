@@ -15,6 +15,7 @@ import {
 } from '@/db/schema';
 import { teamDateString, teamDayRange, weekDays, weekStart } from './dates';
 import { summariseEodWeek } from './eodMath';
+import { eodBuckets, type Bucket } from './eodCharts';
 
 export type LeadRow = typeof leads.$inferSelect;
 
@@ -644,6 +645,40 @@ export async function getEodWeekReview(weekOf: string) {
   ]);
 
   return { weekOf, days, today: teamDateString(), ...summariseEodWeek({ people, rows, days }) };
+}
+
+/**
+ * Every report inside the charted window, with the people to plot them for.
+ *
+ * The window is derived from the buckets rather than a day count, so a weekly
+ * chart starts on a Monday and a report at the edge lands in the bucket it
+ * belongs to instead of being cut off.
+ */
+export async function getEodCharts(bucket: Bucket, count: number) {
+  const window = eodBuckets(bucket, count);
+
+  // Start where the reports do. Plotting weeks from before anybody filed one
+  // spends most of the axis on emptiness and squashes the part with data in it.
+  const [{ first }] = await db
+    .select({ first: sql<string | null>`MIN(${eodReports.reportDate})` })
+    .from(eodReports);
+  const firstBucket = first
+    ? bucket === 'day'
+      ? first
+      : weekStart(new Date(`${first}T12:00:00Z`))
+    : null;
+  const trimmed = firstBucket ? window.filter((b) => b >= firstBucket) : window;
+  const buckets = trimmed.length > 1 ? trimmed : window;
+
+  const [people, rows] = await Promise.all([
+    eodPeople(),
+    db
+      .select()
+      .from(eodReports)
+      .where(gte(eodReports.reportDate, buckets[0]))
+      .orderBy(eodReports.reportDate),
+  ]);
+  return { buckets, people, rows };
 }
 
 /**

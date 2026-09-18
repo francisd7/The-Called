@@ -6,6 +6,7 @@ import { auth } from '@/auth';
 import { db } from '@/db';
 import { leadEvents, leadNotes, leads, offers, users } from '@/db/schema';
 import { teamDateString } from './dates';
+import { importSetterEod } from './eodImport';
 import { importAirtableLeads } from './airtableImport';
 import { setupCalendly } from './calendlySetup';
 
@@ -174,3 +175,43 @@ export async function clearTestData(): Promise<Result> {
   }
 }
 
+
+/**
+ * Pulls the Airtable Setter EOD form across.
+ *
+ * Safe to re-run: rows already brought over are updated in place, and a report
+ * somebody filed in the dashboard for the same day is left exactly as it is.
+ */
+export async function runEodImport(formData: FormData): Promise<Result> {
+  try {
+    await requireAdmin();
+    const pat = process.env.AIRTABLE_PAT;
+    if (!pat) {
+      return {
+        ok: false,
+        error: 'AIRTABLE_PAT is not set on this service. Add it in Railway, then redeploy.',
+      };
+    }
+
+    const dryRun = formData.get('dryRun') === '1';
+    const stats = await importSetterEod(db, { pat, dryRun });
+
+    const parts = [`${stats.loaded} report${stats.loaded === 1 ? '' : 's'} read`];
+    if (stats.inserted > 0) parts.push(`${stats.inserted} added`);
+    if (stats.updated > 0) parts.push(`${stats.updated} updated`);
+    if (stats.keptDashboard > 0) {
+      parts.push(`${stats.keptDashboard} left alone (already filed here)`);
+    }
+    if (stats.skipped.length > 0) parts.push(`${stats.skipped.length} skipped`);
+
+    revalidatePath('/eod');
+    revalidatePath('/kpis');
+    revalidatePath('/admin');
+    return {
+      ok: true,
+      message: `${dryRun ? 'Dry run — nothing written. ' : ''}${parts.join(' · ')}`,
+    };
+  } catch (err) {
+    return { ok: false, error: err instanceof Error ? err.message : 'Import failed' };
+  }
+}

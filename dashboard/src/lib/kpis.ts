@@ -66,7 +66,11 @@ export async function funnel(range: Range, setterId?: string) {
   ];
 }
 
-export type Series = { key: string; label: string; points: Array<{ x: string; y: number }> };
+/**
+ * A null y is "we don't know", not zero - a day nobody filed a report is not a
+ * day of no work, and a chart that draws it at the baseline says it was.
+ */
+export type Series = { key: string; label: string; points: Array<{ x: string; y: number | null }> };
 
 /** Calls booked per week, one series per setter (plus unassigned when present). */
 export async function callsBooked(range: Range, setterId?: string): Promise<Series[]> {

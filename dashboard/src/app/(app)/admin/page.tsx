@@ -18,6 +18,7 @@ import {
   createTestBooking,
   runAirtableImport,
   runCalendlySetup,
+  runEodImport,
 } from '@/lib/setupActions';
 import { syncPostCall, unlinkReport } from '@/lib/postCallActions';
 
@@ -195,6 +196,27 @@ export default async function AdminPage() {
         <div className={`stat${unmatched.length > 0 ? ' alert' : ''}`}>
           <div className="stat-n">{unmatched.length}</div>
           <div className="stat-l">unmatched bookings</div>
+        </div>
+      </div>
+
+      <h2>Setter EOD reports</h2>
+      <p className="sub">
+        Pulls the Airtable Setter EOD form across. Anything already brought over is updated rather
+        than duplicated, and a report somebody filed in the dashboard for the same day is left
+        exactly as it is. Safe to re-run.
+      </p>
+      <div className="card">
+        <div className="card-row">
+          <ActionForm action={runEodImport}>
+            <input type="hidden" name="dryRun" value="1" />
+            <button type="submit">Test EOD import</button>
+          </ActionForm>
+          <ActionForm action={runEodImport}>
+            <input type="hidden" name="dryRun" value="0" />
+            <button className="btn-primary" type="submit">
+              Import EOD reports
+            </button>
+          </ActionForm>
         </div>
       </div>
 

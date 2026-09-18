@@ -2,10 +2,30 @@
 
 import { useState } from 'react';
 import type { Series } from '@/lib/kpis';
+import { niceStep } from '@/lib/chartScale';
 
 const PAD = { top: 16, right: 16, bottom: 30, left: 52 };
+
 const W = 720;
 const H = 260;
+
+
+/** Splits a series into the unbroken runs between its gaps. */
+function runs(points: Series['points']): Array<Array<{ i: number; v: number }>> {
+  const out: Array<Array<{ i: number; v: number }>> = [];
+  let current: Array<{ i: number; v: number }> = [];
+  points.forEach((p, i) => {
+    if (p.y === null) {
+      if (current.length > 0) out.push(current);
+      current = [];
+      return;
+    }
+    current.push({ i, v: p.y });
+  });
+  if (current.length > 0) out.push(current);
+  // A lone point has no line to draw; it still gets its dot.
+  return out.filter((r) => r.length > 1);
+}
 
 function shortDate(iso: string) {
   return new Date(`${iso}T12:00:00Z`).toLocaleDateString('en-US', {
@@ -35,21 +55,28 @@ export function LineChart({
   series,
   format = 'number',
   tableCaption,
+  xUnit = 'week',
 }: {
   series: Series[];
   format?: keyof typeof FORMATS;
   tableCaption: string;
+  /** What one point covers, which is all that changes in the hover label. */
+  xUnit?: 'day' | 'week';
 }) {
   const fmt = FORMATS[format] ?? FORMATS.number;
   const [hover, setHover] = useState<number | null>(null);
   const [showTable, setShowTable] = useState(false);
 
   const xs = series[0]?.points.map((p) => p.x) ?? [];
-  if (xs.length === 0 || series.length === 0) {
+  const known = series.flatMap((s) => s.points.map((p) => p.y)).filter((v) => v !== null);
+  if (xs.length === 0 || series.length === 0 || known.length === 0) {
     return <p className="panel-empty">No data in this range.</p>;
   }
 
-  const maxY = Math.max(1, ...series.flatMap((s) => s.points.map((p) => p.y)));
+  // A tick of 18.75 is a number nobody reads off an axis. Pick a round step
+  // first and let the top of the scale fall where it does.
+  const step4 = niceStep(Math.max(1, ...known), format);
+  const maxY = step4 * 4;
   const plotW = W - PAD.left - PAD.right;
   const plotH = H - PAD.top - PAD.bottom;
   const step = xs.length === 1 ? plotW : plotW / (xs.length - 1);
@@ -57,7 +84,7 @@ export function LineChart({
   const y = (v: number) => PAD.top + plotH - (v / maxY) * plotH;
 
   // Four gridlines is enough to read a value off; more is clutter.
-  const ticks = Array.from({ length: 5 }, (_, i) => Math.round((maxY / 4) * i));
+  const ticks = Array.from({ length: 5 }, (_, i) => step4 * i);
   const labelEvery = Math.ceil(xs.length / 6);
 
   return (
@@ -94,19 +121,27 @@ export function LineChart({
 
         {series.map((s, si) => (
           <g key={s.key}>
-            <polyline
-              className={`chart-line series-${si + 1}`}
-              points={s.points.map((p, i) => `${x(i)},${y(p.y)}`).join(' ')}
-            />
-            {s.points.map((p, i) => (
-              <circle
-                key={p.x}
-                cx={x(i)}
-                cy={y(p.y)}
-                r={hover === i ? 5 : 3.5}
-                className={`chart-dot series-${si + 1}`}
+            {/* One polyline per unbroken run. A gap is drawn as a gap rather
+                than bridged, because joining across a day nobody reported would
+                draw a trend through data that isn't there. */}
+            {runs(s.points).map((run, ri) => (
+              <polyline
+                key={ri}
+                className={`chart-line series-${si + 1}`}
+                points={run.map(({ i, v }) => `${x(i)},${y(v)}`).join(' ')}
               />
             ))}
+            {s.points.map((p, i) =>
+              p.y === null ? null : (
+                <circle
+                  key={p.x}
+                  cx={x(i)}
+                  cy={y(p.y)}
+                  r={hover === i ? 5 : 3.5}
+                  className={`chart-dot series-${si + 1}`}
+                />
+              )
+            )}
           </g>
         ))}
 
@@ -132,11 +167,19 @@ export function LineChart({
           <span key={s.key} className="chart-legend-item">
             <span className={`chart-swatch series-${si + 1}`} />
             {s.label}
-            {hover !== null && <strong>{fmt(s.points[hover]?.y ?? 0)}</strong>}
+            {hover !== null && (
+              <strong>
+                {s.points[hover]?.y === null || s.points[hover] === undefined
+                  ? 'not reported'
+                  : fmt(s.points[hover].y as number)}
+              </strong>
+            )}
           </span>
         ))}
         <span className="chart-legend-when">
-          {hover !== null ? `w/c ${shortDate(xs[hover])}` : 'hover for weekly values'}
+          {hover !== null
+            ? `${xUnit === 'week' ? 'w/c ' : ''}${shortDate(xs[hover])}`
+            : `hover for ${xUnit === 'week' ? 'weekly' : 'daily'} values`}
         </span>
       </div>
 
@@ -149,7 +192,7 @@ export function LineChart({
           <table>
             <thead>
               <tr>
-                <th>Week</th>
+                <th>{xUnit === 'week' ? 'Week' : 'Day'}</th>
                 {series.map((s) => (
                   <th key={s.key}>{s.label}</th>
                 ))}
@@ -160,7 +203,11 @@ export function LineChart({
                 <tr key={label}>
                   <td>{shortDate(label)}</td>
                   {series.map((s) => (
-                    <td key={s.key}>{fmt(s.points[i]?.y ?? 0)}</td>
+                    <td key={s.key}>
+                      {s.points[i]?.y === null || s.points[i] === undefined
+                        ? '—'
+                        : fmt(s.points[i].y as number)}
+                    </td>
                   ))}
                 </tr>
               ))}

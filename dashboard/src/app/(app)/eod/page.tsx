@@ -3,10 +3,12 @@ import { auth } from '@/auth';
 import { db } from '@/db';
 import { eodReports } from '@/db/schema';
 import { ActionForm } from '@/components/ActionForm';
+import { EodCharts } from '@/components/EodCharts';
 import { EodReview } from '@/components/EodReview';
 import { StreakStrip } from '@/components/StreakStrip';
 import { saveEodReport } from '@/lib/actions';
-import { getDayStats, getEodWeekReview } from '@/lib/queries';
+import { getDayStats, getEodCharts, getEodWeekReview } from '@/lib/queries';
+import type { Bucket } from '@/lib/eodCharts';
 import { getStreaks } from '@/lib/streaks';
 import { teamDateString, weekStart } from '@/lib/dates';
 
@@ -23,17 +25,25 @@ export default async function EodPage({ searchParams }: { searchParams: SearchPa
 
   // Anything that isn't a plain date is ignored rather than handed to Postgres,
   // which turns a mistyped link into this week instead of a 500.
-  const asked = (await searchParams).week;
+  const params = await searchParams;
+  const asked = params.week;
   const week =
-    typeof asked === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(asked) ? weekStart(new Date(`${asked}T12:00:00Z`)) : thisWeek;
+    typeof asked === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(asked)
+      ? weekStart(new Date(`${asked}T12:00:00Z`))
+      : thisWeek;
+  const bucket: Bucket = params.bucket === 'week' ? 'week' : 'day';
+  // Roughly the same stretch of time either way: six weeks of days, or three
+  // months of weeks.
+  const bucketCount = bucket === 'day' ? 42 : 13;
 
-  const [existing, stats, streaks, review] = await Promise.all([
+  const [existing, stats, streaks, review, charts] = await Promise.all([
     db.query.eodReports.findFirst({
       where: and(eq(eodReports.userId, userId), eq(eodReports.reportDate, today)),
     }),
     getDayStats(userId),
     getStreaks(),
     isAdmin ? getEodWeekReview(week) : null,
+    isAdmin ? getEodCharts(bucket, bucketCount) : null,
   ]);
 
   return (
@@ -53,7 +63,22 @@ export default async function EodPage({ searchParams }: { searchParams: SearchPa
           goes first and their own form sits underneath it. */}
       {review && (
         <>
-          <EodReview review={review} thisWeek={thisWeek} />
+          <EodReview
+            review={review}
+            thisWeek={thisWeek}
+            bucketQuery={bucket === 'day' ? '' : `&bucket=${bucket}`}
+            charts={
+              charts && (
+                <EodCharts
+                  people={charts.people}
+                  rows={charts.rows}
+                  buckets={charts.buckets}
+                  bucket={bucket}
+                  extraQuery={week === thisWeek ? '' : `&week=${week}`}
+                />
+              )
+            }
+          />
           <div className="panel-divider" style={{ margin: '1.6rem 0 1rem' }} />
           <h2>Your own report</h2>
         </>

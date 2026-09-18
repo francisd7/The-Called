@@ -272,6 +272,12 @@ export const eodReports = pgTable(
     obstacle: text('obstacle'),
     focusTomorrow: text('focus_tomorrow'),
     notes: text('notes'),
+    // Set only for rows brought over from the Airtable form, so re-running the
+    // import updates those rather than making a second copy of each.
+    airtableRecordId: text('airtable_record_id').unique(),
+    // Airtable asked "Did I update the lead tracker?", which the dashboard can
+    // now answer for itself. Kept verbatim rather than dropped.
+    legacy: jsonb('legacy'),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
   },
