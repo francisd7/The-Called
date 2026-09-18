@@ -77,11 +77,16 @@ export default async function PeoplePage() {
       </p>
 
       <div className="card">
-        <strong>Closers need an email too</strong>
+        <strong>Adding someone here doesn&apos;t notify them</strong>
         <p className="sub" style={{ margin: '0.3rem 0 0' }}>
-          Even with sign-in off. It has to be the address on their <em>Calendly</em> account —
-          that&apos;s what a booking carries, and it&apos;s how the call gets attached to the right
-          closer. Nigel&apos;s Calendly account is <code>nigel6.daley@gmail.com</code>.
+          No email is sent — it only means their Google login will be accepted. Send them the link
+          yourself.
+        </p>
+        <p className="sub" style={{ margin: '0.5rem 0 0' }}>
+          A <strong>closer</strong> needs no sign-in, and setting one up is optional. Give them the
+          address on their <em>Calendly</em> account and their bookings attach to their record;
+          leave it and the call still shows their name, just not linked to anyone. Nigel&apos;s
+          Calendly account is <code>nigel6.daley@gmail.com</code>.
         </p>
       </div>
 
@@ -91,7 +96,9 @@ export default async function PeoplePage() {
             <strong>{person.name}</strong>
             <span className="card-meta">
               {person.email.startsWith('CHANGEME') ? (
-                <span className="pill warn">no email set</span>
+                <span className={`pill ${person.active ? 'warn' : ''}`}>
+                  {person.active ? 'no email set' : 'not set up'}
+                </span>
               ) : (
                 person.email
               )}

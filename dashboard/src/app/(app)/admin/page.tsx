@@ -34,7 +34,10 @@ export default async function AdminPage() {
     db.select({ leadCount: count() }).from(leads),
   ]);
 
-  const placeholderPeople = people.filter((p) => p.email.startsWith('CHANGEME'));
+  // Only people who can actually sign in need a real address. A closer seeded
+  // but deliberately not set up yet isn't an outstanding task, and a checklist
+  // that nags about a decision already made just teaches people to ignore it.
+  const placeholderPeople = people.filter((p) => p.active && p.email.startsWith('CHANGEME'));
   const linkedOffers = offerRows.filter((o) => o.eventTypeUri).length;
   const setupComplete =
     placeholderPeople.length === 0 && linkedOffers === offerRows.length && leadCount > 0;
@@ -50,7 +53,7 @@ export default async function AdminPage() {
             <ul style={{ listStyle: 'none', padding: 0, margin: '0 0 0.9rem' }}>
               <Check done>Database tables created</Check>
               <Check done={placeholderPeople.length === 0}>
-                <a href="/admin/people">Real email addresses for everyone</a>
+                <a href="/admin/people">Real email addresses for everyone who signs in</a>
                 {placeholderPeople.length > 0 && (
                   <span className="card-meta">
                     {' '}
