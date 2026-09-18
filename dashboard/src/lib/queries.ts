@@ -88,9 +88,10 @@ export type LeadFilters = {
   /** 'active' | 'inactive' | undefined for either */
   activity?: string;
   page?: number;
+  perPage?: number;
 };
 
-const PAGE_SIZE = 50;
+const DEFAULT_PAGE_SIZE = 50;
 
 export async function searchLeads(filters: LeadFilters) {
   const where = [];
@@ -115,6 +116,8 @@ export async function searchLeads(filters: LeadFilters) {
 
   const clause = where.length > 0 ? and(...where) : undefined;
   const page = Math.max(1, filters.page ?? 1);
+  // Clamped so a hand-edited URL can't ask for every row at once.
+  const pageSize = Math.min(500, Math.max(10, filters.perPage ?? DEFAULT_PAGE_SIZE));
 
   const [rows, [{ total }]] = await Promise.all([
     db
@@ -122,12 +125,12 @@ export async function searchLeads(filters: LeadFilters) {
       .from(leads)
       .where(clause)
       .orderBy(desc(leads.lastContactAt), desc(leads.leadCreatedAt))
-      .limit(PAGE_SIZE)
-      .offset((page - 1) * PAGE_SIZE),
+      .limit(pageSize)
+      .offset((page - 1) * pageSize),
     db.select({ total: count() }).from(leads).where(clause),
   ]);
 
-  return { rows, total, page, pageSize: PAGE_SIZE, pages: Math.ceil(total / PAGE_SIZE) };
+  return { rows, total, page, pageSize, pages: Math.ceil(total / pageSize) };
 }
 
 export async function getLead(id: string) {
@@ -223,6 +226,51 @@ export async function getDayStats(setterId: string, dayOffset = 0) {
   return { newLeads: newLeads.n, replies: replies.n, booked: booked.n };
 }
 
+export type Period = 'today' | 'week' | 'month';
+
+/** The window a period covers, anchored to the team's calendar. */
+function periodStart(period: Period): Date {
+  const { start } = teamDayRange(0);
+  if (period === 'today') return start;
+  if (period === 'week') {
+    // Back to Monday, not a rolling seven days - "this week" means the week.
+    const d = new Date(`${weekStart()}T12:00:00Z`);
+    return new Date(Math.min(d.getTime(), start.getTime()));
+  }
+  const d = new Date(start);
+  d.setUTCDate(1);
+  return d;
+}
+
+export async function getPeriodSummary(period: Period) {
+  const from = periodStart(period);
+  const scope = [eq(leads.isTest, false), gte(leads.callBookedAt, from)];
+
+  const [[booked], [closedRow], [newLeads]] = await Promise.all([
+    db.select({ n: count() }).from(leads).where(and(...scope)),
+    db
+      .select({
+        cash: sql<string>`COALESCE(SUM(${leads.cashCollected}), 0)`,
+        contract: sql<string>`COALESCE(SUM(${leads.contractValue}), 0)`,
+        deals: sql<number>`COUNT(*) FILTER (WHERE ${leads.closed})::int`,
+      })
+      .from(leads)
+      .where(and(eq(leads.isTest, false), gte(leads.closedDate, from))),
+    db
+      .select({ n: count() })
+      .from(leads)
+      .where(and(eq(leads.isTest, false), gte(leads.leadCreatedAt, from))),
+  ]);
+
+  return {
+    booked: booked.n,
+    newLeads: newLeads.n,
+    deals: closedRow.deals,
+    cash: Number(closedRow.cash),
+    contract: Number(closedRow.contract),
+  };
+}
+
 export async function getPipelineSummary() {
   const { start, end } = teamDayRange(0);
   const [[total], [bookedLive], [todayCalls], [unconfirmed], [untriaged]] = await Promise.all([
@@ -263,6 +311,7 @@ export async function getLeadCardLookups() {
   ]);
   return {
     setterNames: new Map(people.map((p) => [p.id, p.name])),
+    setterColors: new Map(people.map((p) => [p.id, p.color])),
     stageLabels: new Map(stages.map((s) => [s.value, s.label])),
     qualityLabels: new Map(qualities.map((s) => [s.value, s.label])),
   };
@@ -420,4 +469,77 @@ export async function getMoneyTotals() {
       contract: Number(r.contract),
     })),
   };
+}
+
+/**
+ * How long a conversation has been silent. Measured from the last time somebody
+ * actually reached out, falling back to last contact and then to when the lead
+ * was created - a lead nobody has ever messaged is the most overdue of all, not
+ * the least.
+ */
+export const FOLLOW_UP_BUCKETS = [
+  { key: '1w', label: '1 week+', days: 7 },
+  { key: '1m', label: '1 month+', days: 30 },
+  { key: '3m', label: '3 months+', days: 90 },
+  { key: '6m', label: '6 months+', days: 180 },
+  { key: '1y', label: '1 year+', days: 365 },
+] as const;
+
+export type FollowUpBucket = (typeof FOLLOW_UP_BUCKETS)[number]['key'];
+
+export async function getFollowUps(bucket: FollowUpBucket, setterId?: string) {
+  const spec = FOLLOW_UP_BUCKETS.find((b) => b.key === bucket) ?? FOLLOW_UP_BUCKETS[0];
+
+  const silence = sql`COALESCE(${leads.lastOutreachAt}, ${leads.lastContactAt}, ${leads.leadCreatedAt})`;
+  const filters = [
+    eq(leads.isActiveConvo, true),
+    eq(leads.isTest, false),
+    // A booked call isn't waiting on a follow-up; it's waiting on the call.
+    or(eq(leads.callBooked, false), eq(leads.callCancelled, true)),
+    // Expressed as an interval rather than a JS Date: drizzle can't infer a
+    // parameter type inside a raw comparison like this, and passing a Date
+    // through fails at request time with an unhelpful driver error.
+    sql`${silence} < NOW() - (${spec.days} * INTERVAL '1 day')`,
+  ];
+  if (setterId) {
+    filters.push(setterId === 'none' ? isNull(leads.setterId) : eq(leads.setterId, setterId));
+  }
+
+  // Quietest first, and only a screenful. Two hundred rows is a wall nobody
+  // works through; fifty is a session, and clearing them moves the rest up.
+  return db
+    .select()
+    .from(leads)
+    .where(and(...filters))
+    .orderBy(asc(silence))
+    .limit(50);
+}
+
+/** How many are sitting in each silence bucket, for the tabs along the top. */
+export async function getFollowUpCounts(setterId?: string) {
+  const silence = sql`COALESCE(${leads.lastOutreachAt}, ${leads.lastContactAt}, ${leads.leadCreatedAt})`;
+  const base = [
+    eq(leads.isActiveConvo, true),
+    eq(leads.isTest, false),
+    or(eq(leads.callBooked, false), eq(leads.callCancelled, true)),
+  ];
+  if (setterId) {
+    base.push(setterId === 'none' ? isNull(leads.setterId) : eq(leads.setterId, setterId));
+  }
+
+  const [row] = await db
+    .select({
+      w1: sql<number>`COUNT(*) FILTER (WHERE ${silence} < NOW() - INTERVAL '7 days')::int`,
+      m1: sql<number>`COUNT(*) FILTER (WHERE ${silence} < NOW() - INTERVAL '30 days')::int`,
+      m3: sql<number>`COUNT(*) FILTER (WHERE ${silence} < NOW() - INTERVAL '90 days')::int`,
+      m6: sql<number>`COUNT(*) FILTER (WHERE ${silence} < NOW() - INTERVAL '180 days')::int`,
+      y1: sql<number>`COUNT(*) FILTER (WHERE ${silence} < NOW() - INTERVAL '365 days')::int`,
+    })
+    .from(leads)
+    .where(and(...base));
+
+  return { '1w': row.w1, '1m': row.m1, '3m': row.m3, '6m': row.m6, '1y': row.y1 } as Record<
+    FollowUpBucket,
+    number
+  >;
 }

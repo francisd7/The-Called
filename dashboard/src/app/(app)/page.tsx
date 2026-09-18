@@ -10,15 +10,30 @@ import {
   getDueFollowUps,
   getLeadCardLookups,
   getMoneyTotals,
+  getPeriodSummary,
   getPipelineSummary,
   getTodaysCalls,
   getUpcomingCalls,
   getWeekBoard,
+  type Period,
 } from '@/lib/queries';
 
 export const dynamic = 'force-dynamic';
 
-export default async function TodayPage() {
+type SearchParams = Promise<Record<string, string | string[] | undefined>>;
+const PERIODS = [
+  { key: 'today', label: 'Today' },
+  { key: 'week', label: 'This week' },
+  { key: 'month', label: 'This month' },
+] as const;
+
+export default async function TodayPage({ searchParams }: { searchParams: SearchParams }) {
+  const params = await searchParams;
+  const rawPeriod = params.period;
+  const period = (
+    typeof rawPeriod === 'string' && PERIODS.some((p) => p.key === rawPeriod) ? rawPeriod : 'today'
+  ) as Period;
+
   const session = await auth();
   const userId = session!.user.id;
   const isSetter = session!.user.role === 'setter';
@@ -35,6 +50,7 @@ export default async function TodayPage() {
     board,
     money,
     convos,
+    periodStats,
   ] = await Promise.all([
     getPipelineSummary(),
     getTodaysCalls(),
@@ -47,6 +63,7 @@ export default async function TodayPage() {
     getWeekBoard(),
     getMoneyTotals(),
     getActiveConvos(0),
+    getPeriodSummary(period),
   ]);
 
   const money0 = (n: number) =>
@@ -65,39 +82,71 @@ export default async function TodayPage() {
     <>
       {/* Matches the nav label - "Today" in the nav and "Dashboard" on the page
           read as two different places. */}
-      <h1>Dashboard</h1>
-      <p className="sub">Calls first, then the week, then anything overdue a follow-up.</p>
+      <div className="page-head">
+        <div>
+          <h1>Dashboard</h1>
+          <p className="sub">Calls first, then the week, then anything overdue a follow-up.</p>
+        </div>
+        <div className="period-tabs">
+          {PERIODS.map((p) => (
+            <a
+              key={p.key}
+              href={p.key === 'today' ? '/' : `/?period=${p.key}`}
+              className={`btn${p.key === period ? ' btn-primary' : ''}`}
+            >
+              {p.label}
+            </a>
+          ))}
+        </div>
+      </div>
 
+      {/* Period-scoped: these change with the tab above. */}
       <div className="stats">
-        <div className="stat">
+        <div className="stat tone-blue">
+          <div className="stat-n">{periodStats.booked}</div>
+          <div className="stat-l">calls booked</div>
+        </div>
+        <div className="stat tone-violet">
+          <div className="stat-n">{periodStats.newLeads}</div>
+          <div className="stat-l">new leads</div>
+        </div>
+        <div className="stat tone-green">
+          <div className="stat-n">{money0(periodStats.cash)}</div>
+          <div className="stat-l">cash collected</div>
+        </div>
+        <div className="stat tone-green">
+          <div className="stat-n">{money0(periodStats.contract)}</div>
+          <div className="stat-l">revenue generated</div>
+        </div>
+        <div className="stat tone-teal">
+          <div className="stat-n">{periodStats.deals}</div>
+          <div className="stat-l">deals closed</div>
+        </div>
+      </div>
+
+      {/* Always-now: what needs doing regardless of which period is selected. */}
+      <div className="stats">
+        <div className="stat tone-blue">
           <div className="stat-n">{summary.todayCalls}</div>
           <div className="stat-l">calls today</div>
         </div>
-        <div className={`stat${summary.needsConfirming > 0 ? ' alert' : ''}`}>
+        <div className={`stat tone-amber${summary.needsConfirming > 0 ? ' alert' : ''}`}>
           <div className="stat-n">{summary.needsConfirming}</div>
           <div className="stat-l">need confirming</div>
         </div>
-        <div className={`stat${summary.needsTriage > 0 ? ' alert' : ''}`}>
+        <div className={`stat tone-amber${summary.needsTriage > 0 ? ' alert' : ''}`}>
           <div className="stat-n">{summary.needsTriage}</div>
           <div className="stat-l">need triage</div>
         </div>
-        <div className="stat">
-          <div className="stat-n">{summary.bookedCalls}</div>
-          <div className="stat-l">calls booked</div>
-        </div>
-        <div className="stat">
+        <div className="stat tone-teal">
           <div className="stat-n">{convos.teamTotal}</div>
           <div className="stat-l">active convos</div>
         </div>
-        {/* Summed off the leads themselves, so it ties to a person rather than
-            to what someone typed into a daily report. */}
-        <div className="stat stat-money">
+        {/* Lifetime, summed off the leads themselves rather than off what
+            someone typed into a daily report. */}
+        <div className="stat tone-green">
           <div className="stat-n">{money0(money.cash)}</div>
-          <div className="stat-l">cash collected</div>
-        </div>
-        <div className="stat stat-money">
-          <div className="stat-n">{money0(money.contract)}</div>
-          <div className="stat-l">revenue generated</div>
+          <div className="stat-l">cash all time</div>
         </div>
       </div>
 
@@ -196,7 +245,12 @@ export default async function TodayPage() {
           </p>
           <div className="mini-grid">
             {followUps.rows.map((lead) => (
-              <MiniLeadTile key={lead.id} lead={lead} setterNames={lookups.setterNames} />
+              <MiniLeadTile
+                key={lead.id}
+                lead={lead}
+                setterNames={lookups.setterNames}
+                setterColors={lookups.setterColors}
+              />
             ))}
           </div>
           {followUps.total > followUps.rows.length && (

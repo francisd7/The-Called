@@ -1,4 +1,5 @@
 import type { leads } from '@/db/schema';
+import { SetterBadge } from '@/components/SetterBadge';
 import { formatCallTime, formatTimeOnly, relativeDays } from '@/lib/dates';
 
 type Lead = typeof leads.$inferSelect;
@@ -10,6 +11,7 @@ type Lead = typeof leads.$inferSelect;
  */
 export type LeadCardLookups = {
   setterNames?: Map<string, string>;
+  setterColors?: Map<string, string | null>;
   stageLabels?: Map<string, string>;
   qualityLabels?: Map<string, string>;
 };
@@ -18,6 +20,7 @@ export function LeadCard({
   lead,
   showDate = false,
   setterNames,
+  setterColors,
   stageLabels,
   qualityLabels,
   children,
@@ -57,11 +60,10 @@ export function LeadCard({
       <div className="card-row">
         {lead.isTest && <span className="pill danger">TEST</span>}
         {stageLabel && <span className="pill">{stageLabel}</span>}
-        {/* Unassigned is called out rather than left blank - 432 of the
-            imported leads have no setter, and a silent gap hides that. */}
-        <span className={`pill${setterName ? '' : ' warn'}`}>
-          {setterName ?? 'Unassigned'}
-        </span>
+        <SetterBadge
+          name={setterName}
+          color={lead.setterId ? setterColors?.get(lead.setterId) : null}
+        />
         {qualityLabel && <span className="pill">{qualityLabel}</span>}
 
         {lead.callBooked && !lead.callCancelled && (

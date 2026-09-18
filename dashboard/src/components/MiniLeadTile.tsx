@@ -1,4 +1,5 @@
 import type { leads } from '@/db/schema';
+import { SetterBadge } from '@/components/SetterBadge';
 import { relativeDays } from '@/lib/dates';
 
 type Lead = typeof leads.$inferSelect;
@@ -7,9 +8,11 @@ type Lead = typeof leads.$inferSelect;
 export function MiniLeadTile({
   lead,
   setterNames,
+  setterColors,
 }: {
   lead: Lead;
   setterNames?: Map<string, string>;
+  setterColors?: Map<string, string | null>;
 }) {
   const setter = lead.setterId ? setterNames?.get(lead.setterId) : null;
   const overdue = lead.nextFollowUpAt ? lead.nextFollowUpAt < new Date() : false;
@@ -23,7 +26,7 @@ export function MiniLeadTile({
             {relativeDays(lead.nextFollowUpAt)}
           </span>
         )}
-        <span className={`pill${setter ? '' : ' warn'}`}>{setter ?? 'Unassigned'}</span>
+        <SetterBadge name={setter} color={lead.setterId ? setterColors?.get(lead.setterId) : null} />
       </span>
     </a>
   );

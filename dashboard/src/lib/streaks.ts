@@ -1,0 +1,49 @@
+import { and, eq, gte, sql } from 'drizzle-orm';
+import { db } from '@/db';
+import { eodReports, leadEvents, users } from '@/db/schema';
+import { streakFromDays } from './streakMath.ts';
+
+export type StreakRow = {
+  userId: string;
+  name: string;
+  color: string | null;
+  tracker: { current: number; aliveToday: boolean };
+  eod: { current: number; aliveToday: boolean };
+};
+
+/**
+ * Two streaks per setter: days they touched the tracker, and days they filed an
+ * EOD. Only the last 120 days are scanned - a streak longer than that is not
+ * the problem this is trying to solve.
+ */
+export async function getStreaks(): Promise<StreakRow[]> {
+  const since = new Date(Date.now() - 120 * 86_400_000);
+
+  const [setters, trackerDays, eodDays] = await Promise.all([
+    db.select().from(users).where(and(eq(users.active, true), eq(users.role, 'setter'))),
+    db
+      .select({
+        actorId: leadEvents.actorId,
+        // Bucketed in the team's timezone, so "today" means their day.
+        day: sql<string>`to_char(${leadEvents.createdAt} AT TIME ZONE 'America/New_York', 'YYYY-MM-DD')`,
+      })
+      .from(leadEvents)
+      .where(gte(leadEvents.createdAt, since))
+      .groupBy(leadEvents.actorId, sql`2`),
+    db
+      .select({ userId: eodReports.userId, day: eodReports.reportDate })
+      .from(eodReports)
+      .where(gte(eodReports.reportDate, since.toISOString().slice(0, 10))),
+  ]);
+
+  return setters.map((s) => ({
+    userId: s.id,
+    name: s.name,
+    color: s.color,
+    tracker: streakFromDays(
+      new Set(trackerDays.filter((d) => d.actorId === s.id).map((d) => d.day))
+    ),
+    eod: streakFromDays(new Set(eodDays.filter((d) => d.userId === s.id).map((d) => d.day))),
+  }));
+}
+

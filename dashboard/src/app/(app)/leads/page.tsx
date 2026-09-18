@@ -1,19 +1,25 @@
+import { BookingLinks } from '@/components/BookingLinks';
 import { ConvoRow } from '@/components/ConvoRow';
 import { FilterDialog } from '@/components/FilterDialog';
 import { LeadTable } from '@/components/LeadTable';
+import { StreakStrip } from '@/components/StreakStrip';
 import {
   getActiveConvos,
+  getActiveOffers,
+  getFollowUpCounts,
   getLeadCardLookups,
   getOptions,
   getSetters,
   searchLeads,
 } from '@/lib/queries';
+import { getStreaks } from '@/lib/streaks';
 
 export const dynamic = 'force-dynamic';
 
 type SearchParams = Promise<Record<string, string | string[] | undefined>>;
 
 const FILTER_KEYS = ['q', 'setterId', 'stage', 'quality', 'source', 'booked', 'activity'] as const;
+const PAGE_SIZES = [25, 50, 100, 250, 500];
 
 function one(params: Record<string, string | string[] | undefined>, key: string) {
   const v = params[key];
@@ -24,7 +30,12 @@ export default async function LeadsPage({ searchParams }: { searchParams: Search
   const params = await searchParams;
   const page = Number.parseInt(one(params, 'page') ?? '1', 10) || 1;
 
-  const [result, convos, setters, stages, qualities, sources, lookups] = await Promise.all([
+  const perPage = PAGE_SIZES.includes(Number(one(params, 'perPage')))
+    ? Number(one(params, 'perPage'))
+    : 50;
+
+  const [result, convos, setters, stages, qualities, sources, lookups, streaks, offers, followUps] =
+    await Promise.all([
     searchLeads({
       q: one(params, 'q'),
       setterId: one(params, 'setterId'),
@@ -34,6 +45,7 @@ export default async function LeadsPage({ searchParams }: { searchParams: Search
       booked: one(params, 'booked') === '1',
       activity: one(params, 'activity'),
       page,
+      perPage,
     }),
     getActiveConvos(),
     getSetters(),
@@ -41,6 +53,9 @@ export default async function LeadsPage({ searchParams }: { searchParams: Search
     getOptions('lead_quality'),
     getOptions('lead_source'),
     getLeadCardLookups(),
+    getStreaks(),
+    getActiveOffers(),
+    getFollowUpCounts(),
   ]);
 
   // Everything except the free-text search, which stays visible on the page.
@@ -48,7 +63,7 @@ export default async function LeadsPage({ searchParams }: { searchParams: Search
 
   const qs = (overrides: Record<string, string | undefined>) => {
     const next = new URLSearchParams();
-    for (const key of [...FILTER_KEYS, 'page']) {
+    for (const key of [...FILTER_KEYS, 'page', 'perPage']) {
       const value = key in overrides ? overrides[key] : one(params, key);
       if (value) next.set(key, value);
     }
@@ -60,9 +75,9 @@ export default async function LeadsPage({ searchParams }: { searchParams: Search
       <h1>Lead Tracker</h1>
 
       <div className="stats">
-        <div className="stat">
+        <div className="stat stat-hero">
           <div className="stat-n">{convos.teamTotal}</div>
-          <div className="stat-l">active conversations</div>
+          <div className="stat-l">team active conversations</div>
         </div>
         {convos.groups.map((g) => (
           <div className="stat" key={g.id}>
@@ -77,6 +92,22 @@ export default async function LeadsPage({ searchParams }: { searchParams: Search
           </div>
         )}
       </div>
+
+      <StreakStrip rows={streaks} />
+
+      <div className="card-row" style={{ marginBottom: '0.9rem' }}>
+        <a className="btn" href="/leads/follow-ups">
+          Follow Ups
+          <span className="pill warn">{followUps['1w']}</span>
+        </a>
+      </div>
+
+      <h2>Send a booking link</h2>
+      <p className="sub">
+        Matched back to a lead by the Instagram handle they type into the booking form — so that
+        question has to stay required on all three.
+      </p>
+      <BookingLinks offers={offers} />
 
       <h2>Active conversations</h2>
       <div className="convo-board">
@@ -133,6 +164,9 @@ export default async function LeadsPage({ searchParams }: { searchParams: Search
       </p>
 
       <form className="toolbar" method="get">
+        <a className="btn btn-new" href="/leads/new">
+          + New lead
+        </a>
         <div className="field" style={{ flex: '2 1 14rem' }}>
           <input
             name="q"
@@ -218,9 +252,6 @@ export default async function LeadsPage({ searchParams }: { searchParams: Search
           </div>
         </FilterDialog>
 
-        <a className="btn" href="/leads/new">
-          + New lead
-        </a>
       </form>
 
       {result.rows.length === 0 ? (
@@ -229,26 +260,60 @@ export default async function LeadsPage({ searchParams }: { searchParams: Search
         <LeadTable
           rows={result.rows}
           setterNames={lookups.setterNames}
+          setterColors={lookups.setterColors}
           stageLabels={lookups.stageLabels}
         />
       )}
 
-      {result.pages > 1 && (
-        <div className="card-row" style={{ justifyContent: 'space-between' }}>
-          {result.page > 1 ? (
-            <a className="btn" href={qs({ page: String(result.page - 1) })}>
-              ← Previous
+      <div className="pager">
+        <span className="pager-size">
+          Show
+          {PAGE_SIZES.map((n) => (
+            <a
+              key={n}
+              href={qs({ perPage: String(n), page: undefined })}
+              className={`btn${n === perPage ? ' btn-primary' : ''}`}
+            >
+              {n}
             </a>
-          ) : (
-            <span />
-          )}
-          {result.page < result.pages && (
-            <a className="btn" href={qs({ page: String(result.page + 1) })}>
-              Next →
-            </a>
-          )}
-        </div>
-      )}
+          ))}
+        </span>
+
+        {result.pages > 1 && (
+          <span className="pager-pages">
+            {result.page > 1 && (
+              <a className="btn" href={qs({ page: String(result.page - 1) })}>
+                ←
+              </a>
+            )}
+            {/* A window around the current page rather than every page - at 500
+                leads a page that's 22 numbers wide, and at 25 it's 22 rows. */}
+            {Array.from({ length: result.pages }, (_, i) => i + 1)
+              .filter(
+                (n) =>
+                  n === 1 ||
+                  n === result.pages ||
+                  Math.abs(n - result.page) <= 2
+              )
+              .map((n, i, arr) => (
+                <span key={n}>
+                  {i > 0 && arr[i - 1] !== n - 1 && <span className="pager-gap">…</span>}
+                  <a
+                    href={qs({ page: String(n) })}
+                    className={`btn${n === result.page ? ' btn-primary' : ''}`}
+                  >
+                    {n}
+                  </a>
+                </span>
+              ))}
+            {result.page < result.pages && (
+              <a className="btn" href={qs({ page: String(result.page + 1) })}>
+                →
+              </a>
+            )}
+          </span>
+        )}
+      </div>
     </>
   );
 }

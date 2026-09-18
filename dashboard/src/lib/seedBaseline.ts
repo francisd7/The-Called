@@ -16,8 +16,8 @@ const ADMIN_EMAIL = (process.env.ADMIN_EMAIL ?? 'francisduong7@gmail.com').trim(
 
 const PEOPLE = [
   { email: ADMIN_EMAIL, name: process.env.ADMIN_NAME ?? 'Francis', role: 'admin' as const, active: true },
-  { email: 'CHANGEME.loui@example.com', name: 'Loui', role: 'setter' as const, active: true },
-  { email: 'CHANGEME.alexis@example.com', name: 'Alexis', role: 'setter' as const, active: true },
+  { email: 'CHANGEME.loui@example.com', name: 'Loui', role: 'setter' as const, active: true, color: 'orange' },
+  { email: 'CHANGEME.alexis@example.com', name: 'Alexis', role: 'setter' as const, active: true, color: 'blue' },
   // Closers get a row so bookings can be attributed to them, but no sign-in:
   // they read pre-call notes in Discord. Their email must match the one on
   // their Calendly account or bookings won't attribute.
@@ -63,6 +63,9 @@ const BASE_OPTIONS: Array<[string, string, string]> = [
   ['lead_quality', 'good', 'Good'],
   ['lead_quality', 'mid', 'Mid'],
   ['lead_quality', 'low', 'Low'],
+  // Always available, so a source that doesn't fit the list still gets recorded
+  // rather than left blank.
+  ['lead_source', 'other', 'Other'],
   ['icp', 'yes', 'Yes'],
   ['icp', 'maybe', 'Maybe'],
   ['icp', 'no', 'No'],

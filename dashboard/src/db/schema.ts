@@ -26,6 +26,9 @@ export const users = pgTable('users', {
   role: userRole('role').notNull().default('setter'),
   // Lets the dashboard @-mention a real person when it posts into Discord.
   discordId: text('discord_id'),
+  // Which badge colour this person's name wears wherever it appears, so a
+  // setter is recognisable at a glance rather than read every time.
+  color: text('color'),
   active: boolean('active').notNull().default(true),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 });
@@ -144,6 +147,10 @@ export const leads = pgTable(
     postCallNotes: text('post_call_notes'),
 
     leadCreatedAt: timestamp('lead_created_at', { withTimezone: true }).notNull().defaultNow(),
+    // When a setter last pressed "message sent" on this conversation. Separate
+    // from lastContactAt, which any edit moves - this one only moves when
+    // somebody actually reached out, which is what follow-up timing needs.
+    lastOutreachAt: timestamp('last_outreach_at', { withTimezone: true }),
     // Whether this conversation is live. A manual flag, not derived from the
     // stage: setters know when a thread has actually gone quiet, and a stage
     // that hasn't been updated in a fortnight doesn't.

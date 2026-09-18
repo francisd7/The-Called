@@ -82,6 +82,11 @@ async function handleCreated(leadId: string, payload: CalendlyInviteePayload) {
     .set({
       callBooked: true,
       callBookedAt: new Date(),
+      // Someone who books a call has obviously replied. Setting it here stops
+      // the funnel drifting back into showing more bookings than replies.
+      responded: true,
+      // A booking is a live conversation by definition.
+      isActiveConvo: true,
       callScheduledFor: startTime ? new Date(startTime) : null,
       offerId: offer?.id ?? null,
       closerId: closer?.id ?? null,

@@ -73,3 +73,27 @@ test('a funnel step always implies the ones before it', async () => {
   }
   assert.deepEqual(steps, [4, 3, 2, 1, 1]);
 });
+
+test('a streak survives not having worked yet this morning', async () => {
+  const { streakFromDays } = await import('../src/lib/streakMath.ts');
+  const day = (back: number) => {
+    const d = new Date(`${new Date().toLocaleDateString('en-CA', { timeZone: 'America/New_York' })}T12:00:00Z`);
+    d.setUTCDate(d.getUTCDate() - back);
+    return d.toISOString().slice(0, 10);
+  };
+
+  // Worked today and the three days before: four.
+  assert.deepEqual(streakFromDays(new Set([day(0), day(1), day(2), day(3)])), {
+    current: 4,
+    aliveToday: true,
+  });
+
+  // Not yet today, but yesterday and before. The streak is alive but not
+  // banked - killing it at midnight would punish someone at 9am for not
+  // having started, which makes the number discouraging.
+  assert.deepEqual(streakFromDays(new Set([day(1), day(2)])), { current: 2, aliveToday: false });
+
+  // A clear two-day gap is a broken streak.
+  assert.deepEqual(streakFromDays(new Set([day(2), day(3)])), { current: 0, aliveToday: false });
+  assert.deepEqual(streakFromDays(new Set()), { current: 0, aliveToday: false });
+});

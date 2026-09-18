@@ -1,4 +1,5 @@
 import type { leads } from '@/db/schema';
+import { SetterBadge } from '@/components/SetterBadge';
 import { relativeDays } from '@/lib/dates';
 
 type Lead = typeof leads.$inferSelect;
@@ -11,10 +12,12 @@ type Lead = typeof leads.$inferSelect;
 export function LeadTable({
   rows,
   setterNames,
+  setterColors,
   stageLabels,
 }: {
   rows: Lead[];
   setterNames?: Map<string, string>;
+  setterColors?: Map<string, string | null>;
   stageLabels?: Map<string, string>;
 }) {
   return (
@@ -41,7 +44,12 @@ export function LeadTable({
                   <a href={`/leads/${lead.id}`}>{lead.name?.trim() || `@${lead.igHandle}`}</a>
                 </td>
                 <td>{stage}</td>
-                <td className={setter ? '' : 'muted-cell'}>{setter ?? 'Unassigned'}</td>
+                <td>
+                  <SetterBadge
+                    name={setter}
+                    color={lead.setterId ? setterColors?.get(lead.setterId) : null}
+                  />
+                </td>
                 <td>{lead.lastContactAt ? relativeDays(lead.lastContactAt) : '—'}</td>
                 <td>
                   <span className="mini-meta">

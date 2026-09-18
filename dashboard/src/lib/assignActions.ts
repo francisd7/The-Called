@@ -1,10 +1,11 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
-import { eq } from 'drizzle-orm';
+import { eq, sql } from 'drizzle-orm';
 import { auth } from '@/auth';
 import { db } from '@/db';
 import { leadEvents, leads, users } from '@/db/schema';
+import { teamDateString } from './dates';
 
 type Result = { ok: true; message?: string } | { ok: false; error: string };
 
@@ -162,6 +163,70 @@ export async function toggleActiveConvo(formData: FormData): Promise<Result> {
     revalidatePath('/leads');
     revalidatePath(`/leads/${leadId}`);
     return { ok: true, message: next ? 'Marked active' : 'Marked not active' };
+  } catch (err) {
+    return { ok: false, error: err instanceof Error ? err.message : 'Could not update' };
+  }
+}
+
+/**
+ * "I messaged them today." Moves lastOutreachAt, which is what the follow-up
+ * buckets measure against - lastContactAt shifts on any edit, so it can't be
+ * trusted to mean somebody actually reached out.
+ *
+ * Idempotent per day: pressing it twice doesn't double-count, and the button
+ * reads as already done for the rest of the day.
+ */
+export async function markMessageSent(formData: FormData): Promise<Result> {
+  try {
+    const user = await requireUser();
+    const leadId = field(formData, 'leadId');
+    if (!leadId) return { ok: false, error: 'Missing lead' };
+
+    const lead = await db.query.leads.findFirst({ where: eq(leads.id, leadId) });
+    if (!lead) return { ok: false, error: 'Lead not found' };
+
+    const today = teamDateString();
+    if (lead.lastOutreachAt && teamDateString(lead.lastOutreachAt) === today) {
+      return { ok: true, message: 'Already logged today' };
+    }
+
+    const now = new Date();
+    await db
+      .update(leads)
+      .set({
+        lastOutreachAt: now,
+        lastContactAt: now,
+        followUps: sql`${leads.followUps} + 1`,
+        updatedAt: now,
+      })
+      .where(eq(leads.id, leadId));
+    await db.insert(leadEvents).values({ leadId, actorId: user.id, type: 'message_sent' });
+
+    revalidatePath('/');
+    revalidatePath('/leads');
+    revalidatePath('/leads/follow-ups');
+    return { ok: true, message: 'Logged' };
+  } catch (err) {
+    return { ok: false, error: err instanceof Error ? err.message : 'Could not log' };
+  }
+}
+
+/** Closes a thread out from the follow-up list: it stops being active at all. */
+export async function markNoFollowUp(formData: FormData): Promise<Result> {
+  try {
+    const user = await requireUser();
+    const leadId = field(formData, 'leadId');
+    if (!leadId) return { ok: false, error: 'Missing lead' };
+
+    await db
+      .update(leads)
+      .set({ isActiveConvo: false, nextFollowUpAt: null, updatedAt: new Date() })
+      .where(eq(leads.id, leadId));
+    await db.insert(leadEvents).values({ leadId, actorId: user.id, type: 'no_follow_up_needed' });
+
+    revalidatePath('/leads');
+    revalidatePath('/leads/follow-ups');
+    return { ok: true, message: 'Closed out' };
   } catch (err) {
     return { ok: false, error: err instanceof Error ? err.message : 'Could not update' };
   }

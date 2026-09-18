@@ -1,10 +1,9 @@
 import { notFound } from 'next/navigation';
+import { SetterBadge } from '@/components/SetterBadge';
 import { ActionForm } from '@/components/ActionForm';
-import { CopyButton } from '@/components/CopyButton';
 import { addNote, confirmLead, logFollowUp, saveTriage, unconfirmLead, updateLead } from '@/lib/actions';
-import { buildTrackedBookingUrl } from '@/lib/bookingLink';
 import { formatCallTime, formatDay } from '@/lib/dates';
-import { getActiveOffers, getLead, getOptions, getSetters } from '@/lib/queries';
+import { getLead, getOptions, getSetters } from '@/lib/queries';
 
 export const dynamic = 'force-dynamic';
 
@@ -19,8 +18,7 @@ export default async function LeadPage({ params }: { params: Promise<{ id: strin
   if (!data) notFound();
 
   const { lead, setter, offer, notes } = data;
-  const [offers, setters, stages, qualities, sources, icps] = await Promise.all([
-    getActiveOffers(),
+  const [setters, stages, qualities, sources, icps] = await Promise.all([
     getSetters(),
     getOptions('conversation_stage'),
     getOptions('lead_quality'),
@@ -43,7 +41,7 @@ export default async function LeadPage({ params }: { params: Promise<{ id: strin
       <p className="sub">
         <a href="/leads">← All leads</a>
       </p>
-      <h1>{lead.name?.trim() || `@${lead.igHandle}`}</h1>
+      <h1>@{lead.igHandle}</h1>
       {lead.isTest && (
         <div className="card" style={{ borderColor: 'var(--danger)' }}>
           <strong>This is a test lead</strong>
@@ -53,11 +51,11 @@ export default async function LeadPage({ params }: { params: Promise<{ id: strin
           </p>
         </div>
       )}
-      <p className="sub">
-        @{lead.igHandle}
-        {setter ? ` · ${setter.name}` : ' · unassigned'}
-        {lead.phone ? ` · ${lead.phone}` : ''}
-        {lead.email ? ` · ${lead.email}` : ''}
+      <p className="sub lead-subline">
+        {lead.name?.trim() && <span>{lead.name.trim()}</span>}
+        <SetterBadge name={setter?.name} color={setter?.color} />
+        {lead.phone && <span>{lead.phone}</span>}
+        {lead.email && <span>{lead.email}</span>}
       </p>
 
       {hasLiveCall && (
@@ -118,113 +116,6 @@ export default async function LeadPage({ params }: { params: Promise<{ id: strin
           </div>
         </div>
       )}
-
-      {bookingAnswers.length > 0 && (
-        <>
-          <h2>What they said when booking</h2>
-          <p className="sub">Straight from the Calendly form — read this before you call them.</p>
-          <div className="card">
-            {bookingAnswers.map((qa, i) => (
-              <div key={i} className="note" style={{ marginBottom: i === bookingAnswers.length - 1 ? 0 : '0.9rem' }}>
-                <div className="note-meta">{qa.question}</div>
-                <div className="note-body">{qa.answer || '—'}</div>
-              </div>
-            ))}
-          </div>
-        </>
-      )}
-
-      <h2 id="triage">Triage notes</h2>
-      <p className="sub">
-        {lead.isTest
-          ? 'On a real lead this posts the brief straight to Discord. On this test lead it saves and posts nothing.'
-          : "Saving this posts the pre-call brief straight to Discord — that's how Nigel and Andrew get it, so write it for them."}
-      </p>
-      <div className="card">
-        <ActionForm action={saveTriage} successMessage="Triaged and posted to Discord">
-          <input type="hidden" name="leadId" value={lead.id} />
-          <div className="field">
-            <textarea
-              name="triageNotes"
-              defaultValue={lead.triageNotes ?? ''}
-              placeholder={
-                'What do they actually want?\nWhat have they tried?\nWhat is their budget situation?\nAnything the closer should not step on?'
-              }
-            />
-          </div>
-          <button className="btn-primary" type="submit">
-            {lead.triaged ? 'Update & repost to Discord' : 'Mark triaged & post to Discord'}
-          </button>
-        </ActionForm>
-      </div>
-
-      {!hasLiveCall && (
-        <>
-          <h2>Send a booking link</h2>
-          <p className="sub">
-            These carry this lead&apos;s id, so the booking flags itself automatically. A generic
-            link copied from Calendly won&apos;t.
-          </p>
-          {offers.map((o) => (
-            <div className="card" key={o.id}>
-              <div className="card-head">
-                <strong>{o.label}</strong>
-              </div>
-              <div className="card-row">
-                <CopyButton
-                  value={buildTrackedBookingUrl(o.schedulingUrl, lead.id, setter?.name)}
-                  label={`Copy ${o.key.replace(/_/g, ' ')} link`}
-                />
-              </div>
-            </div>
-          ))}
-        </>
-      )}
-
-      <h2>Notes</h2>
-      <div className="card">
-        <ActionForm action={addNote} successMessage="Note added">
-          <input type="hidden" name="leadId" value={lead.id} />
-          <div className="field">
-            <textarea name="body" placeholder="What happened in the conversation?" required />
-          </div>
-          <div className="card-row">
-            <button className="btn-primary" type="submit">
-              Add note
-            </button>
-          </div>
-        </ActionForm>
-      </div>
-
-      {notes.length === 0 ? (
-        <p className="empty">No notes yet.</p>
-      ) : (
-        notes.map((note) => (
-          <div className="note" key={note.id}>
-            <div className="note-meta">
-              {note.authorName} · {formatDay(note.createdAt)}
-            </div>
-            <div className="note-body">{note.body}</div>
-          </div>
-        ))
-      )}
-
-      <h2>Follow-up</h2>
-      <div className="card">
-        <ActionForm action={logFollowUp} successMessage="Follow-up logged">
-          <input type="hidden" name="leadId" value={lead.id} />
-          <div className="field">
-            <label htmlFor="nextFollowUpAt">Next follow-up</label>
-            <input
-              id="nextFollowUpAt"
-              name="nextFollowUpAt"
-              type="date"
-              defaultValue={dateInputValue(lead.nextFollowUpAt)}
-            />
-          </div>
-          <button type="submit">Log follow-up ({lead.followUps} so far)</button>
-        </ActionForm>
-      </div>
 
       <h2>Details</h2>
       <div className="card">
@@ -321,6 +212,95 @@ export default async function LeadPage({ params }: { params: Promise<{ id: strin
           </button>
         </ActionForm>
       </div>
+
+      <h2>Notes</h2>
+      <div className="card">
+        <ActionForm action={addNote} successMessage="Note added">
+          <input type="hidden" name="leadId" value={lead.id} />
+          <div className="field">
+            <textarea name="body" placeholder="What happened in the conversation?" required />
+          </div>
+          <div className="card-row">
+            <button className="btn-primary" type="submit">
+              Add note
+            </button>
+          </div>
+        </ActionForm>
+      </div>
+
+      {notes.length === 0 ? (
+        <p className="empty">No notes yet.</p>
+      ) : (
+        notes.map((note) => (
+          <div className="note" key={note.id}>
+            <div className="note-meta">
+              {note.authorName} · {formatDay(note.createdAt)}
+            </div>
+            <div className="note-body">{note.body}</div>
+          </div>
+        ))
+      )}
+
+      {bookingAnswers.length > 0 && (
+        <>
+          <h2>What they said when booking</h2>
+          <p className="sub">Straight from the Calendly form — read this before you call them.</p>
+          <div className="card">
+            {bookingAnswers.map((qa, i) => (
+              <div key={i} className="note" style={{ marginBottom: i === bookingAnswers.length - 1 ? 0 : '0.9rem' }}>
+                <div className="note-meta">{qa.question}</div>
+                <div className="note-body">{qa.answer || '—'}</div>
+              </div>
+            ))}
+          </div>
+        </>
+      )}
+
+      <h2 id="triage">Triage notes</h2>
+      <p className="sub">
+        {lead.isTest
+          ? 'On a real lead this posts the brief straight to Discord. On this test lead it saves and posts nothing.'
+          : "Saving this posts the pre-call brief straight to Discord — that's how Nigel and Andrew get it, so write it for them."}
+      </p>
+      <div className="card">
+        <ActionForm action={saveTriage} successMessage="Triaged and posted to Discord">
+          <input type="hidden" name="leadId" value={lead.id} />
+          <div className="field">
+            <textarea
+              name="triageNotes"
+              defaultValue={lead.triageNotes ?? ''}
+              placeholder={
+                'What do they actually want?\nWhat have they tried?\nWhat is their budget situation?\nAnything the closer should not step on?'
+              }
+            />
+          </div>
+          <button className="btn-primary" type="submit">
+            {lead.triaged ? 'Update & repost to Discord' : 'Mark triaged & post to Discord'}
+          </button>
+        </ActionForm>
+      </div>
+
+      <h2>Follow-up</h2>
+      <div className="card">
+        <ActionForm action={logFollowUp} successMessage="Follow-up logged">
+          <input type="hidden" name="leadId" value={lead.id} />
+          <div className="field">
+            <label htmlFor="nextFollowUpAt">Next follow-up</label>
+            <input
+              id="nextFollowUpAt"
+              name="nextFollowUpAt"
+              type="date"
+              defaultValue={dateInputValue(lead.nextFollowUpAt)}
+            />
+          </div>
+          <button type="submit">Log follow-up ({lead.followUps} so far)</button>
+        </ActionForm>
+      </div>
+
+
+
+
+
 
       {(lead.closed || lead.postCallNotes) && (
         <>

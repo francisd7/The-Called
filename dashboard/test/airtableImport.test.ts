@@ -2,7 +2,7 @@ import { strict as assert } from 'node:assert';
 import { after, before, test } from 'node:test';
 import { drizzle } from 'drizzle-orm/postgres-js';
 import postgres from 'postgres';
-import { count, eq, isNotNull } from 'drizzle-orm';
+import { count, eq, isNotNull, isNull } from 'drizzle-orm';
 import * as schema from '../src/db/schema.ts';
 import { leadNotes, leads, optionSets, users } from '../src/db/schema.ts';
 import { importAirtableLeads } from '../src/lib/airtableImport.ts';
@@ -97,4 +97,35 @@ test('setters named in Airtable resolve to real user rows', { skip }, async () =
   assert.ok(loui);
   const [{ n }] = await db.select({ n: count() }).from(leads).where(eq(leads.setterId, loui.id));
   assert.ok(n > 0, 'expected leads attributed to Loui');
+});
+
+test('a re-import never unassigns a lead someone has taken', { skip }, async () => {
+  // Most Airtable rows have no setter. Writing that null through on an update
+  // wiped every assignment made in the dashboard - including the backfill that
+  // gave the whole unowned backlog an owner.
+  await importAirtableLeads(db, { fromFile: SNAPSHOT });
+
+  const owner = await db.query.users.findFirst({ where: eq(users.name, 'Francis') });
+  assert.ok(owner, 'expected a Francis to assign to');
+
+  // Take an imported lead that Airtable has no setter for.
+  const orphan = await db.query.leads.findFirst({ where: isNull(leads.setterId) });
+  assert.ok(orphan, 'expected at least one lead with no setter from Airtable');
+
+  await db.update(leads).set({ setterId: owner.id }).where(eq(leads.id, orphan.id));
+  await importAirtableLeads(db, { fromFile: SNAPSHOT });
+
+  const after = await db.query.leads.findFirst({ where: eq(leads.id, orphan.id) });
+  assert.equal(after?.setterId, owner.id, 'the re-import unassigned a claimed lead');
+});
+
+test('a re-import never resets the manual active flag', { skip }, async () => {
+  const lead = await db.query.leads.findFirst({ where: eq(leads.isActiveConvo, false) });
+  assert.ok(lead);
+  await db.update(leads).set({ isActiveConvo: true }).where(eq(leads.id, lead.id));
+
+  await importAirtableLeads(db, { fromFile: SNAPSHOT });
+
+  const after = await db.query.leads.findFirst({ where: eq(leads.id, lead.id) });
+  assert.equal(after?.isActiveConvo, true, 'the re-import cleared a manual flag');
 });

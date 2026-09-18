@@ -255,13 +255,14 @@ export async function createLead(formData: FormData): Promise<ActionResult> {
       .values({
         igHandle,
         igHandleKey: normalizeIgHandle(igHandle),
-        name: str(formData, 'name'),
-        phone: str(formData, 'phone'),
         leadSource: str(formData, 'leadSource'),
         opener: str(formData, 'opener'),
+        leadQuality: str(formData, 'leadQuality'),
+        icp: str(formData, 'icp'),
         conversationStage: str(formData, 'conversationStage') ?? 'outreached',
         setterId: str(formData, 'setterId') ?? user.id,
-        outboundDm: formData.get('outboundDm') === 'on',
+        // A lead you just created is a conversation you're having.
+        isActiveConvo: true,
         leadCreatedAt: new Date(),
         lastContactAt: new Date(),
       })

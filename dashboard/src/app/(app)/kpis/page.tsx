@@ -1,6 +1,8 @@
 import { FunnelChart } from '@/components/charts/FunnelChart';
 import { LineChart } from '@/components/charts/LineChart';
+import { StreakStrip } from '@/components/StreakStrip';
 import { getSetters } from '@/lib/queries';
+import { getStreaks } from '@/lib/streaks';
 import { callsBooked, defaultRange, funnel, money, outreach } from '@/lib/kpis';
 
 export const dynamic = 'force-dynamic';
@@ -29,8 +31,9 @@ export default async function KpisPage({ searchParams }: { searchParams: SearchP
   const view = (one(params, 'view') ?? 'funnel') as (typeof VIEWS)[number]['key'];
   const setterId = one(params, 'setterId');
 
-  const [setters, steps, booked, cash, activity] = await Promise.all([
+  const [setters, streaks, steps, booked, cash, activity] = await Promise.all([
     getSetters(),
+    getStreaks(),
     view === 'funnel' ? funnel(range, setterId) : Promise.resolve(null),
     view === 'booked' ? callsBooked(range, setterId) : Promise.resolve(null),
     view === 'money' ? money(range, setterId) : Promise.resolve(null),
@@ -46,6 +49,13 @@ export default async function KpisPage({ searchParams }: { searchParams: SearchP
       <p className="sub">
         {current.label} · {who} · {range.from} to {range.to}
       </p>
+
+      <h2>Consistency</h2>
+      <p className="sub">
+        Days in a row, right now — not affected by the date range below. Showing up is the habit
+        the rest of these numbers depend on.
+      </p>
+      <StreakStrip rows={streaks} showEod />
 
       <form className="toolbar" method="get">
         <div className="field">

@@ -50,6 +50,20 @@
       "when": 1789702759993,
       "tag": "0006_fast_doctor_spectrum",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1789705250488,
+      "tag": "0007_backfill_active_and_owner",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1789705300053,
+      "tag": "0008_fixed_lilith",
+      "breakpoints": true
     }
   ]
 }

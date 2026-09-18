@@ -251,9 +251,14 @@ export async function importAirtableLeads(
 
     let leadId: string;
     if (existing) {
-      // isActiveConvo is deliberately left out of the update: it's a manual
-      // flag, and a re-import must not undo what a setter has ticked.
-      await db.update(leads).set(values).where(eq(leads.id, existing.id));
+      // A re-import must not undo work done in the dashboard. isActiveConvo is
+      // never in `values` at all, and ownership fields are dropped when
+      // Airtable has nothing to say about them - most imported rows have no
+      // setter, so writing the null through would silently unassign every lead
+      // anyone had claimed or been given since the last run.
+      const { setterId: airtableSetter, ...rest } = values;
+      const update = airtableSetter ? { ...rest, setterId: airtableSetter } : rest;
+      await db.update(leads).set(update).where(eq(leads.id, existing.id));
       leadId = existing.id;
       stats.updated += 1;
     } else {
