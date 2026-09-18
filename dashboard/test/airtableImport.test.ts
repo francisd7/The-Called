@@ -17,6 +17,14 @@ let db: ReturnType<typeof drizzle<typeof schema>>;
 
 before(async () => {
   if (!url) return;
+  // These tests delete every lead. Pointing TEST_DATABASE_URL at a real
+  // database would empty it, so refuse anything that isn't obviously local.
+  const host = new URL(url).hostname;
+  if (!['localhost', '127.0.0.1', '::1'].includes(host)) {
+    throw new Error(
+      `Refusing to run destructive tests against ${host}. TEST_DATABASE_URL must be a local database.`
+    );
+  }
   sql = postgres(url, { max: 2 });
   db = drizzle(sql, { schema });
   await db.delete(leadNotes);

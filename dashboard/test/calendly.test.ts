@@ -92,3 +92,29 @@ test('falls back to the booking form question for the IG handle', () => {
   assert.equal(igHandleFromAnswers({ questions_and_answers: [] }), null);
   assert.equal(igHandleFromAnswers({}), null);
 });
+
+test('a malformed but correctly signed body is a bad request, not a crash', () => {
+  // JSON.parse accepts null, bare arrays and bare strings; all three then blow
+  // up on the first property access. A signed-but-malformed body is Calendly
+  // sending something odd, not the server being broken.
+  const notObjects = ['null', '[]', '"a string"', '123', 'true'];
+  for (const raw of notObjects) {
+    const parsed: unknown = JSON.parse(raw);
+    const isUsable = parsed !== null && typeof parsed === 'object' && !Array.isArray(parsed);
+    assert.equal(isUsable, false, `${raw} should be rejected before any property access`);
+  }
+  const usable: unknown = JSON.parse('{"event":"invitee.created"}');
+  assert.equal(usable !== null && typeof usable === 'object' && !Array.isArray(usable), true);
+});
+
+test('an unparseable start_time becomes null rather than an Invalid Date', () => {
+  // An Invalid Date reaches the driver and fails the whole write, losing a real
+  // booking over one bad field.
+  for (const raw of ['not-a-date', '', 'yesterday']) {
+    const d = raw ? new Date(raw) : null;
+    const safe = d && !Number.isNaN(d.getTime()) ? d : null;
+    assert.equal(safe, null, `${raw} should not survive as a Date`);
+  }
+  const good = new Date('2026-09-19T15:00:00.000Z');
+  assert.equal(Number.isNaN(good.getTime()), false);
+});

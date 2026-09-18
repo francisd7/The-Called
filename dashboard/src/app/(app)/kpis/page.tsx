@@ -21,13 +21,22 @@ function one(params: Record<string, string | string[] | undefined>, key: string)
   return typeof v === 'string' && v.length > 0 ? v : undefined;
 }
 
-const usd = (n: number) =>
-  n.toLocaleString('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 });
+/** A date only counts if it's a real YYYY-MM-DD; anything else falls back. */
+function validDate(value: string | undefined, fallback: string): string {
+  if (!value || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return fallback;
+  const parsed = new Date(`${value}T12:00:00Z`);
+  return Number.isNaN(parsed.getTime()) ? fallback : value;
+}
 
 export default async function KpisPage({ searchParams }: { searchParams: SearchParams }) {
   const params = await searchParams;
   const fallback = defaultRange();
-  const range = { from: one(params, 'from') ?? fallback.from, to: one(params, 'to') ?? fallback.to };
+  // Straight off the URL, so it can be anything. An unparseable date used to
+  // reach the driver and throw a 500 from deep inside the query builder.
+  const range = {
+    from: validDate(one(params, 'from'), fallback.from),
+    to: validDate(one(params, 'to'), fallback.to),
+  };
   const view = (one(params, 'view') ?? 'funnel') as (typeof VIEWS)[number]['key'];
   const setterId = one(params, 'setterId');
 
@@ -108,7 +117,7 @@ export default async function KpisPage({ searchParams }: { searchParams: SearchP
         )}
         {booked && <LineChart series={booked} tableCaption="Calls booked per week by setter" />}
         {cash && (
-          <LineChart series={cash} format={usd} tableCaption="Cash collected and contract value per week" />
+          <LineChart series={cash} format="usd" tableCaption="Cash collected and contract value per week" />
         )}
         {activity && (
           <>

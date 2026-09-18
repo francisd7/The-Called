@@ -472,69 +472,69 @@ export async function getMoneyTotals() {
 }
 
 /**
- * How long a conversation has been silent. Measured from the last time somebody
- * actually reached out, falling back to last contact and then to when the lead
- * was created - a lead nobody has ever messaged is the most overdue of all, not
- * the least.
+ * How long a conversation has been silent, measured from the last time somebody
+ * actually reached out - falling back to last contact and then to when the lead
+ * was created, because a lead nobody has ever messaged is the most overdue of
+ * all, not the least.
+ *
+ * Bands are exclusive ranges rather than cumulative: "1 week" means between a
+ * week and a month. Cumulative bands put almost every lead in the first tab,
+ * which is a pile rather than a list to work through.
  */
 export const FOLLOW_UP_BUCKETS = [
-  { key: '1w', label: '1 week+', days: 7 },
-  { key: '1m', label: '1 month+', days: 30 },
-  { key: '3m', label: '3 months+', days: 90 },
-  { key: '6m', label: '6 months+', days: 180 },
-  { key: '1y', label: '1 year+', days: 365 },
+  { key: '1w', label: '1 week', from: 7, to: 30 },
+  { key: '1m', label: '1 month', from: 30, to: 90 },
+  { key: '3m', label: '3 months', from: 90, to: 180 },
+  { key: '6m', label: '6 months', from: 180, to: 365 },
+  { key: '1y', label: '1 year+', from: 365, to: null },
 ] as const;
 
 export type FollowUpBucket = (typeof FOLLOW_UP_BUCKETS)[number]['key'];
 
-export async function getFollowUps(bucket: FollowUpBucket, setterId?: string) {
-  const spec = FOLLOW_UP_BUCKETS.find((b) => b.key === bucket) ?? FOLLOW_UP_BUCKETS[0];
+const silenceExpr = sql`COALESCE(${leads.lastOutreachAt}, ${leads.lastContactAt}, ${leads.leadCreatedAt})`;
 
-  const silence = sql`COALESCE(${leads.lastOutreachAt}, ${leads.lastContactAt}, ${leads.leadCreatedAt})`;
+function followUpBase(setterId?: string) {
   const filters = [
     eq(leads.isActiveConvo, true),
     eq(leads.isTest, false),
     // A booked call isn't waiting on a follow-up; it's waiting on the call.
     or(eq(leads.callBooked, false), eq(leads.callCancelled, true)),
-    // Expressed as an interval rather than a JS Date: drizzle can't infer a
-    // parameter type inside a raw comparison like this, and passing a Date
-    // through fails at request time with an unhelpful driver error.
-    sql`${silence} < NOW() - (${spec.days} * INTERVAL '1 day')`,
   ];
   if (setterId) {
     filters.push(setterId === 'none' ? isNull(leads.setterId) : eq(leads.setterId, setterId));
   }
+  return filters;
+}
 
-  // Quietest first, and only a screenful. Two hundred rows is a wall nobody
-  // works through; fifty is a session, and clearing them moves the rest up.
+export async function getFollowUps(bucket: FollowUpBucket, setterId?: string) {
+  const spec = FOLLOW_UP_BUCKETS.find((b) => b.key === bucket) ?? FOLLOW_UP_BUCKETS[0];
+  const filters = followUpBase(setterId);
+
+  // Intervals rather than JS Dates: drizzle can't infer a parameter type inside
+  // a raw comparison, and passing a Date fails at request time.
+  filters.push(sql`${silenceExpr} <= NOW() - (${spec.from} * INTERVAL '1 day')`);
+  if (spec.to !== null) {
+    filters.push(sql`${silenceExpr} > NOW() - (${spec.to} * INTERVAL '1 day')`);
+  }
+
   return db
     .select()
     .from(leads)
     .where(and(...filters))
-    .orderBy(asc(silence))
+    .orderBy(asc(silenceExpr))
     .limit(50);
 }
 
-/** How many are sitting in each silence bucket, for the tabs along the top. */
+/** How many sit in each band, for the tabs along the top. */
 export async function getFollowUpCounts(setterId?: string) {
-  const silence = sql`COALESCE(${leads.lastOutreachAt}, ${leads.lastContactAt}, ${leads.leadCreatedAt})`;
-  const base = [
-    eq(leads.isActiveConvo, true),
-    eq(leads.isTest, false),
-    or(eq(leads.callBooked, false), eq(leads.callCancelled, true)),
-  ];
-  if (setterId) {
-    base.push(setterId === 'none' ? isNull(leads.setterId) : eq(leads.setterId, setterId));
-  }
+  const base = followUpBase(setterId);
+  const band = (from: number, to: number | null) =>
+    to === null
+      ? sql<number>`COUNT(*) FILTER (WHERE ${silenceExpr} <= NOW() - (${from} * INTERVAL '1 day'))::int`
+      : sql<number>`COUNT(*) FILTER (WHERE ${silenceExpr} <= NOW() - (${from} * INTERVAL '1 day') AND ${silenceExpr} > NOW() - (${to} * INTERVAL '1 day'))::int`;
 
   const [row] = await db
-    .select({
-      w1: sql<number>`COUNT(*) FILTER (WHERE ${silence} < NOW() - INTERVAL '7 days')::int`,
-      m1: sql<number>`COUNT(*) FILTER (WHERE ${silence} < NOW() - INTERVAL '30 days')::int`,
-      m3: sql<number>`COUNT(*) FILTER (WHERE ${silence} < NOW() - INTERVAL '90 days')::int`,
-      m6: sql<number>`COUNT(*) FILTER (WHERE ${silence} < NOW() - INTERVAL '180 days')::int`,
-      y1: sql<number>`COUNT(*) FILTER (WHERE ${silence} < NOW() - INTERVAL '365 days')::int`,
-    })
+    .select({ w1: band(7, 30), m1: band(30, 90), m3: band(90, 180), m6: band(180, 365), y1: band(365, null) })
     .from(leads)
     .where(and(...base));
 

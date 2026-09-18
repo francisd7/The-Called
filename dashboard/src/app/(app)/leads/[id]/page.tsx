@@ -14,6 +14,10 @@ function dateInputValue(date: Date | null) {
 
 export default async function LeadPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
+  // Postgres rejects a malformed uuid with a driver error, which surfaced as a
+  // 500 rather than a 404 for any mistyped or stale link.
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id)) notFound();
+
   const data = await getLead(id);
   if (!data) notFound();
 

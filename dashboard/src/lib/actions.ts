@@ -6,6 +6,7 @@ import { auth } from '@/auth';
 import { db } from '@/db';
 import { eodReports, leadEvents, leadNotes, leads } from '@/db/schema';
 import { notifyTriage } from './discord';
+import { recordIssue } from './issues';
 import { normalizeIgHandle } from './calendly';
 import { teamDateString } from './dates';
 
@@ -134,6 +135,12 @@ export async function saveTriage(formData: FormData): Promise<ActionResult> {
         leadId,
         actorId: user.id,
         type: 'triage_notify_failed',
+      });
+      await recordIssue({
+        title: 'Triage notes are not reaching Discord',
+        detail: 'Notes saved, but the pre-call brief could not be posted. Closers are not being briefed.',
+        remedy:
+          'Check DISCORD_BOT_TOKEN and DISCORD_TRIAGE_CHANNEL_ID in Railway, and that the bot can see that channel.',
       });
     }
 

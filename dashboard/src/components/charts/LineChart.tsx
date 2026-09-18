@@ -20,15 +20,27 @@ function shortDate(iso: string) {
  * than a second axis - a dual axis invites the reader to infer a relationship
  * the data doesn't support.
  */
+const FORMATS = {
+  number: (n: number) => n.toLocaleString(),
+  usd: (n: number) =>
+    n.toLocaleString('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }),
+} as const;
+
+/**
+ * `format` is a name rather than a function: a server component can't hand a
+ * function to a client one, and doing so fails at request time with an error
+ * that names the prop but not the page.
+ */
 export function LineChart({
   series,
-  format = (n: number) => String(n),
+  format = 'number',
   tableCaption,
 }: {
   series: Series[];
-  format?: (n: number) => string;
+  format?: keyof typeof FORMATS;
   tableCaption: string;
 }) {
+  const fmt = FORMATS[format] ?? FORMATS.number;
   const [hover, setHover] = useState<number | null>(null);
   const [showTable, setShowTable] = useState(false);
 
@@ -55,7 +67,7 @@ export function LineChart({
           <g key={t}>
             <line x1={PAD.left} x2={W - PAD.right} y1={y(t)} y2={y(t)} className="chart-grid" />
             <text x={PAD.left - 8} y={y(t) + 4} className="chart-tick" textAnchor="end">
-              {format(t)}
+              {fmt(t)}
             </text>
           </g>
         ))}
@@ -120,7 +132,7 @@ export function LineChart({
           <span key={s.key} className="chart-legend-item">
             <span className={`chart-swatch series-${si + 1}`} />
             {s.label}
-            {hover !== null && <strong>{format(s.points[hover]?.y ?? 0)}</strong>}
+            {hover !== null && <strong>{fmt(s.points[hover]?.y ?? 0)}</strong>}
           </span>
         ))}
         <span className="chart-legend-when">
@@ -148,7 +160,7 @@ export function LineChart({
                 <tr key={label}>
                   <td>{shortDate(label)}</td>
                   {series.map((s) => (
-                    <td key={s.key}>{format(s.points[i]?.y ?? 0)}</td>
+                    <td key={s.key}>{fmt(s.points[i]?.y ?? 0)}</td>
                   ))}
                 </tr>
               ))}

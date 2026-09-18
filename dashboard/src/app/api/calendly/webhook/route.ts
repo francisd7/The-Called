@@ -3,6 +3,7 @@ import { and, desc, eq, isNull } from 'drizzle-orm';
 import { db } from '@/db';
 import { calendlyWebhookEvents, leadEvents, leads, offers, users } from '@/db/schema';
 import { notifyBooking } from '@/lib/discord';
+import { recordIssue } from '@/lib/issues';
 import {
   hostFromPayload,
   igHandleFromAnswers,
@@ -74,7 +75,12 @@ async function handleCreated(leadId: string, payload: CalendlyInviteePayload) {
   const offer = await resolveOffer(payload);
   const host = hostFromPayload(payload);
   const closer = await resolveCloser(host.email);
-  const startTime = payload.scheduled_event?.start_time;
+  const rawStart = payload.scheduled_event?.start_time;
+  const parsedStart = rawStart ? new Date(rawStart) : null;
+  // An unparseable start_time would otherwise reach the driver as an Invalid
+  // Date and fail the whole write, losing a real booking over a bad field.
+  const startTime =
+    parsedStart && !Number.isNaN(parsedStart.getTime()) ? parsedStart : null;
   const phone = phoneFromPayload(payload);
 
   const [updated] = await db
@@ -87,7 +93,7 @@ async function handleCreated(leadId: string, payload: CalendlyInviteePayload) {
       responded: true,
       // A booking is a live conversation by definition.
       isActiveConvo: true,
-      callScheduledFor: startTime ? new Date(startTime) : null,
+      callScheduledFor: startTime,
       offerId: offer?.id ?? null,
       closerId: closer?.id ?? null,
       closerName: closer?.name ?? host.name,
@@ -128,7 +134,7 @@ async function handleCreated(leadId: string, payload: CalendlyInviteePayload) {
   await db.insert(leadEvents).values({
     leadId,
     type: 'call_booked',
-    toValue: startTime ?? null,
+    toValue: startTime?.toISOString() ?? null,
     meta: { source: 'calendly', inviteeUri: payload.uri, offer: offer?.label ?? null },
   });
 
@@ -163,6 +169,12 @@ export async function POST(request: Request) {
   const signingKey = process.env.CALENDLY_WEBHOOK_SIGNING_KEY;
   if (!signingKey) {
     console.error('CALENDLY_WEBHOOK_SIGNING_KEY is not set - refusing to process webhook');
+    await recordIssue({
+      title: 'Calendly bookings are being dropped',
+      detail: 'A booking arrived but CALENDLY_WEBHOOK_SIGNING_KEY is not set on this service.',
+      remedy:
+        'Set CALENDLY_WEBHOOK_SIGNING_KEY in Railway to the same value used when the webhook was registered, then press Connect Calendly on this page.',
+    });
     return NextResponse.json({ error: 'not configured' }, { status: 500 });
   }
 
@@ -174,6 +186,12 @@ export async function POST(request: Request) {
   );
   if (!verdict.ok) {
     console.warn('Rejected Calendly webhook:', verdict.reason);
+    await recordIssue({
+      title: 'Calendly bookings are being rejected',
+      detail: `A delivery failed signature checks (${verdict.reason}). Real bookings are not reaching the dashboard.`,
+      remedy:
+        'CALENDLY_WEBHOOK_SIGNING_KEY no longer matches what Calendly was registered with. Delete the subscription in Calendly, then press Connect Calendly on this page to register a fresh one.',
+    });
     // Recorded so a rejection is visible in the app rather than only in the
     // deploy logs. The most likely cause is a signing key that no longer
     // matches the one Calendly was registered with, and the symptom of that is
@@ -195,7 +213,14 @@ export async function POST(request: Request) {
 
   let body: CalendlyWebhookBody;
   try {
-    body = JSON.parse(rawBody);
+    const parsed: unknown = JSON.parse(rawBody);
+    // JSON.parse accepts `null` and bare arrays, both of which then blow up on
+    // the first property access. A signed-but-malformed body is a bad request,
+    // not a server error.
+    if (parsed === null || typeof parsed !== 'object' || Array.isArray(parsed)) {
+      return NextResponse.json({ error: 'expected a json object' }, { status: 400 });
+    }
+    body = parsed as CalendlyWebhookBody;
   } catch {
     return NextResponse.json({ error: 'invalid json' }, { status: 400 });
   }
@@ -244,6 +269,12 @@ export async function POST(request: Request) {
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     console.error('Calendly webhook processing failed:', message);
+    await recordIssue({
+      title: 'A Calendly booking could not be processed',
+      detail: message,
+      remedy: 'Check Calendly deliveries below - the raw payload is stored and Calendly will retry.',
+      context: { inviteeUri },
+    });
     await db
       .update(calendlyWebhookEvents)
       .set({ error: message })

@@ -64,6 +64,20 @@
       "when": 1789705300053,
       "tag": "0008_fixed_lilith",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1789706898162,
+      "tag": "0009_wild_baron_strucker",
+      "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1789706899604,
+      "tag": "0010_deactivate_all_convos",
+      "breakpoints": true
     }
   ]
 }

@@ -107,11 +107,13 @@ a devDependency and can be pruned from a production install. After editing
 The integration tests need a throwaway database:
 
 ```bash
-TEST_DATABASE_URL=postgres://... npm test
+TEST_DATABASE_URL=postgres://localhost:5433/whatever npm test
 ```
 
 They're skipped without it, so the suite still passes on a machine with no
-Postgres.
+Postgres. **They delete every lead and create and drop databases**, so they
+refuse to run against any host that isn't localhost - pointing that variable at
+production would empty it.
 
 ## Migrating the Airtable leads
 

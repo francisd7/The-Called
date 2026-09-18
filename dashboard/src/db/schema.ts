@@ -304,3 +304,34 @@ export const focuses = pgTable(
   // wouldn't hold for the team row and every save would insert another copy.
   (t) => [unique('focus_owner_week_key').on(t.ownerId, t.weekOf).nullsNotDistinct()]
 );
+
+export const issueKind = pgEnum('issue_kind', ['report', 'error']);
+export const issueStatus = pgEnum('issue_status', ['open', 'resolved']);
+
+/**
+ * Problems worth an admin's attention: something a setter reported by hand, or
+ * something the app itself failed at. Both land here so there's one place to
+ * look rather than a deploy log nobody reads.
+ */
+export const appIssues = pgTable(
+  'app_issues',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    kind: issueKind('kind').notNull(),
+    title: text('title').notNull(),
+    detail: text('detail'),
+    // Where it happened, and anything that helps reproduce it.
+    context: jsonb('context'),
+    // What to do about it, written at the point of failure where the cause is
+    // actually known - an error message alone rarely says what to try.
+    remedy: text('remedy'),
+    reportedById: uuid('reported_by_id').references(() => users.id),
+    status: issueStatus('status').notNull().default('open'),
+    // Repeats of the same failure bump this rather than filling the list.
+    seenCount: integer('seen_count').notNull().default(1),
+    lastSeenAt: timestamp('last_seen_at', { withTimezone: true }).notNull().defaultNow(),
+    resolvedAt: timestamp('resolved_at', { withTimezone: true }),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index('app_issues_open_idx').on(t.status, t.lastSeenAt)]
+);

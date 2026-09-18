@@ -20,6 +20,14 @@ let db: ReturnType<typeof drizzle<typeof schema>>;
 
 before(async () => {
   if (!url) return;
+  // Creates and drops databases on the target server - never point this at
+  // anything that isn't local.
+  const host = new URL(url).hostname;
+  if (!['localhost', '127.0.0.1', '::1'].includes(host)) {
+    throw new Error(
+      `Refusing to run destructive tests against ${host}. TEST_DATABASE_URL must be a local database.`
+    );
+  }
   const parsed = new URL(url);
   parsed.pathname = '/postgres';
   admin = postgres(parsed.toString(), { max: 1 });

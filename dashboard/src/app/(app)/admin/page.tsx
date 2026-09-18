@@ -6,6 +6,8 @@ import { eodReports, leads, offers, users } from '@/db/schema';
 import { ActionForm } from '@/components/ActionForm';
 import { formatCallTime, formatDay } from '@/lib/dates';
 import { getPipelineSummary, getRecentCalendlyActivity, getUnmatchedBookings } from '@/lib/queries';
+import { getIssues } from '@/lib/issues';
+import { resolveIssue } from '@/lib/issueActions';
 import { clearTestData, createTestBooking, runAirtableImport, runCalendlySetup } from '@/lib/setupActions';
 
 function Check({ done, children }: { done: boolean; children: React.ReactNode }) {
@@ -25,11 +27,12 @@ export default async function AdminPage() {
   // too - a hidden link is not access control.
   if (session?.user?.role !== 'admin') redirect('/');
 
-  const [summary, unmatched, activity, people, recentEod, offerRows, [{ leadCount }]] =
+  const [summary, unmatched, activity, issues, people, recentEod, offerRows, [{ leadCount }]] =
     await Promise.all([
     getPipelineSummary(),
     getUnmatchedBookings(),
     getRecentCalendlyActivity(),
+    getIssues('open'),
     db.select().from(users).orderBy(users.name),
     db.select().from(eodReports).orderBy(desc(eodReports.reportDate)).limit(10),
     db.select().from(offers).orderBy(offers.sortOrder),
@@ -52,6 +55,51 @@ export default async function AdminPage() {
   return (
     <>
       <h1>Admin</h1>
+
+      <h2>Problems{issues.length > 0 ? ` (${issues.length})` : ''}</h2>
+      <p className="sub">
+        Anything a setter reported, plus anything the app failed at on its own. Both land here so
+        there&apos;s one place to look instead of a deploy log nobody reads.
+      </p>
+      {issues.length === 0 ? (
+        <p className="empty">Nothing outstanding.</p>
+      ) : (
+        issues.map((issue) => (
+          <div className="card" key={issue.id}>
+            <div className="card-head">
+              <strong>{issue.title}</strong>
+              <span className="card-meta">
+                <span className={`pill ${issue.kind === 'error' ? 'danger' : 'warn'}`}>
+                  {issue.kind === 'error' ? 'app error' : 'reported'}
+                </span>{' '}
+                {issue.seenCount > 1 && <span className="pill">×{issue.seenCount}</span>}{' '}
+                {formatCallTime(issue.lastSeenAt)}
+              </span>
+            </div>
+            {issue.detail && (
+              <div className="note-body" style={{ marginTop: '0.4rem' }}>
+                {issue.detail}
+              </div>
+            )}
+            {issue.remedy && (
+              <p className="sub" style={{ marginTop: '0.5rem' }}>
+                <strong>To fix:</strong> {issue.remedy}
+              </p>
+            )}
+            {(issue.context as { from?: string } | null)?.from && (
+              <p className="sub" style={{ marginTop: '0.3rem' }}>
+                On page <code>{(issue.context as { from?: string }).from}</code>
+              </p>
+            )}
+            <div className="card-row">
+              <ActionForm action={resolveIssue} successMessage="Resolved">
+                <input type="hidden" name="id" value={issue.id} />
+                <button type="submit">Mark resolved</button>
+              </ActionForm>
+            </div>
+          </div>
+        ))
+      )}
 
       {!setupComplete && (
         <>

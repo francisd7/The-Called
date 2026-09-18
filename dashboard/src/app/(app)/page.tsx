@@ -75,7 +75,7 @@ export default async function TodayPage({ searchParams }: { searchParams: Search
   const leftPeople = board.people.slice(0, half);
   const rightPeople = board.people.slice(half);
 
-  const offerLabels = new Map(offers.map((o) => [o.id, o.label]));
+  const offerById = new Map(offers.map((o) => [o.id, o]));
   const tileProps = { setters, closers };
 
   return (
@@ -142,12 +142,6 @@ export default async function TodayPage({ searchParams }: { searchParams: Search
           <div className="stat-n">{convos.teamTotal}</div>
           <div className="stat-l">active convos</div>
         </div>
-        {/* Lifetime, summed off the leads themselves rather than off what
-            someone typed into a daily report. */}
-        <div className="stat tone-green">
-          <div className="stat-n">{money0(money.cash)}</div>
-          <div className="stat-l">cash all time</div>
-        </div>
       </div>
 
       <h2>Calls today</h2>
@@ -159,7 +153,8 @@ export default async function TodayPage({ searchParams }: { searchParams: Search
             <CallTile
               key={lead.id}
               lead={lead}
-              offerLabel={lead.offerId ? offerLabels.get(lead.offerId) : null}
+              offerKey={lead.offerId ? offerById.get(lead.offerId)?.key : null}
+              offerLabel={lead.offerId ? offerById.get(lead.offerId)?.label : null}
               {...tileProps}
             />
           ))}
@@ -175,7 +170,8 @@ export default async function TodayPage({ searchParams }: { searchParams: Search
             <CallTile
               key={lead.id}
               lead={lead}
-              offerLabel={lead.offerId ? offerLabels.get(lead.offerId) : null}
+              offerKey={lead.offerId ? offerById.get(lead.offerId)?.key : null}
+              offerLabel={lead.offerId ? offerById.get(lead.offerId)?.label : null}
               showDate
               {...tileProps}
             />

@@ -34,11 +34,15 @@ export async function claimLead(formData: FormData): Promise<Result> {
 
     const lead = await db.query.leads.findFirst({ where: eq(leads.id, leadId) });
     if (!lead) return { ok: false, error: 'Lead not found' };
-    // Claiming is first-come; it must never quietly take a lead off a colleague
-    // who is already working it.
-    if (lead.setterId) {
+
+    // First-come, but it must never quietly take a lead off a colleague who is
+    // already working it. A lead parked with an admin is the imported backlog
+    // rather than someone's work, so that one is claimable.
+    if (lead.setterId && lead.setterId !== user.id) {
       const owner = await db.query.users.findFirst({ where: eq(users.id, lead.setterId) });
-      return { ok: false, error: `Already claimed by ${owner?.name ?? 'someone else'}` };
+      if (owner && owner.role === 'setter') {
+        return { ok: false, error: `Already being worked by ${owner.name}` };
+      }
     }
 
     await db

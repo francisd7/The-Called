@@ -12,7 +12,7 @@ const LINKS = [
   { href: '/eod', label: 'EOD Reports', short: 'EOD' },
 ];
 
-export function NavLinks({ role }: { role?: string }) {
+export function NavLinks({ role, openIssues = 0 }: { role?: string; openIssues?: number }) {
   const pathname = usePathname();
   const links =
     role === 'admin' ? [...LINKS, { href: '/admin', label: 'Admin', short: 'Admin' }] : LINKS;
@@ -25,6 +25,10 @@ export function NavLinks({ role }: { role?: string }) {
           <a key={link.href} href={link.href} aria-current={active ? 'page' : undefined}>
             <span className="nav-long">{link.label}</span>
             <span className="nav-short">{link.short}</span>
+            {/* Only on Admin, and only when there is something to look at. */}
+            {link.href === '/admin' && openIssues > 0 && (
+              <span className="nav-dot" aria-label={`${openIssues} open issues`} />
+            )}
           </a>
         );
       })}

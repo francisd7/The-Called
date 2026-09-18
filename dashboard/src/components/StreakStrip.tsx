@@ -21,7 +21,7 @@ export function StreakStrip({ rows, showEod = false }: { rows: StreakRow[]; show
             <span className="streak-n">{r.tracker.current}</span>
             <span className="streak-l">
               {' '}
-              day{r.tracker.current === 1 ? '' : 's'} on the tracker
+              day{r.tracker.current === 1 ? '' : 's'} in a row on the tracker
               {!r.tracker.aliveToday && r.tracker.current > 0 && ' — not yet today'}
             </span>
           </span>
@@ -30,7 +30,7 @@ export function StreakStrip({ rows, showEod = false }: { rows: StreakRow[]; show
               <span className="streak-n">{r.eod.current}</span>
               <span className="streak-l">
                 {' '}
-                day{r.eod.current === 1 ? '' : 's'} of EOD
+                day{r.eod.current === 1 ? '' : 's'} in a row of EOD
                 {!r.eod.aliveToday && r.eod.current > 0 && ' — not yet today'}
               </span>
             </span>
