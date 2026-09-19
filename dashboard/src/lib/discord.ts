@@ -66,6 +66,29 @@ function leadLabel(lead: Lead): string {
  * check, but a forgotten guard somewhere would put a brief for a call that
  * doesn't exist in front of the closers, so the send itself refuses too.
  */
+/** A result stops being news two days after the call it belongs to. */
+const OUTCOME_NEWS_WINDOW_MS = 48 * 60 * 60 * 1000;
+
+/**
+ * Whether an outcome is worth telling the team about.
+ *
+ * Backfilling months of results would otherwise announce every one of them as
+ * if it had just happened, and a close from three weeks ago read as tonight's
+ * news is worse than no message at all. Two cases stay quiet: a call that is
+ * already old, and one the Airtable Post Call form has already posted about.
+ */
+export function outcomeIsNews(
+  lead: Pick<Lead, 'callScheduledFor' | 'postCallRecordId'>,
+  now: number = Date.now()
+): boolean {
+  // Airtable's own automation announced this one when the closer filled it in.
+  if (lead.postCallRecordId) return false;
+  // No date means nobody recorded when the call was, which in practice means
+  // it is being entered long after the fact.
+  if (!lead.callScheduledFor) return false;
+  return now - lead.callScheduledFor.getTime() <= OUTCOME_NEWS_WINDOW_MS;
+}
+
 function isSendable(lead: Lead): boolean {
   if (lead.isTest) {
     console.log(`Skipping Discord post for test lead ${lead.igHandle}.`);

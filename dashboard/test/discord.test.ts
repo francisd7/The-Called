@@ -1,7 +1,7 @@
 import { strict as assert } from 'node:assert';
 import { createServer, type Server } from 'node:http';
 import { after, before, test } from 'node:test';
-import { notifyBooking, notifyTriage } from '../src/lib/discord.ts';
+import { notifyBooking, notifyTriage, outcomeIsNews } from '../src/lib/discord.ts';
 
 type Captured = { path: string; auth: string | undefined; body: { content?: string } };
 let captured: Captured[] = [];
@@ -221,4 +221,34 @@ test('a test lead outcome still never reaches Discord', async () => {
   const { notifyOutcome } = await import('../src/lib/discord.ts');
   assert.equal(await notifyOutcome(fakeLead({ isTest: true, callOutcome: 'closed' }), 'Francis'), false);
   assert.equal(captured.length, 0);
+});
+
+test('a result from today is news, one from last month is not', () => {
+  const now = Date.parse('2026-09-19T22:00:00Z');
+  const at = (iso: string) => ({ callScheduledFor: new Date(iso), postCallRecordId: null });
+
+  assert.equal(outcomeIsNews(at('2026-09-19T18:00:00Z'), now), true, "today's call");
+  assert.equal(outcomeIsNews(at('2026-09-18T18:00:00Z'), now), true, 'yesterday still counts');
+  assert.equal(outcomeIsNews(at('2026-09-03T10:00:00Z'), now), false, 'a backfill from weeks ago');
+  // Right on the boundary, and just past it.
+  assert.equal(outcomeIsNews(at('2026-09-17T22:00:00Z'), now), true);
+  assert.equal(outcomeIsNews(at('2026-09-17T21:59:00Z'), now), false);
+});
+
+test('a call Airtable already announced is never announced again', () => {
+  const now = Date.parse('2026-09-19T22:00:00Z');
+  assert.equal(
+    outcomeIsNews(
+      { callScheduledFor: new Date('2026-09-19T20:00:00Z'), postCallRecordId: 'recAbc' },
+      now
+    ),
+    false,
+    'the Post Call form already posted this one'
+  );
+});
+
+test('an outcome with no call date is treated as a backfill', () => {
+  // In practice a missing date means nobody recorded the call at the time,
+  // which means this is being typed up long afterwards.
+  assert.equal(outcomeIsNews({ callScheduledFor: null, postCallRecordId: null }), false);
 });

@@ -5,7 +5,7 @@ import { eq } from 'drizzle-orm';
 import { auth } from '@/auth';
 import { db } from '@/db';
 import { leadEvents, leads } from '@/db/schema';
-import { notifyOutcome } from './discord';
+import { notifyOutcome, outcomeIsNews } from './discord';
 import { recordIssue } from './issues';
 
 type Result = { ok: true; message?: string } | { ok: false; error: string };
@@ -92,8 +92,11 @@ export async function logCallOutcome(formData: FormData): Promise<Result> {
       meta: { cash, contract, tier: field(formData, 'tier') },
     });
 
-    const sent = await notifyOutcome(updated, user.name);
-    if (!sent && closed) {
+    // Backfilled results stay off Discord - see outcomeIsNews. The team gets
+    // told about today's calls, not about a close being typed up weeks later.
+    const news = outcomeIsNews(updated);
+    const sent = news ? await notifyOutcome(updated, user.name) : false;
+    if (news && !sent && closed) {
       // A close nobody heard about is the one worth chasing.
       await recordIssue({
         title: 'Call outcomes are not reaching Discord',
@@ -106,9 +109,10 @@ export async function logCallOutcome(formData: FormData): Promise<Result> {
     revalidatePath('/');
     revalidatePath('/leads');
     revalidatePath(`/leads/${leadId}`);
+    const saved = closed ? `Closed — $${contract} logged.` : 'Outcome saved.';
     return {
       ok: true,
-      message: closed ? `Closed — $${contract} logged.` : 'Outcome saved.',
+      message: news ? saved : `${saved} Not posted to Discord — the call wasn't recent.`,
     };
   } catch (err) {
     return { ok: false, error: err instanceof Error ? err.message : 'Could not save' };
