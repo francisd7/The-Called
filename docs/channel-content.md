@@ -42,36 +42,53 @@ shows what your package includes*. True for all five at once.
 
 ---
 
-### Message 1 — the standard (1,226 characters)
+### Message 1 — the standard (1,734 characters)
 
-You're in. Here's how men use this room.
+These are framed as *the* standard, with the consequence stated out loud, at
+the user's direction: a man who won't meet them will not get what he paid for,
+and saying so on day one is kinder than letting him find out in month four.
+The earlier draft described how the room works; this one tells him what is
+expected of him and what happens if he doesn't.
+
+You're in. Read this twice — it's the standard in here, not a suggestion.
+
+We've watched enough men through this to know what separates the ones who get
+what they came for from the ones who don't. It isn't talent, the market, or
+which package you bought. It's these five things.
 
 **Post the specific version.**
 "How do I get clients" gets you nothing. "I sent 40 DMs this week, 3 replied,
-here's the exact message I used" gets you a real answer — from a coach, or from
-the guy who solved it last month. Vague questions get vague answers.
+here's the exact message" gets you a real answer. You get back exactly as much
+as you put in.
 
 **Post the number you don't want to post.**
-The week that went badly is worth more in here than the week that went well.
-Nobody in this room is impressed by a highlight reel, and every man here has had
-the quiet month you're having right now. Said out loud, it stops running your
-head.
+The bad week is worth more in here than the good one. Every man here has had
+the quiet month you're having. The ones who hide it are the same ones still
+stuck six months later — that's not a coincidence, that's the whole mechanism.
 
-**Show up for other men's wins.**
-Read `#wins` even when you've got nothing to add — it's the fastest read in the
-server on what's actually working this month. And the day you post yours, you'll
-want men in there reading it.
+**Show up when it's not your win.**
+Read `#wins` with nothing to add. Answer a man whose problem you solved last
+month. This room only works when it's full of men who give before they need
+something.
 
 **Do the work between the calls.**
-The calls don't build the business. The five days between them do. This room
-exists so those five days aren't spent on your own.
+The calls don't build your business. The five days in between do. If the only
+movement in your week happens while someone's watching, you already know how
+this ends.
 
-**You're not here to be a customer.**
-You're here to become the man who doesn't need this anymore. Move like it from
-day one.
+**Be coachable.**
+You paid for men who'll tell you the truth about your offer, your calls and
+your effort. That's worth nothing if you argue with it. Take the note, run it,
+report back.
 
-Your own channel is down the sidebar with your name on it. Your first tasks are
-already sitting in it. Start there.
+**None of this is optional.**
+Your coach will pull hard for you — he can't want it more than you do. Men who
+post, ask, and do the work get everything they came for. Men who go quiet get
+exactly what silence pays. You already know which one you're going to be.
+Prove it this week.
+
+Your channel is down the sidebar with your name on it. Your first tasks are
+already in it. Go.
 
 ---
 
@@ -193,7 +210,7 @@ Start here: what's the single biggest constraint on your business right now?
 ## Notes on posting these
 
 - **`#start-here` first.** Post message 1, then message 2, then pin both.
-- **Discord's single-message limit is 2,000 characters.** Message 1 is 1,226
+- **Discord's single-message limit is 2,000 characters.** Message 1 is 1,734
   and message 2 is 1,442, so there is real headroom in each — but re-count
   before merging them, because together they are well over.
 - Channel names are left in backticks rather than as real `#` mentions.
