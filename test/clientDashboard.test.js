@@ -154,3 +154,17 @@ test('the handoff message lists columns that were left blank', () => {
   assert.match(message, /Columns left blank:/);
   assert.match(message, /CSM — no column with that name/);
 });
+
+// The workspace's existing habit is to grant Full access to everyone, and a
+// client with Full access could re-share the dashboard to anyone at all -
+// straight through the "clients must not be able to duplicate this" rule.
+test('the handoff message warns against granting Full access', () => {
+  const message = formatDashboardCreatedMessage({
+    clientName: 'Sarah Smith',
+    email: 'sarah@example.com',
+    url: 'https://notion.so/sarah',
+  });
+
+  assert.match(message, /never \*\*Full access\*\*/);
+  assert.match(message, /re-share this dashboard/);
+});

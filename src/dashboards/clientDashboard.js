@@ -177,6 +177,7 @@ export function formatDashboardCreatedMessage({
     url,
     '',
     `Last step (30 seconds): open it → **Share** → invite \`${email}\` → **Can edit** → Invite.`,
+    '⚠️ **Can edit**, never **Full access** — Full access lets them re-share this dashboard to anyone and change its permissions.',
   ];
 
   if (linkAlreadySent) {
