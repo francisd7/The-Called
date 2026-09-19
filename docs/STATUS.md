@@ -71,6 +71,26 @@ Tracks progress against the build priority in `Automation_Hub_Blueprint.md`.
   The "You will get your Notion Dashboard shortly." fallback is still exactly
   right — the instant path is what delivers on it.
 
+### #5 — where it stands as of 2026-09-19
+
+- ✅ **Guest invites work.** The Share dialog shows a **Share** button, not
+  "Request", and Andrew and Noah are already on pages as guests. This was the
+  biggest risk to the whole flow (members needing an owner to approve every
+  client) and it's cleared.
+- ⚠️ **Full access is the house habit** — every person on the page checked,
+  guests included, had Full access. A client with Full access can re-share the
+  dashboard to anyone. The staff ping now warns against it explicitly.
+- ❓ **Plan still unknown.** The user is a member, not the owner, so they can't
+  see billing. Check instead: open the *database* (not a page) → Share → a
+  **Page-level access** section means Business+.
+- ⚠️ **Don't unlink subpages inside the template.** Changing sharing on a child
+  page breaks inheritance from the parent and creates a permissions island that
+  the client (and possibly the integration) may not be able to see. Set
+  permissions once on the top-level parent so they cascade.
+- **Next step, and it doesn't need the finished template:** a mock database with
+  a throwaway template, then `npm run client-dashboard-dry-run` to prove the
+  wiring. Only `NOTION_DASHBOARDS_DATABASE_ID` changes when the real one lands.
+
 ### #4 — waiting on the user
 
 - **Notion Dashboard link** — message currently says "You will get your Notion Dashboard shortly." instead of a real link. Once provided, set `NOTION_DASHBOARD_URL` on Railway and the message switches to the real link automatically — no code change needed.
