@@ -63,8 +63,8 @@ export type BackfillStats = {
   range: { from: string; to: string } | null;
 };
 
-async function callApi<T>(pat: string, path: string): Promise<T> {
-  const res = await fetch(`${API}${path}`, {
+async function callUrl<T>(pat: string, url: string): Promise<T> {
+  const res = await fetch(url, {
     headers: { Authorization: `Bearer ${pat}`, 'Content-Type': 'application/json' },
   });
   const text = await res.text();
@@ -76,10 +76,12 @@ async function callApi<T>(pat: string, path: string): Promise<T> {
           'account that owns the booking links.'
       );
     }
-    throw new Error(`Calendly GET ${path} failed (${res.status}): ${text}`);
+    throw new Error(`Calendly GET ${url} failed (${res.status}): ${text}`);
   }
   return (text ? JSON.parse(text) : {}) as T;
 }
+
+const callApi = <T>(pat: string, path: string) => callUrl<T>(pat, `${API}${path}`);
 
 /**
  * Every scheduled event since `since`, cancelled ones included, each with the
@@ -89,23 +91,25 @@ export async function fetchCalendlyHistory(pat: string, since: string): Promise<
   const me = await callApi<{ resource: { current_organization: string } }>(pat, '/users/me');
   const org = me.resource.current_organization;
 
+  const params = new URLSearchParams({
+    organization: org,
+    min_start_time: since,
+    count: '100',
+  });
+
   const events: ScheduledEvent[] = [];
-  let pageToken: string | undefined;
-  do {
-    const params = new URLSearchParams({
-      organization: org,
-      min_start_time: since,
-      count: '100',
-      sort: 'start_time:asc',
-    });
-    if (pageToken) params.set('page_token', pageToken);
-    const page = await callApi<{
+  // Calendly hands back a fully-formed URL for the next page. Following it
+  // verbatim is the only reliable way through: rebuilding the query and
+  // appending the token is what Calendly rejects as an invalid page_token.
+  let next: string | null = `${API}/scheduled_events?${params}`;
+  while (next) {
+    const page: {
       collection: ScheduledEvent[];
-      pagination?: { next_page_token?: string | null };
-    }>(pat, `/scheduled_events?${params}`);
+      pagination?: { next_page?: string | null };
+    } = await callUrl(pat, next);
     events.push(...page.collection);
-    pageToken = page.pagination?.next_page_token ?? undefined;
-  } while (pageToken);
+    next = page.pagination?.next_page ?? null;
+  }
 
   const items: BackfillItem[] = [];
   for (const event of events) {

@@ -208,26 +208,23 @@ export default async function AdminPage() {
         gets one created rather than dropped. Safe to re-run.
       </p>
       <div className="card">
-        <div className="card-row">
-          <ActionForm action={runCalendlyBackfill}>
-            <input type="hidden" name="dryRun" value="1" />
-            <div className="field" style={{ marginBottom: '0.5rem' }}>
-              <label htmlFor="since-dry">From</label>
-              <input id="since-dry" name="since" type="date" defaultValue="2026-06-01" />
-            </div>
-            <button type="submit">Test Calendly backfill</button>
-          </ActionForm>
-          <ActionForm action={runCalendlyBackfill}>
-            <input type="hidden" name="dryRun" value="0" />
-            <div className="field" style={{ marginBottom: '0.5rem' }}>
-              <label htmlFor="since-real">From</label>
-              <input id="since-real" name="since" type="date" defaultValue="2026-06-01" />
-            </div>
-            <button className="btn-primary" type="submit">
+        {/* One date, two buttons. A submit button's own name and value reach the
+            action, so the dry run and the real thing share a single form rather
+            than each carrying their own copy of the date. */}
+        <ActionForm action={runCalendlyBackfill}>
+          <div className="field">
+            <label htmlFor="since">From</label>
+            <input id="since" name="since" type="date" defaultValue="2026-06-01" />
+          </div>
+          <div className="card-row">
+            <button type="submit" name="dryRun" value="1">
+              Test Calendly backfill
+            </button>
+            <button className="btn-primary" type="submit" name="dryRun" value="0">
               Pull Calendly history
             </button>
-          </ActionForm>
-        </div>
+          </div>
+        </ActionForm>
       </div>
 
       <h2>Setter EOD reports</h2>
