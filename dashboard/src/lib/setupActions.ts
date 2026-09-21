@@ -239,7 +239,8 @@ export async function runCalendlyBackfill(formData: FormData): Promise<Result> {
     const since = (formData.get('since') as string | null)?.trim();
     const from = since && /^\d{4}-\d{2}-\d{2}$/.test(since) ? `${since}T00:00:00Z` : undefined;
 
-    const stats = await backfillCalendly(db, { pat, since: from, dryRun });
+    const cleanup = formData.get('cleanup') === '1';
+    const stats = await backfillCalendly(db, { pat, since: from, dryRun, cleanup });
 
     const parts = [`${stats.events} booking${stats.events === 1 ? '' : 's'} read`];
     if (stats.range) parts.push(`${stats.range.from} to ${stats.range.to}`);

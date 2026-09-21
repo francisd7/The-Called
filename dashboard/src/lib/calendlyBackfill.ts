@@ -167,7 +167,21 @@ export async function backfillCalendly(
     since,
     items,
     dryRun = false,
-  }: { pat?: string; since?: string; items?: BackfillItem[]; dryRun?: boolean } = {}
+    cleanup = false,
+  }: {
+    pat?: string;
+    since?: string;
+    items?: BackfillItem[];
+    dryRun?: boolean;
+    /**
+     * Whether to take back bookings an earlier, unfiltered run wrote onto
+     * leads. Off by default: the first version of this filter was too narrow,
+     * and left on it would have deleted months of real sales calls booked on
+     * links that have since been retired. Removing data is now something you
+     * ask for, not something that happens on the way past.
+     */
+    cleanup?: boolean;
+  } = {}
 ): Promise<BackfillStats> {
   const from = since ?? '2026-06-01T00:00:00Z';
   const history = items ?? (await fetchCalendlyHistory(pat ?? process.env.CALENDLY_PAT ?? '', from));
@@ -236,9 +250,11 @@ export async function backfillCalendly(
       // already be sitting on a lead. Undoing it here rather than in a separate
       // pass means the decision comes from Calendly's own answer about which
       // event type it was, not from guessing at the row afterwards.
-      const undone = await undoForeignBooking(db, item.event.uri, dryRun);
-      if (undone === 'removed') stats.removed += 1;
-      if (undone === 'cleared') stats.cleared += 1;
+      if (cleanup) {
+        const undone = await undoForeignBooking(db, item.event.uri, dryRun);
+        if (undone === 'removed') stats.removed += 1;
+        if (undone === 'cleared') stats.cleared += 1;
+      }
       continue;
     }
     const start = payload.scheduled_event?.start_time

@@ -216,6 +216,13 @@ export default async function AdminPage() {
             <label htmlFor="since">From</label>
             <input id="since" name="since" type="date" defaultValue="2026-06-01" />
           </div>
+          <label className="field" style={{ display: 'flex', gap: '0.45rem', alignItems: 'flex-start' }}>
+            <input type="checkbox" name="cleanup" value="1" style={{ marginTop: '0.2rem' }} />
+            <span className="sub" style={{ margin: 0 }}>
+              Also take back bookings on links that aren&apos;t counted. Leave this off unless
+              you&apos;re sure — a retired link&apos;s bookings are still real calls.
+            </span>
+          </label>
           <div className="card-row">
             <button type="submit" name="dryRun" value="1">
               Test Calendly backfill

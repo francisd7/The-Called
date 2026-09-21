@@ -46,7 +46,15 @@ export function ActionForm({
       <fieldset disabled={pending} style={{ border: 0, padding: 0, margin: 0, minWidth: 0 }}>
         {children}
       </fieldset>
-      {message && <p className={`msg ${message.ok ? 'ok' : 'err'}`}>{message.text}</p>}
+      {/* An import can take the better part of a minute. Without this the page
+          looks identical to one where the click never registered. */}
+      {pending && (
+        <p className="msg msg-working" role="status">
+          <span className="spinner" aria-hidden="true" />
+          Working…
+        </p>
+      )}
+      {!pending && message && <p className={`msg ${message.ok ? 'ok' : 'err'}`}>{message.text}</p>}
     </form>
   );
 }

@@ -239,8 +239,17 @@ test('a lead an earlier run invented from a foreign link is removed', { skip }, 
     meta: { source: 'calendly_backfill' } as never,
   });
 
+  // Taking a booking back is opt-in, so the default run leaves it alone.
+  const passive = await backfillCalendly(db, {
+    items: [{ event: foreign, invitee: invitee('Internal Person', 'ip@x.test') }],
+  });
+  assert.equal(passive.removed, 0, 'a plain run must not delete anything');
+  const [{ n: untouched }] = await db.select({ n: count() }).from(leads);
+  assert.equal(untouched, 1);
+
   const dry = await backfillCalendly(db, {
     items: [{ event: foreign, invitee: invitee('Internal Person', 'ip@x.test') }],
+    cleanup: true,
     dryRun: true,
   });
   assert.equal(dry.removed, 1);
@@ -249,6 +258,7 @@ test('a lead an earlier run invented from a foreign link is removed', { skip }, 
 
   const stats = await backfillCalendly(db, {
     items: [{ event: foreign, invitee: invitee('Internal Person', 'ip@x.test') }],
+    cleanup: true,
   });
   assert.equal(stats.removed, 1);
   const [{ n }] = await db.select({ n: count() }).from(leads);
@@ -278,6 +288,7 @@ test('a real lead keeps everything but the booking that was not ours', { skip },
 
   const stats = await backfillCalendly(db, {
     items: [{ event: foreign, invitee: invitee('Real Person', 'rp@x.test') }],
+    cleanup: true,
   });
 
   assert.equal(stats.cleared, 1);
