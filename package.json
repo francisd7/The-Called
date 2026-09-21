@@ -13,7 +13,8 @@
     "grant-bot-channel-access": "node scripts/grant-bot-channel-access.js",
     "weekly-reminder-dry-run": "node scripts/run-weekly-checkin-reminder-dry-run.js",
     "client-dashboard-dry-run": "node scripts/run-client-dashboard-dry-run.js",
-    "create-one-client-dashboard": "node scripts/create-one-client-dashboard.js"
+    "create-one-client-dashboard": "node scripts/create-one-client-dashboard.js",
+    "check-notion-setup": "node scripts/check-notion-setup.js"
   },
   "dependencies": {
     "discord.js": "^14.16.3",
