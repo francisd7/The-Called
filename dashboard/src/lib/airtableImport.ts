@@ -17,6 +17,7 @@ import type { PostgresJsDatabase } from 'drizzle-orm/postgres-js';
 import { leadNotes, leads, optionSets, users } from '../db/schema.ts';
 import * as schema from '../db/schema.ts';
 import { normalizeIgHandle } from './calendly.ts';
+import { leadIdForMergedRecord } from './duplicates.ts';
 import { respondedFromStage } from './stages.ts';
 
 type Db = PostgresJsDatabase<typeof schema>;
@@ -167,6 +168,8 @@ export type ImportStats = {
   bookingsKept: number;
   /** Leads whose outcome the tracker would have cleared, and didn't. */
   outcomesKept: number;
+  /** Tracker rows whose lead was merged into another, and followed there. */
+  followedMerge: number;
   dryRun: boolean;
 };
 
@@ -265,6 +268,7 @@ export async function importAirtableLeads(
     blankHandle: 0,
     bookingsKept: 0,
     outcomesKept: 0,
+    followedMerge: 0,
   };
 
   for (const rec of records) {
@@ -355,6 +359,23 @@ export async function importAirtableLeads(
       columns: EXISTING_COLUMNS,
     })) as Existing | undefined;
 
+    // A row whose lead was merged into another follows it there. Without this
+    // every merge undoes itself on the next import: the tracker holds the same
+    // handle twice, merging removes one of those rows, and its record id then
+    // matches nothing and gets built back into the duplicate somebody just
+    // resolved. The record id outlives the row precisely so this can happen.
+    let followedMerge = false;
+    if (!existing) {
+      const keptId = await leadIdForMergedRecord(db, rec.id);
+      if (keptId) {
+        existing = (await db.query.leads.findFirst({
+          where: eq(leads.id, keptId),
+          columns: EXISTING_COLUMNS,
+        })) as Existing | undefined;
+        if (existing) followedMerge = true;
+      }
+    }
+
     // The Calendly backfill and the Post Call queue both create leads the
     // tracker has never seen. When a setter later types that same person into
     // Airtable, matching on the handle joins the two rows instead of leaving a
@@ -363,7 +384,7 @@ export async function importAirtableLeads(
     // there is exactly one of them: two candidates is a guess, and a guess here
     // welds two real people together.
     let adopting = false;
-    if (!existing && handleKey) {
+    if (!existing && handleKey && !followedMerge) {
       const candidates = (await db.query.leads.findMany({
         where: and(
           eq(leads.igHandleKey, handleKey),
@@ -397,9 +418,12 @@ export async function importAirtableLeads(
       // Airtable has nothing to say about them - most imported rows have no
       // setter, so writing the null through would silently unassign every lead
       // anyone had claimed or been given since the last run.
-      const { setterId: airtableSetter, ...rest } = conversation;
+      const { setterId: airtableSetter, airtableRecordId, ...rest } = conversation;
       const update = {
         ...rest,
+        // Only the row's own lead claims the record id. A lead reached through
+        // a merge already has one of its own, and it is unique.
+        ...(followedMerge ? {} : { airtableRecordId }),
         ...(airtableSetter ? { setterId: airtableSetter } : {}),
         ...(keepBooking ? {} : booking),
         ...(keepOutcome ? {} : outcome),
@@ -411,6 +435,7 @@ export async function importAirtableLeads(
 
       if (!dryRun) await db.update(leads).set(update).where(eq(leads.id, existing.id));
       leadId = existing.id;
+      if (followedMerge) stats.followedMerge += 1;
       if (adopting) stats.adopted += 1;
       else stats.updated += 1;
     } else {

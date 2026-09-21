@@ -64,6 +64,12 @@ export async function runAirtableImport(formData: FormData): Promise<Result> {
       }
       lines.push(`Left alone, because the tracker is out of date on them: ${kept.join(' and ')}.`);
     }
+    if (stats.followedMerge > 0) {
+      lines.push(
+        `${n(stats.followedMerge, 'row', 'rows')} belonged to a lead somebody had merged, ` +
+          'and went to the lead that was kept.'
+      );
+    }
     if (stats.notes > 0) lines.push(`${n(stats.notes, 'note', 'notes')} brought across.`);
     if (stats.blankHandle > 0) {
       lines.push(`${n(stats.blankHandle, 'row has', 'rows have')} no IG handle.`);

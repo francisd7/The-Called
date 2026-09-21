@@ -771,3 +771,29 @@ th { color: var(--muted); font-weight: 550; font-size: 0.78rem; }
    destructive action never looks like the obvious next step. */
 .btn-danger { background: var(--danger-bg); color: var(--danger); border-color: transparent; font-weight: 600; }
 .btn-danger:hover { filter: brightness(0.96); border-color: transparent; }
+
+/* Two rows for one person, side by side. Stacked below the breakpoint rather
+   than squeezed, because the whole job is reading them against each other. */
+.dupes {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));
+  gap: 0.6rem;
+  margin-top: 0.6rem;
+}
+.dupe {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 0.7rem 0.8rem;
+  background: var(--bg);
+}
+
+/* A count worth acting on, and the page that acts on it. */
+.stat-link { display: block; text-decoration: none; color: inherit; }
+.stat-link:hover { border-color: var(--accent); }
+.stat-link:hover .stat-l { color: var(--accent); }
+
+/* However many of these there are, they stay the size of the number in them.
+   The grid the other rows use stretches two tiles across the whole page, which
+   reads as though something is missing between them. */
+.stats-attention { display: flex; flex-wrap: wrap; gap: 0.6rem; margin: 0.9rem 0 0.25rem; }
+.stats-attention .stat { flex: 0 1 14rem; }

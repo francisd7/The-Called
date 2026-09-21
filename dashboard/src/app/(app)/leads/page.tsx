@@ -13,6 +13,8 @@ import {
   searchLeads,
 } from '@/lib/queries';
 import { getStreaks } from '@/lib/streaks';
+import { db } from '@/db';
+import { countDuplicateGroups } from '@/lib/duplicates';
 
 export const dynamic = 'force-dynamic';
 
@@ -34,8 +36,19 @@ export default async function LeadsPage({ searchParams }: { searchParams: Search
     ? Number(one(params, 'perPage'))
     : 50;
 
-  const [result, convos, setters, stages, qualities, sources, lookups, streaks, offers, followUps] =
-    await Promise.all([
+  const [
+    result,
+    convos,
+    setters,
+    stages,
+    qualities,
+    sources,
+    lookups,
+    streaks,
+    offers,
+    followUps,
+    duplicateCount,
+  ] = await Promise.all([
     searchLeads({
       q: one(params, 'q'),
       setterId: one(params, 'setterId'),
@@ -56,6 +69,7 @@ export default async function LeadsPage({ searchParams }: { searchParams: Search
     getStreaks(),
     getActiveOffers(),
     getFollowUpCounts(),
+    countDuplicateGroups(db),
   ]);
 
   // Everything except the free-text search, which stays visible on the page.
@@ -100,6 +114,14 @@ export default async function LeadsPage({ searchParams }: { searchParams: Search
           Follow Ups
           <span className="pill warn">{followUps['1w']}</span>
         </a>
+        {/* Only when there is something to sort out - a nought beside a link
+            nobody needs is just another thing to read past. */}
+        {duplicateCount > 0 && (
+          <a className="btn" href="/leads/duplicates">
+            Possible duplicates
+            <span className="pill warn">{duplicateCount}</span>
+          </a>
+        )}
       </div>
 
       <h2>Send a booking link</h2>

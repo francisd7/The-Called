@@ -443,3 +443,58 @@ export const calendlyEventTypes = pgTable('calendly_event_types', {
   lastSeenAt: timestamp('last_seen_at', { withTimezone: true }).notNull().defaultNow(),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 });
+
+/**
+ * A lead that was merged into another, kept as a tombstone after the row itself
+ * is gone.
+ *
+ * Without this a merge undoes itself. The tracker holds 22 handles twice, each
+ * copy its own Airtable row with its own record id; merging deletes one of
+ * them, and the next import finds that record id attached to nothing and
+ * creates the duplicate all over again. So the record id outlives the row, and
+ * the import follows it to whichever lead survived.
+ *
+ * Deliberately not `onDelete: 'cascade'` on keptLeadId: if the surviving lead
+ * is ever deleted the tombstone has to stay, or the record id comes back as a
+ * new lead again.
+ */
+export const leadMerges = pgTable(
+  'lead_merges',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    /** The row that was removed. Kept for the audit trail; nothing points at it. */
+    mergedLeadId: uuid('merged_lead_id').notNull(),
+    /** Its Airtable record id, if it had one. This is what the import follows. */
+    mergedAirtableRecordId: text('merged_airtable_record_id').unique(),
+    /** Its handle at the time, so the log reads as something other than two uuids. */
+    mergedIgHandle: text('merged_ig_handle'),
+    keptLeadId: uuid('kept_lead_id').notNull(),
+    mergedById: uuid('merged_by_id').references(() => users.id),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index('lead_merges_kept_idx').on(t.keptLeadId)]
+);
+
+/**
+ * A pair of leads somebody has looked at and said are two different people.
+ *
+ * Stored as a pair rather than per handle, so a third row landing on the same
+ * handle later still gets asked about instead of hiding behind an answer given
+ * about the other two. Ids are stored in a fixed order so a pair can only be
+ * dismissed once, whichever way round it was seen.
+ */
+export const leadNotDuplicates = pgTable(
+  'lead_not_duplicates',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    leadAId: uuid('lead_a_id')
+      .notNull()
+      .references(() => leads.id, { onDelete: 'cascade' }),
+    leadBId: uuid('lead_b_id')
+      .notNull()
+      .references(() => leads.id, { onDelete: 'cascade' }),
+    dismissedById: uuid('dismissed_by_id').references(() => users.id),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [unique('lead_not_duplicates_pair').on(t.leadAId, t.leadBId)]
+);
