@@ -726,16 +726,40 @@ th { color: var(--muted); font-weight: 550; font-size: 0.78rem; }
 /* Shown while a server action is in flight. An import can run for most of a
    minute, and a button that looks unchanged reads as a click that never
    landed. */
-.msg-working { display: flex; align-items: center; gap: 0.4rem; color: var(--muted); }
+.msg-working {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  color: var(--accent);
+  font-weight: 600;
+}
 .spinner {
-  width: 0.85rem;
-  height: 0.85rem;
+  width: 1rem;
+  height: 1rem;
   border: 2px solid var(--border);
   border-top-color: var(--accent);
   border-radius: 50%;
   display: inline-block;
   animation: spin 0.7s linear infinite;
   flex: none;
+}
+
+/* The form a running action belongs to. Dimming it is the change that catches
+   the eye - a small line of text underneath was missed entirely. */
+.action-fieldset { border: 0; padding: 0; margin: 0; min-width: 0; }
+.action-fieldset:disabled { opacity: 0.5; }
+/* A spinner on the button itself, where the eye already is. */
+.action-fieldset:disabled button[type='submit']::before {
+  content: '';
+  width: 0.8rem;
+  height: 0.8rem;
+  margin-right: 0.35rem;
+  border: 2px solid currentColor;
+  border-top-color: transparent;
+  border-radius: 50%;
+  display: inline-block;
+  vertical-align: -0.1em;
+  animation: spin 0.7s linear infinite;
 }
 @keyframes spin { to { transform: rotate(360deg); } }
 /* Still legible as "busy" without the motion. */
