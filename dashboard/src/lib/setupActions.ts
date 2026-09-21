@@ -37,20 +37,41 @@ export async function runAirtableImport(formData: FormData): Promise<Result> {
     const dryRun = formData.get('dryRun') === '1';
     const stats = await importAirtableLeads(db, { pat, dryRun });
 
-    const parts = [
-      `${stats.loaded} records read`,
-      `${stats.inserted} added`,
-      `${stats.updated} updated`,
-      `${stats.notes} notes migrated`,
-    ];
-    if (stats.blankHandle > 0) parts.push(`${stats.blankHandle} with no IG handle`);
-    if (stats.noSetter > 0) parts.push(`${stats.noSetter} naming an unknown setter`);
+    // Written as sentences rather than a row of counts: the numbers that matter
+    // most here are the ones about what was *not* overwritten, and "70 kept"
+    // on its own reads like something went wrong.
+    const lines = [`${stats.loaded} rows read from the tracker.`];
+    lines.push(
+      stats.inserted === 1 ? '1 lead was new.' : `${stats.inserted} leads were new.`
+    );
+    lines.push(
+      stats.updated === 1
+        ? '1 lead already here was updated.'
+        : `${stats.updated} leads already here were updated.`
+    );
+    if (stats.adopted > 0) {
+      lines.push(
+        `${stats.adopted} matched a lead Calendly or a post-call report had already created, ` +
+          'so they were joined up instead of copied.'
+      );
+    }
+    if (stats.bookingsKept > 0 || stats.outcomesKept > 0) {
+      const kept: string[] = [];
+      if (stats.bookingsKept > 0) kept.push(`${stats.bookingsKept} Calendly bookings`);
+      if (stats.outcomesKept > 0) kept.push(`${stats.outcomesKept} post-call outcomes`);
+      lines.push(`Left alone, because the tracker is out of date on them: ${kept.join(' and ')}.`);
+    }
+    if (stats.notes > 0) lines.push(`${stats.notes} notes brought across.`);
+    if (stats.blankHandle > 0) lines.push(`${stats.blankHandle} rows have no IG handle.`);
+    if (stats.noSetter > 0) {
+      lines.push(`${stats.noSetter} name a setter this dashboard doesn't know.`);
+    }
 
     revalidatePath('/admin');
     revalidatePath('/leads');
     return {
       ok: true,
-      message: `${dryRun ? 'Dry run — nothing written. ' : ''}${parts.join(' · ')}`,
+      message: `${dryRun ? 'Test run — nothing was written.\n' : ''}${lines.join('\n')}`,
     };
   } catch (err) {
     return { ok: false, error: err instanceof Error ? err.message : 'Import failed' };

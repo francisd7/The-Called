@@ -326,3 +326,257 @@ test('an edit in Airtable reaches a lead the report is already linked to', { ski
 
   await db.delete(leads).where(eq(leads.id, target.id));
 });
+
+// --- what the tracker may no longer overwrite ------------------------------
+//
+// Airtable stopped being the only source the day Calendly started booking the
+// calls and the Post Call form started recording them. It holds no booking
+// after 25 August and knows 31 of the 69 cancellations. An import that writes
+// every column would roll all of that back - and only half way, because
+// callOutcome and postCallRecordId have no Airtable field and would survive,
+// leaving a lead linked to a report saying it closed while its own closed
+// column read false.
+
+const F_TEST = {
+  igHandle: 'fldHIn51ACE4y793J',
+  leadCreated: 'fldF0joEuTE5Odfhi',
+  conversationStage: 'fldHblRu88jWT9q36',
+  responded: 'fldOtUSwvRWYihtvp',
+  callBooked: 'fldrjHfOXzIawwzXi',
+  callBookedDate: 'fldQlbNh9tc1DdHgq',
+  showDate: 'fldFoaJrt0uTyRS3X',
+  closed: 'fldW7oLHrZLIDecLA',
+  cashCollected: 'fldiOBSr2CqA8vuyQ',
+} as const;
+
+type Cells = Partial<Record<keyof typeof F_TEST, unknown>>;
+
+/** Writes a throwaway Airtable snapshot and returns the path to import from. */
+async function fixture(rows: Array<{ id: string } & Cells>): Promise<string> {
+  const { writeFile } = await import('node:fs/promises');
+  const path = `/tmp/import-case-${Math.random().toString(36).slice(2)}.json`;
+  await writeFile(
+    path,
+    JSON.stringify({
+      records: rows.map(({ id, ...cells }) => ({
+        id,
+        createdTime: '2026-09-01T00:00:00.000Z',
+        cellValuesByFieldId: Object.fromEntries(
+          Object.entries(cells).map(([k, v]) => [F_TEST[k as keyof typeof F_TEST], v])
+        ),
+      })),
+    })
+  );
+  return path;
+}
+
+async function clearLeads() {
+  await db.delete(postCallReports);
+  await db.delete(leadNotes);
+  await db.delete(leads);
+}
+
+test('a blank tracker row never clears a Calendly booking', { skip }, async () => {
+  await clearLeads();
+  const scheduled = new Date('2026-09-18T15:00:00.000Z');
+  await db.insert(leads).values({
+    igHandle: '@bookedbycalendly',
+    igHandleKey: 'bookedbycalendly',
+    airtableRecordId: 'recCAL',
+    calendlyEventUri: 'https://api.calendly.com/scheduled_events/abc',
+    callBooked: true,
+    callBookedAt: new Date('2026-09-12T09:00:00.000Z'),
+    callScheduledFor: scheduled,
+  });
+
+  // The setter never ticked Call Booked, because Calendly did it for them.
+  const stats = await importAirtableLeads(db, {
+    fromFile: await fixture([
+      { id: 'recCAL', igHandle: '@bookedbycalendly', conversationStage: { name: 'Booked' } },
+    ]),
+  });
+
+  assert.equal(stats.bookingsKept, 1);
+  const lead = await db.query.leads.findFirst({ where: eq(leads.airtableRecordId, 'recCAL') });
+  assert.equal(lead?.callBooked, true, 'the import cleared a booking Calendly owns');
+  assert.equal(lead?.callScheduledFor?.toISOString(), scheduled.toISOString());
+});
+
+test('a blank tracker row never clears a post-call outcome', { skip }, async () => {
+  await clearLeads();
+  await db.insert(leads).values({
+    igHandle: '@closedoncall',
+    igHandleKey: 'closedoncall',
+    airtableRecordId: 'recOUT',
+    postCallRecordId: 'recReport1',
+    callOutcome: 'closed',
+    closed: true,
+    showed: true,
+    cashCollected: '1200.00',
+    outcomeLoggedAt: new Date('2026-09-03T18:00:00.000Z'),
+  });
+
+  const stats = await importAirtableLeads(db, {
+    fromFile: await fixture([
+      { id: 'recOUT', igHandle: '@closedoncall', conversationStage: { name: 'Mid Rapport' } },
+    ]),
+  });
+
+  assert.equal(stats.outcomesKept, 1);
+  const lead = await db.query.leads.findFirst({ where: eq(leads.airtableRecordId, 'recOUT') });
+  assert.equal(lead?.closed, true, 'the import cleared a close the post-call report recorded');
+  assert.equal(lead?.cashCollected, '1200.00');
+  // The half-written state this guards against: callOutcome has no Airtable
+  // field, so it would have survived a wipe of the columns beside it.
+  assert.equal(lead?.callOutcome, 'closed');
+});
+
+test('a booking the setter typed into the tracker still comes through', { skip }, async () => {
+  await clearLeads();
+  await db.insert(leads).values({
+    igHandle: '@bookedindm',
+    igHandleKey: 'bookedindm',
+    airtableRecordId: 'recDM',
+  });
+
+  await importAirtableLeads(db, {
+    fromFile: await fixture([
+      {
+        id: 'recDM',
+        igHandle: '@bookedindm',
+        callBooked: true,
+        callBookedDate: '2026-09-15',
+        showDate: '2026-09-17',
+        closed: true,
+        cashCollected: 2000,
+      },
+    ]),
+  });
+
+  const lead = await db.query.leads.findFirst({ where: eq(leads.airtableRecordId, 'recDM') });
+  assert.equal(lead?.callBooked, true, 'a call booked outside Calendly has to reach the dashboard');
+  assert.equal(lead?.closed, true);
+  assert.equal(lead?.cashCollected, '2000.00');
+});
+
+test('Calendly wins when the tracker disagrees about the same booking', { skip }, async () => {
+  await clearLeads();
+  const truth = new Date('2026-09-18T15:00:00.000Z');
+  await db.insert(leads).values({
+    igHandle: '@both',
+    igHandleKey: 'both',
+    airtableRecordId: 'recBOTH',
+    calendlyEventUri: 'https://api.calendly.com/scheduled_events/xyz',
+    callBooked: true,
+    callScheduledFor: truth,
+  });
+
+  await importAirtableLeads(db, {
+    fromFile: await fixture([
+      { id: 'recBOTH', igHandle: '@both', callBooked: true, showDate: '2026-08-02' },
+    ]),
+  });
+
+  const lead = await db.query.leads.findFirst({ where: eq(leads.airtableRecordId, 'recBOTH') });
+  assert.equal(
+    lead?.callScheduledFor?.toISOString(),
+    truth.toISOString(),
+    'a hand-typed date overwrote the one Calendly knows to the minute'
+  );
+});
+
+test('a new tracker row joins a lead Calendly already created', { skip }, async () => {
+  await clearLeads();
+  // The Calendly backfill creates leads for people the tracker never had. When
+  // a setter finally types one in, the two have to become one row - otherwise
+  // the booking sits on a copy nobody is looking at.
+  await db.insert(leads).values({
+    igHandle: 'latecomer',
+    igHandleKey: 'latecomer',
+    calendlyEventUri: 'https://api.calendly.com/scheduled_events/late',
+    callBooked: true,
+    callScheduledFor: new Date('2026-09-19T14:00:00.000Z'),
+  });
+
+  const stats = await importAirtableLeads(db, {
+    fromFile: await fixture([
+      { id: 'recLATE', igHandle: '@Latecomer', conversationStage: { name: 'Booked' } },
+    ]),
+  });
+
+  assert.equal(stats.adopted, 1);
+  assert.equal(stats.inserted, 0, 'the import made a second copy of somebody who was already here');
+
+  const [{ n }] = await db.select({ n: count() }).from(leads);
+  assert.equal(n, 1);
+  const lead = await db.query.leads.findFirst({ where: eq(leads.airtableRecordId, 'recLATE') });
+  assert.equal(lead?.callBooked, true, 'joining the rows lost the booking');
+});
+
+test('two unclaimed leads with the same handle are never guessed between', { skip }, async () => {
+  await clearLeads();
+  for (let i = 0; i < 2; i++) {
+    await db.insert(leads).values({ igHandle: `twin${i}`, igHandleKey: 'twins' });
+  }
+
+  const stats = await importAirtableLeads(db, {
+    fromFile: await fixture([{ id: 'recTWIN', igHandle: 'twins' }]),
+  });
+
+  // Picking one would weld two real people together. A third row is wrong too,
+  // but it is wrong in a way somebody can see and fix.
+  assert.equal(stats.adopted, 0);
+  assert.equal(stats.inserted, 1);
+});
+
+test('responded comes from the stage, not the checkbox', { skip }, async () => {
+  await clearLeads();
+  await importAirtableLeads(db, {
+    fromFile: await fixture([
+      // Reached rapport, so they replied - whatever the checkbox says.
+      { id: 'recR1', igHandle: 'replied', conversationStage: { name: 'Mid Rapport' } },
+      // Ticked by a setter on a conversation that never got an answer.
+      {
+        id: 'recR2',
+        igHandle: 'silent',
+        conversationStage: { name: 'Outreached' },
+        responded: true,
+      },
+      // The stage settles nothing either way, so the checkbox stands.
+      { id: 'recR3', igHandle: 'writtenoff', conversationStage: { name: 'DQ' }, responded: true },
+    ]),
+  });
+
+  const replied = await db.query.leads.findFirst({ where: eq(leads.airtableRecordId, 'recR1') });
+  assert.equal(replied?.responded, true, 'nobody reaches rapport without replying');
+  const silent = await db.query.leads.findFirst({ where: eq(leads.airtableRecordId, 'recR2') });
+  assert.equal(silent?.responded, false, 'a tick on an outreached-only lead is not a reply');
+  const writtenOff = await db.query.leads.findFirst({ where: eq(leads.airtableRecordId, 'recR3') });
+  assert.equal(writtenOff?.responded, true, 'dq settles nothing, so what was recorded stands');
+});
+
+test('a test run counts what a real one would do', { skip }, async () => {
+  await clearLeads();
+  await db.insert(leads).values({
+    igHandle: 'alreadyhere',
+    igHandleKey: 'alreadyhere',
+    airtableRecordId: 'recHERE',
+  });
+
+  const rows = await fixture([
+    { id: 'recHERE', igHandle: 'alreadyhere' },
+    { id: 'recNEW', igHandle: 'brandnew' },
+  ]);
+  const dry = await importAirtableLeads(db, { fromFile: rows, dryRun: true });
+  // The old dry run counted every record as an addition, so it always read
+  // "592 added" and could never answer the only question worth asking it.
+  assert.equal(dry.inserted, 1);
+  assert.equal(dry.updated, 1);
+
+  const [{ before }] = await db.select({ before: count() }).from(leads);
+  assert.equal(before, 1, 'the test run wrote something');
+
+  const real = await importAirtableLeads(db, { fromFile: rows });
+  assert.equal(real.inserted, dry.inserted);
+  assert.equal(real.updated, dry.updated);
+});

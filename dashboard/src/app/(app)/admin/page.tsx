@@ -170,8 +170,10 @@ export default async function AdminPage() {
               </ActionForm>
             </div>
             <p className="sub" style={{ marginTop: '0.4rem' }}>
-              Safe to re-run — leads are keyed on their Airtable id, so a second run updates rather
-              than duplicating. Needs <code>AIRTABLE_PAT</code> set on this service.
+              Safe to re-run. Leads are keyed on their Airtable id, so a second run updates rather
+              than duplicating, and a blank tracker row never clears a booking Calendly made or an
+              outcome a post-call report recorded — the tracker fills gaps, it doesn&apos;t overwrite.
+              Needs <code>AIRTABLE_PAT</code> set on this service.
             </p>
 
             <div className="card-row">
