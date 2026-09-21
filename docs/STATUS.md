@@ -71,7 +71,38 @@ Tracks progress against the build priority in `Automation_Hub_Blueprint.md`.
   The "You will get your Notion Dashboard shortly." fallback is still exactly
   right — the instant path is what delivers on it.
 
-### #5 — where it stands as of 2026-09-19
+### #5 — BLOCKED as of 2026-09-21: workspace policy forbids API access
+
+Nothing can be tested against Notion until a workspace owner acts. Both
+routes to a token are closed to the user, who is a member, not an owner:
+
+- **Connections** → "You don't have permission to create connections in this
+  workspace." Only workspace owners can create them.
+- **Personal access tokens** → "You don't have permission to create tokens in
+  this workspace", and the Notion API capability is greyed out with "Your
+  workspace policy doesn't allow you to grant Notion API access."
+
+That second one is the real blocker: it's a workspace-wide policy, so it
+wouldn't be solved by making the user an owner. Someone has to turn API
+access on.
+
+**Needed from the workspace owner:** turn on API access (Settings →
+Connections), then either create an internal connection named "The Called
+Automation Hub" and hand over the token, or grant permission to create one.
+Worth asking about the plan and the export/duplicate settings in the same
+message.
+
+A workspace that has policy controls over API access is likely Business or
+Enterprise, which would be good news for the page-level access rules and the
+export lockdown — unconfirmed, the user can't see billing.
+
+**Testable without the API, and worth doing meanwhile:** build the mock
+database, set the template as default, create a row from it, share it with a
+personal email as a guest on *Can edit*, and open it in a private window. That
+validates what a client actually sees, whether any subpage comes up "no
+access", and whether Can edit is the right level — all needed regardless.
+
+### #5 — where it stood as of 2026-09-19
 
 - ✅ **Guest invites work.** The Share dialog shows a **Share** button, not
   "Request", and Andrew and Noah are already on pages as guests. This was the
