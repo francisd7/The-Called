@@ -244,7 +244,7 @@ export async function runCalendlyBackfill(formData: FormData): Promise<Result> {
 
     const parts = [`${stats.events} booking${stats.events === 1 ? '' : 's'} read`];
     if (stats.range) parts.push(`${stats.range.from} to ${stats.range.to}`);
-    if (stats.notOurs > 0) parts.push(`${stats.notOurs} skipped — not one of the three links`);
+    if (stats.notOurs > 0) parts.push(`${stats.notOurs} skipped — on links that don't count`);
     if (stats.removed > 0) parts.push(`${stats.removed} leads removed that an earlier run invented`);
     if (stats.cleared > 0) parts.push(`${stats.cleared} real leads cleared of one`);
     if (stats.matched > 0) parts.push(`${stats.matched} matched a lead`);
@@ -253,11 +253,19 @@ export async function runCalendlyBackfill(formData: FormData): Promise<Result> {
     if (stats.cancelled > 0) parts.push(`${stats.cancelled} cancelled`);
     if (stats.skipped > 0) parts.push(`${stats.skipped} had nothing to identify them`);
 
-    // Named, so a skipped link can be recognised as a personal appointment or
-    // as a sales call on a link that has since been replaced.
-    const breakdown = stats.byEventType
-      .map((e) => `${e.name}: ${e.count}${e.ours ? ' ✓' : ''}`)
-      .join(' · ');
+    // Split rather than marked with a tick. One list with a symbol on some of
+    // the rows reads as "here is what was used", which is the opposite of what
+    // it means for half of them.
+    const named = (rows: typeof stats.byEventType) =>
+      rows.map((e) => `${e.name} (${e.count})`).join(' · ');
+    const counted = stats.byEventType.filter((e) => e.ours);
+    const ignored = stats.byEventType.filter((e) => !e.ours);
+    const breakdown = [
+      counted.length > 0 ? `Imported from: ${named(counted)}` : null,
+      ignored.length > 0 ? `Ignored: ${named(ignored)}` : null,
+    ]
+      .filter(Boolean)
+      .join('\n');
 
     revalidatePath('/');
     revalidatePath('/leads');
@@ -266,7 +274,7 @@ export async function runCalendlyBackfill(formData: FormData): Promise<Result> {
     return {
       ok: true,
       message: `${dryRun ? 'Dry run — nothing written. ' : ''}${parts.join(' · ')}${
-        breakdown ? `\n\nLinks used: ${breakdown}` : ''
+        breakdown ? `\n\n${breakdown}` : ''
       }`,
     };
   } catch (err) {
