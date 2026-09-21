@@ -252,13 +252,21 @@ export async function runCalendlyBackfill(formData: FormData): Promise<Result> {
     if (stats.cancelled > 0) parts.push(`${stats.cancelled} cancelled`);
     if (stats.skipped > 0) parts.push(`${stats.skipped} had nothing to identify them`);
 
+    // Named, so a skipped link can be recognised as a personal appointment or
+    // as a sales call on a link that has since been replaced.
+    const breakdown = stats.byEventType
+      .map((e) => `${e.name}: ${e.count}${e.ours ? ' ✓' : ''}`)
+      .join(' · ');
+
     revalidatePath('/');
     revalidatePath('/leads');
     revalidatePath('/kpis');
     revalidatePath('/admin');
     return {
       ok: true,
-      message: `${dryRun ? 'Dry run — nothing written. ' : ''}${parts.join(' · ')}`,
+      message: `${dryRun ? 'Dry run — nothing written. ' : ''}${parts.join(' · ')}${
+        breakdown ? `\n\nLinks used: ${breakdown}` : ''
+      }`,
     };
   } catch (err) {
     return { ok: false, error: err instanceof Error ? err.message : 'Backfill failed' };

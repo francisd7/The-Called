@@ -31,6 +31,8 @@ const API = process.env.CALENDLY_API_BASE ?? 'https://api.calendly.com';
 type ScheduledEvent = {
   uri: string;
   status: string;
+  /** The event type's name, e.g. "The Brotherhood Call". */
+  name?: string;
   start_time?: string;
   end_time?: string;
   event_type?: string;
@@ -62,6 +64,8 @@ export type BackfillStats = {
   skipped: number;
   /** Bookings on a Calendly link that isn't one of the three offers. */
   notOurs: number;
+  /** What every booking was actually on, ours and not, most common first. */
+  byEventType: Array<{ name: string; count: number; ours: boolean }>;
   /** Leads an earlier run created from one of those, now removed. */
   removed: number;
   /** Real leads that had one written onto them, now cleared of it. */
@@ -182,6 +186,7 @@ export async function backfillCalendly(
     cancelled: 0,
     skipped: 0,
     notOurs: 0,
+    byEventType: [],
     removed: 0,
     cleared: 0,
     dryRun,
@@ -206,6 +211,22 @@ export async function backfillCalendly(
         'anything else on the account. Press Connect Calendly first, then run this again.'
     );
   }
+
+  // What the account is actually being used for. Without this, "173 skipped"
+  // is a number with no way to tell a personal appointment from a sales call
+  // booked on a link that has since been replaced.
+  const seen = new Map<string, { name: string; count: number; ours: boolean }>();
+  for (const item of ordered) {
+    const uri = item.event.event_type ?? 'unknown';
+    const entry = seen.get(uri) ?? {
+      name: item.event.name?.trim() || uri.split('/').pop() || 'unnamed',
+      count: 0,
+      ours: isOurEventType(item.event.event_type, linked),
+    };
+    entry.count += 1;
+    seen.set(uri, entry);
+  }
+  stats.byEventType = [...seen.values()].sort((a, b) => b.count - a.count);
 
   for (const item of ordered) {
     const payload = toPayload(item);

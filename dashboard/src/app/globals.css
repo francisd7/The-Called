@@ -211,7 +211,14 @@ button:disabled { opacity: 0.55; cursor: progress; }
 .btn-primary { background: var(--accent); color: var(--accent-fg); border-color: transparent; }
 .btn-primary:hover { filter: brightness(1.08); }
 
-.msg { font-size: 0.82rem; margin-top: 0.4rem; }
+.msg {
+  font-size: 0.82rem;
+  margin-top: 0.4rem;
+  /* Import results carry a breakdown on its own line - without this it runs
+     into one paragraph and stops being readable. */
+  white-space: pre-line;
+  line-height: 1.5;
+}
 .msg.ok { color: var(--ok); }
 .msg.err { color: var(--danger); }
 
