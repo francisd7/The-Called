@@ -185,6 +185,20 @@ input, select, textarea {
   /* 16px stops iOS Safari zooming the page on focus. */
   font-size: 16px;
 }
+
+/* The rule above is written for text fields. Applied to a checkbox it
+   stretches the box across the whole row and squeezes its label down to one
+   character per line, which is exactly what it did. */
+input[type="checkbox"], input[type="radio"] {
+  width: 1.05rem;
+  height: 1.05rem;
+  min-width: 0;
+  flex: none;
+  padding: 0;
+  accent-color: var(--accent);
+  cursor: pointer;
+}
+input[type="checkbox"] + label, label:has(> input[type="checkbox"]) { cursor: pointer; }
 textarea { min-height: 6rem; resize: vertical; }
 .field { margin-bottom: 0.7rem; }
 .grid2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr)); gap: 0.7rem; }
