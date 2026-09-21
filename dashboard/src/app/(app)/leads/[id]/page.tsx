@@ -67,6 +67,11 @@ export default async function LeadPage({ params }: { params: Promise<{ id: strin
 
   const hasLiveCall = lead.callBooked && !lead.callCancelled;
 
+  // Confirming and triaging are things you do before a call. Asking for them
+  // on one that happened six weeks ago - and closed - is asking for something
+  // that cannot be done, on the page somebody opened to do something that can.
+  const callStillToCome = hasLiveCall && !callIsPast;
+
   // Stored verbatim from the booking webhook, so treat every field as
   // optional rather than trusting a shape.
   const bookingAnswers = Array.isArray(lead.calendlyAnswers)
@@ -117,41 +122,49 @@ export default async function LeadPage({ params }: { params: Promise<{ id: strin
             {lead.closerName ? ` · with ${lead.closerName}` : ''}
           </div>
           <div className="card-row">
-            <span className={`pill ${lead.confirmed ? 'ok' : 'warn'}`}>
-              {lead.confirmed
-                ? `✓ Confirmed${lead.confirmationMethod ? ` (${lead.confirmationMethod})` : ''}`
-                : 'Not confirmed'}
-            </span>
-            <span className={`pill ${lead.triaged ? 'ok' : 'warn'}`}>
-              {lead.triaged ? '✓ Triaged' : 'Not triaged'}
-            </span>
-            {lead.calendlyRescheduleUrl && (
+            {callStillToCome ? (
+              <>
+                <span className={`pill ${lead.confirmed ? 'ok' : 'warn'}`}>
+                  {lead.confirmed
+                    ? `✓ Confirmed${lead.confirmationMethod ? ` (${lead.confirmationMethod})` : ''}`
+                    : 'Not confirmed'}
+                </span>
+                <span className={`pill ${lead.triaged ? 'ok' : 'warn'}`}>
+                  {lead.triaged ? '✓ Triaged' : 'Not triaged'}
+                </span>
+              </>
+            ) : (
+              <span className="pill">This call has been and gone</span>
+            )}
+            {callStillToCome && lead.calendlyRescheduleUrl && (
               <a className="btn" href={lead.calendlyRescheduleUrl} target="_blank" rel="noreferrer">
                 Reschedule
               </a>
             )}
           </div>
-          <div className="card-row">
-            {lead.confirmed ? (
-              <ActionForm action={unconfirmLead} successMessage="Confirmation removed">
-                <input type="hidden" name="leadId" value={lead.id} />
-                <button type="submit">Undo confirmation</button>
-              </ActionForm>
-            ) : (
-              <>
-                <ActionForm action={confirmLead} successMessage="Confirmed">
+          {callStillToCome && (
+            <div className="card-row">
+              {lead.confirmed ? (
+                <ActionForm action={unconfirmLead} successMessage="Confirmation removed">
                   <input type="hidden" name="leadId" value={lead.id} />
-                  <input type="hidden" name="method" value="dm" />
-                  <button type="submit">Confirmed in DMs</button>
+                  <button type="submit">Undo confirmation</button>
                 </ActionForm>
-                <ActionForm action={confirmLead} successMessage="Confirmed">
-                  <input type="hidden" name="leadId" value={lead.id} />
-                  <input type="hidden" name="method" value="phone" />
-                  <button type="submit">Confirmed by phone</button>
-                </ActionForm>
-              </>
-            )}
-          </div>
+              ) : (
+                <>
+                  <ActionForm action={confirmLead} successMessage="Confirmed">
+                    <input type="hidden" name="leadId" value={lead.id} />
+                    <input type="hidden" name="method" value="dm" />
+                    <button type="submit">Confirmed in DMs</button>
+                  </ActionForm>
+                  <ActionForm action={confirmLead} successMessage="Confirmed">
+                    <input type="hidden" name="leadId" value={lead.id} />
+                    <input type="hidden" name="method" value="phone" />
+                    <button type="submit">Confirmed by phone</button>
+                  </ActionForm>
+                </>
+              )}
+            </div>
+          )}
         </div>
       )}
 
@@ -330,10 +343,18 @@ export default async function LeadPage({ params }: { params: Promise<{ id: strin
 
       <h2>Follow-up</h2>
       <div className="card">
+        {/* The same date lives under Details, where it can be corrected on its
+            own. This one is half of an action - "I have just followed up, and
+            the next one is" - so it says that rather than repeating the label
+            and leaving somebody to work out which of the two counts. */}
+        <p className="sub" style={{ marginTop: 0 }}>
+          For when you&apos;ve just reached out. Adds one to the count and sets when to try again.
+          To change the date alone, use Details above.
+        </p>
         <ActionForm action={logFollowUp} successMessage="Follow-up logged">
           <input type="hidden" name="leadId" value={lead.id} />
           <div className="field">
-            <label htmlFor="nextFollowUpAt">Next follow-up</label>
+            <label htmlFor="nextFollowUpAt">Then follow up again on</label>
             <input
               id="nextFollowUpAt"
               name="nextFollowUpAt"
@@ -344,11 +365,6 @@ export default async function LeadPage({ params }: { params: Promise<{ id: strin
           <button type="submit">Log follow-up ({lead.followUps} so far)</button>
         </ActionForm>
       </div>
-
-
-
-
-
 
       {/* Calendly writes most bookings. This is for the ones it never saw: a
           call booked before the dashboard existed, or one a setter never

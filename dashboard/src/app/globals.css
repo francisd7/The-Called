@@ -797,3 +797,15 @@ th { color: var(--muted); font-weight: 550; font-size: 0.78rem; }
    reads as though something is missing between them. */
 .stats-attention { display: flex; flex-wrap: wrap; gap: 0.6rem; margin: 0.9rem 0 0.25rem; }
 .stats-attention .stat { flex: 0 1 14rem; }
+
+/* Says which tab a row of numbers answers to. Two rows of tiles that look the
+   same but mean different things need one word each more than they need
+   anything else. */
+.stats-label {
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 650;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  margin: 1rem 0 -0.35rem;
+}

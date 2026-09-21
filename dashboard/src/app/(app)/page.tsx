@@ -128,7 +128,11 @@ export default async function TodayPage({ searchParams }: { searchParams: Search
         </p>
       )}
 
-      {/* Period-scoped: these change with the tab above. */}
+      {/* Ten tiles in two rows that look identical, where five follow the tab
+          above and five are always now. Without a word saying which is which,
+          pressing "This week" changes half the numbers and leaves the rest,
+          and the only way to find out which half is to remember. */}
+      <p className="stats-label">{PERIODS.find((p) => p.key === period)?.label ?? 'Today'}</p>
       <div className="stats">
         <div className="stat tone-blue">
           <div className="stat-n">{periodStats.booked}</div>
@@ -153,6 +157,7 @@ export default async function TodayPage({ searchParams }: { searchParams: Search
       </div>
 
       {/* Always-now: what needs doing regardless of which period is selected. */}
+      <p className="stats-label">Right now</p>
       <div className="stats">
         <div className="stat tone-blue">
           <div className="stat-n">{summary.todayCalls}</div>
@@ -196,8 +201,8 @@ export default async function TodayPage({ searchParams }: { searchParams: Search
           <h2>Waiting on an outcome</h2>
           <p className="sub">
             {awaitingOutcome.total} call{awaitingOutcome.total === 1 ? ' has' : 's have'} been and
-            gone without a result recorded. Until these are logged, the funnel and the cash figures
-            are behind.
+            gone without a result recorded. Until {awaitingOutcome.total === 1 ? 'it is' : 'these are'}{' '}
+            logged, the funnel and the cash figures are behind.
           </p>
           <div className="mini-grid">
             {awaitingOutcome.rows.map((lead) => (

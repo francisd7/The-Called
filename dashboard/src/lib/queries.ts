@@ -1,6 +1,7 @@
 import { and, asc, count, desc, eq, gte, ilike, isNotNull, isNull, lt, lte, ne, or, sql } from 'drizzle-orm';
 import type { PgColumn } from 'drizzle-orm/pg-core';
 import { db } from '@/db';
+import { awaitingOutcome } from './outcomeRules.ts';
 import {
   calendlyWebhookEvents,
   eodReports,
@@ -543,20 +544,23 @@ export async function getFollowUpCounts(setterId?: string) {
 }
 
 /**
- * Calls whose time has passed with no outcome recorded. Without somewhere to
- * see these, "log the outcome" is a habit that quietly stops and the funnel's
- * bottom half goes stale without anyone noticing.
+ * Calls whose time has passed with nothing known about what happened. Without
+ * somewhere to see these, "log the outcome" is a habit that quietly stops and
+ * the funnel's bottom half goes stale without anyone noticing.
+ *
+ * "Nothing known" is the load-bearing part. This used to ask only whether
+ * outcomeLoggedAt was set - which is stamped when somebody presses Log outcome
+ * and by nothing else. Every outcome that arrived through the Airtable import
+ * or the post-call form came in without it, so 28 calls sat on the front page
+ * under the words "been and gone without a result recorded" when all 28 had a
+ * result: 27 had showed, 14 had closed, and the oldest was ten weeks past. A
+ * list that is wrong every time is one people learn to scroll past, taking the
+ * real entries with it.
+ *
+ * So anything that says what happened counts, whoever recorded it.
  */
 export async function getCallsAwaitingOutcome(limit = 20) {
-  const clause = and(
-    eq(leads.isTest, false),
-    eq(leads.callBooked, true),
-    eq(leads.callCancelled, false),
-    isNull(leads.outcomeLoggedAt),
-    isNotNull(leads.callScheduledFor),
-    // An hour's grace, so a call still in progress isn't already nagging.
-    sql`${leads.callScheduledFor} < NOW() - INTERVAL '1 hour'`
-  );
+  const clause = awaitingOutcome();
 
   const [rows, [{ total }]] = await Promise.all([
     db.select().from(leads).where(clause).orderBy(desc(leads.callScheduledFor)).limit(limit),
