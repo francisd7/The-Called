@@ -19,6 +19,7 @@ import {
   runAirtableImport,
   findCalendlyLinks,
   runCalendlyBackfill,
+  runCalendlyCleanup,
   runCalendlySetup,
   runEodImport,
   saveCountedLinks,
@@ -270,19 +271,34 @@ export default async function AdminPage() {
             <label htmlFor="since">From</label>
             <input id="since" name="since" type="date" defaultValue="2026-06-01" />
           </div>
-          <label className="field" style={{ display: 'flex', gap: '0.45rem', alignItems: 'flex-start' }}>
-            <input type="checkbox" name="cleanup" value="1" style={{ marginTop: '0.2rem' }} />
-            <span className="sub" style={{ margin: 0 }}>
-              Also take back bookings on links that aren&apos;t counted. Leave this off unless
-              you&apos;re sure — a retired link&apos;s bookings are still real calls.
-            </span>
-          </label>
           <div className="card-row">
             <button type="submit" name="dryRun" value="1">
               Test Calendly backfill
             </button>
             <button className="btn-primary" type="submit" name="dryRun" value="0">
               Pull Calendly history
+            </button>
+          </div>
+        </ActionForm>
+      </div>
+
+      <h2>Take back bookings that shouldn&apos;t be here</h2>
+      <p className="sub">
+        An earlier version of the import took every link on the Calendly account, so bookings from
+        coaching calls and personal appointments were written onto leads — and some of those leads
+        were invented for the occasion. This removes them and nothing else: it never imports.
+        A lead that already existed keeps everything except the booking, because somebody has been
+        working that conversation.
+      </p>
+      <div className="card">
+        <ActionForm action={runCalendlyCleanup}>
+          <input type="hidden" name="since" value="2026-06-01" />
+          <div className="card-row">
+            <button type="submit" name="dryRun" value="1">
+              Test clean-up
+            </button>
+            <button className="btn-danger" type="submit" name="dryRun" value="0">
+              Remove them
             </button>
           </div>
         </ActionForm>

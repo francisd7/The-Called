@@ -261,6 +261,7 @@ test('a lead an earlier run invented from a foreign link is removed', { skip }, 
   const dry = await backfillCalendly(db, {
     items: [{ event: foreign, invitee: invitee('Internal Person', 'ip@x.test') }],
     cleanup: true,
+    apply: false,
     dryRun: true,
   });
   assert.equal(dry.removed, 1);
@@ -270,6 +271,7 @@ test('a lead an earlier run invented from a foreign link is removed', { skip }, 
   const stats = await backfillCalendly(db, {
     items: [{ event: foreign, invitee: invitee('Internal Person', 'ip@x.test') }],
     cleanup: true,
+    apply: false,
   });
   assert.equal(stats.removed, 1);
   const [{ n }] = await db.select({ n: count() }).from(leads);
@@ -300,6 +302,7 @@ test('a real lead keeps everything but the booking that was not ours', { skip },
   const stats = await backfillCalendly(db, {
     items: [{ event: foreign, invitee: invitee('Real Person', 'rp@x.test') }],
     cleanup: true,
+    apply: false,
   });
 
   assert.equal(stats.cleared, 1);
@@ -397,4 +400,51 @@ test('re-finding links never un-ticks one somebody ticked', { skip }, async () =
 
   const [row] = await db.select().from(calendlyEventTypes);
   assert.equal(row.counted, true, 'a discovery run must not undo a decision');
+});
+
+test('a cleanup run never imports anything', { skip }, async () => {
+  await db.delete(leads);
+  const ours = {
+    uri: 'ev/ours-during-cleanup',
+    status: 'active',
+    start_time: '2026-09-11T15:00:00Z',
+    event_type: 'https://api.calendly.com/event_types/brotherhood',
+  };
+
+  const stats = await backfillCalendly(db, {
+    items: [{ event: ours, invitee: invitee('Would Be Created', 'wbc@x.test') }],
+    cleanup: true,
+    apply: false,
+  });
+
+  assert.equal(stats.created, 0, 'the clean-up button must not quietly import');
+  const [{ n }] = await db.select({ n: count() }).from(leads);
+  assert.equal(n, 0);
+});
+
+test('the import never removes anything', { skip }, async () => {
+  await db.delete(leads);
+  const foreign = {
+    uri: 'ev/foreign-during-import',
+    status: 'active',
+    start_time: '2026-09-12T15:00:00Z',
+    event_type: 'https://api.calendly.com/event_types/internal-sync',
+  };
+  const [invented] = await db
+    .insert(leads)
+    .values({ igHandle: 'Someone', needsHandle: true, calendlyEventUri: foreign.uri })
+    .returning({ id: leads.id });
+  await db.insert(leadEvents).values({
+    leadId: invented.id,
+    type: 'created',
+    meta: { source: 'calendly_backfill' } as never,
+  });
+
+  const stats = await backfillCalendly(db, {
+    items: [{ event: foreign, invitee: invitee('Someone', 's@x.test') }],
+  });
+
+  assert.equal(stats.removed, 0, 'the import button must not quietly delete');
+  const [{ n }] = await db.select({ n: count() }).from(leads);
+  assert.equal(n, 1);
 });

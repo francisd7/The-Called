@@ -168,6 +168,7 @@ export async function backfillCalendly(
     items,
     dryRun = false,
     cleanup = false,
+    apply = true,
   }: {
     pat?: string;
     since?: string;
@@ -175,12 +176,13 @@ export async function backfillCalendly(
     dryRun?: boolean;
     /**
      * Whether to take back bookings an earlier, unfiltered run wrote onto
-     * leads. Off by default: the first version of this filter was too narrow,
-     * and left on it would have deleted months of real sales calls booked on
-     * links that have since been retired. Removing data is now something you
-     * ask for, not something that happens on the way past.
+     * leads. Its own action rather than an option on the import: a destructive
+     * step sharing a form with a safe one is how you end up unsure which of
+     * them you just ran.
      */
     cleanup?: boolean;
+    /** Whether to write the counted bookings. Off makes this a cleanup only. */
+    apply?: boolean;
   } = {}
 ): Promise<BackfillStats> {
   const from = since ?? '2026-06-01T00:00:00Z';
@@ -264,6 +266,8 @@ export async function backfillCalendly(
     const startTime = start && !Number.isNaN(start.getTime()) ? start : null;
     const cancelled = item.event.status === 'canceled';
     if (cancelled) stats.cancelled += 1;
+
+    if (!apply) continue;
 
     // Already carrying this exact booking? Then this is a re-run.
     const byEvent = await db.query.leads.findFirst({

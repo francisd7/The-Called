@@ -239,8 +239,8 @@ export async function runCalendlyBackfill(formData: FormData): Promise<Result> {
     const since = (formData.get('since') as string | null)?.trim();
     const from = since && /^\d{4}-\d{2}-\d{2}$/.test(since) ? `${since}T00:00:00Z` : undefined;
 
-    const cleanup = formData.get('cleanup') === '1';
-    const stats = await backfillCalendly(db, { pat, since: from, dryRun, cleanup });
+    // This action never removes anything - that is its own button below.
+    const stats = await backfillCalendly(db, { pat, since: from, dryRun });
 
     const parts = [`${stats.events} booking${stats.events === 1 ? '' : 's'} read`];
     if (stats.range) parts.push(`${stats.range.from} to ${stats.range.to}`);
@@ -330,5 +330,54 @@ export async function saveCountedLinks(formData: FormData): Promise<Result> {
     };
   } catch (err) {
     return { ok: false, error: err instanceof Error ? err.message : 'Could not save' };
+  }
+}
+
+/**
+ * Takes back bookings that an earlier, unfiltered run wrote onto leads.
+ *
+ * Its own action rather than a tick-box on the import, because the two do
+ * opposite things and sharing a form made it impossible to be sure which one
+ * had just run.
+ */
+export async function runCalendlyCleanup(formData: FormData): Promise<Result> {
+  try {
+    await requireAdmin();
+    const pat = process.env.CALENDLY_PAT;
+    if (!pat) {
+      return {
+        ok: false,
+        error: 'CALENDLY_PAT is not set on this service. Add it in Railway, then redeploy.',
+      };
+    }
+
+    const dryRun = formData.get('dryRun') === '1';
+    const since = (formData.get('since') as string | null)?.trim();
+    const from = since && /^\d{4}-\d{2}-\d{2}$/.test(since) ? `${since}T00:00:00Z` : undefined;
+
+    const stats = await backfillCalendly(db, {
+      pat,
+      since: from,
+      dryRun,
+      cleanup: true,
+      apply: false,
+    });
+
+    const parts = [`${stats.notOurs} booking${stats.notOurs === 1 ? '' : 's'} on links that don't count`];
+    parts.push(
+      stats.removed > 0 ? `${stats.removed} invented leads removed` : 'no invented leads to remove'
+    );
+    if (stats.cleared > 0) parts.push(`${stats.cleared} real leads cleared of one`);
+
+    revalidatePath('/');
+    revalidatePath('/leads');
+    revalidatePath('/kpis');
+    revalidatePath('/admin');
+    return {
+      ok: true,
+      message: `${dryRun ? 'Dry run — nothing written. ' : ''}${parts.join(' · ')}`,
+    };
+  } catch (err) {
+    return { ok: false, error: err instanceof Error ? err.message : 'Cleanup failed' };
   }
 }
