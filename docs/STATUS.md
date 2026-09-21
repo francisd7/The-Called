@@ -86,6 +86,14 @@ That second one is the real blocker: it's a workspace-wide policy, so it
 wouldn't be solved by making the user an owner. Someone has to turn API
 access on.
 
+**Already in place, so only the token is missing:** the Client Dashboards
+database is built with the right column names and types (Name/title,
+Client Email/email, CSM/select, Start Date/date, Package/select,
+Status/select), the `Client Dashboard` template is set as default for all
+views, and its database ID is `3dd4138daf53803ab6aaf724a5f5abdc` (not a
+secret on its own — it grants nothing without a token). A manual guest test
+confirmed a client on **Can edit** cannot duplicate the page.
+
 **Needed from the workspace owner:** turn on API access (Settings →
 Connections), then either create an internal connection named "The Called
 Automation Hub" and hand over the token, or grant permission to create one.
