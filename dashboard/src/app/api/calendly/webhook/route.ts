@@ -4,6 +4,7 @@ import { db } from '@/db';
 import { calendlyWebhookEvents, leadEvents, leads, offers, users } from '@/db/schema';
 import { notifyBooking } from '@/lib/discord';
 import { recordIssue } from '@/lib/issues';
+import { isOurEventType, linkedEventTypes } from '@/lib/offerScope';
 import {
   hostFromPayload,
   igHandleFromAnswers,
@@ -247,6 +248,36 @@ export async function POST(request: Request) {
     .returning({ id: calendlyWebhookEvents.id });
 
   try {
+    // The webhook fires for every link on the Calendly account, not just the
+    // three offers. A booking on anything else is somebody's own meeting, and
+    // writing it into the lead tracker is how internal calls ended up in there.
+    const linked = linkedEventTypes(await db.select().from(offers));
+    if (!isOurEventType(payload.scheduled_event?.event_type, linked)) {
+      await db
+        .update(calendlyWebhookEvents)
+        .set({
+          matchStrategy: linked.size === 0 ? 'no_offers_linked' : 'not_an_offer_link',
+          processedAt: new Date(),
+        })
+        .where(eq(calendlyWebhookEvents.id, logged.id));
+
+      if (linked.size === 0) {
+        await recordIssue({
+          title: 'Calendly bookings are being ignored',
+          detail:
+            'A booking arrived but no offer is linked to a Calendly event type, so there is no ' +
+            'way to tell a sales call from anyone else on the account.',
+          remedy:
+            'Press Connect Calendly on this page to link the three offers, then replay the ' +
+            'delivery from Calendly deliveries below.',
+        });
+      }
+
+      // Recorded, not acted on. The payload is kept either way, so a booking
+      // wrongly filtered out can still be replayed.
+      return NextResponse.json({ ok: true, ignored: 'not_an_offer_link' });
+    }
+
     const match = await matchLead(payload);
 
     if (match.leadId) {

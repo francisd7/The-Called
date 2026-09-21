@@ -243,6 +243,9 @@ export async function runCalendlyBackfill(formData: FormData): Promise<Result> {
 
     const parts = [`${stats.events} booking${stats.events === 1 ? '' : 's'} read`];
     if (stats.range) parts.push(`${stats.range.from} to ${stats.range.to}`);
+    if (stats.notOurs > 0) parts.push(`${stats.notOurs} skipped — not one of the three links`);
+    if (stats.removed > 0) parts.push(`${stats.removed} leads removed that an earlier run invented`);
+    if (stats.cleared > 0) parts.push(`${stats.cleared} real leads cleared of one`);
     if (stats.matched > 0) parts.push(`${stats.matched} matched a lead`);
     if (stats.created > 0) parts.push(`${stats.created} had no lead, so one was created`);
     if (stats.updated > 0) parts.push(`${stats.updated} already here`);

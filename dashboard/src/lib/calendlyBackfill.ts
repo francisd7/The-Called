@@ -11,9 +11,9 @@
  * conversations that were never entered: refusing to create them would be
  * throwing away the record of a real call for the sake of a tidy table.
  */
-import { and, desc, eq } from 'drizzle-orm';
+import { and, desc, eq, sql } from 'drizzle-orm';
 import type { PostgresJsDatabase } from 'drizzle-orm/postgres-js';
-import { leadEvents, leads, offers, users } from '../db/schema.ts';
+import { leadEvents, leadNotes, leads, offers, users } from '../db/schema.ts';
 import * as schema from '../db/schema.ts';
 import {
   hostFromPayload,
@@ -22,6 +22,7 @@ import {
   phoneFromPayload,
   type CalendlyInviteePayload,
 } from './calendly.ts';
+import { isOurEventType, linkedEventTypes } from './offerScope.ts';
 
 type Db = PostgresJsDatabase<typeof schema>;
 
@@ -59,6 +60,12 @@ export type BackfillStats = {
   updated: number;
   cancelled: number;
   skipped: number;
+  /** Bookings on a Calendly link that isn't one of the three offers. */
+  notOurs: number;
+  /** Leads an earlier run created from one of those, now removed. */
+  removed: number;
+  /** Real leads that had one written onto them, now cleared of it. */
+  cleared: number;
   dryRun: boolean;
   range: { from: string; to: string } | null;
 };
@@ -174,6 +181,9 @@ export async function backfillCalendly(
     updated: 0,
     cancelled: 0,
     skipped: 0,
+    notOurs: 0,
+    removed: 0,
+    cleared: 0,
     dryRun,
     range: ordered.length
       ? {
@@ -186,8 +196,30 @@ export async function backfillCalendly(
   const offerRows = await db.select().from(offers);
   const people = await db.select().from(users);
 
+  // The scheduled-events API returns the whole organization. Without this,
+  // every internal sync and personal appointment on the account arrives as a
+  // booked sales call.
+  const linked = linkedEventTypes(offerRows);
+  if (linked.size === 0) {
+    throw new Error(
+      'No offer is linked to a Calendly event type, so a sales call cannot be told apart from ' +
+        'anything else on the account. Press Connect Calendly first, then run this again.'
+    );
+  }
+
   for (const item of ordered) {
     const payload = toPayload(item);
+    if (!isOurEventType(payload.scheduled_event?.event_type, linked)) {
+      stats.notOurs += 1;
+      // An earlier run took every link on the account, so this booking may
+      // already be sitting on a lead. Undoing it here rather than in a separate
+      // pass means the decision comes from Calendly's own answer about which
+      // event type it was, not from guessing at the row afterwards.
+      const undone = await undoForeignBooking(db, item.event.uri, dryRun);
+      if (undone === 'removed') stats.removed += 1;
+      if (undone === 'cleared') stats.cleared += 1;
+      continue;
+    }
     const start = payload.scheduled_event?.start_time
       ? new Date(payload.scheduled_event.start_time)
       : null;
@@ -345,4 +377,74 @@ async function findLead(db: Db, payload: CalendlyInviteePayload): Promise<string
   }
 
   return null;
+}
+
+/**
+ * Takes a booking back off a lead, for an event type that turned out not to be
+ * one of ours.
+ *
+ * A lead this import invented has nothing else on it, so it goes entirely. A
+ * lead that already existed keeps everything except the booking - somebody has
+ * been working that conversation, and it isn't theirs to delete.
+ */
+async function undoForeignBooking(
+  db: Db,
+  eventUri: string,
+  dryRun: boolean
+): Promise<'removed' | 'cleared' | null> {
+  const lead = await db.query.leads.findFirst({
+    where: eq(leads.calendlyEventUri, eventUri),
+    columns: { id: true },
+  });
+  if (!lead) return null;
+
+  const [createdHere] = await db
+    .select({ n: sql<number>`COUNT(*)::int` })
+    .from(leadEvents)
+    .where(
+      and(
+        eq(leadEvents.leadId, lead.id),
+        eq(leadEvents.type, 'created'),
+        sql`${leadEvents.meta}->>'source' = 'calendly_backfill'`
+      )
+    );
+  const [notes] = await db
+    .select({ n: sql<number>`COUNT(*)::int` })
+    .from(leadNotes)
+    .where(eq(leadNotes.leadId, lead.id));
+
+  const invented = createdHere.n > 0 && notes.n === 0;
+  if (dryRun) return invented ? 'removed' : 'cleared';
+
+  if (invented) {
+    await db.delete(leadEvents).where(eq(leadEvents.leadId, lead.id));
+    await db.delete(leads).where(eq(leads.id, lead.id));
+    return 'removed';
+  }
+
+  await db
+    .update(leads)
+    .set({
+      callBooked: false,
+      callBookedAt: null,
+      callScheduledFor: null,
+      callCancelled: false,
+      callCancelledAt: null,
+      cancelReason: null,
+      calendlyEventUri: null,
+      calendlyInviteeUri: null,
+      calendlyAnswers: null,
+      calendlyCancelUrl: null,
+      calendlyRescheduleUrl: null,
+      offerId: null,
+      updatedAt: new Date(),
+    })
+    .where(eq(leads.id, lead.id));
+
+  await db.insert(leadEvents).values({
+    leadId: lead.id,
+    type: 'call_cancelled',
+    meta: { source: 'calendly_backfill', reason: 'not_an_offer_link', eventUri } as never,
+  });
+  return 'cleared';
 }

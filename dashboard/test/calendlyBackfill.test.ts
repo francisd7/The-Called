@@ -4,7 +4,7 @@ import { drizzle } from 'drizzle-orm/postgres-js';
 import postgres from 'postgres';
 import { count, eq } from 'drizzle-orm';
 import * as schema from '../src/db/schema.ts';
-import { leads } from '../src/db/schema.ts';
+import { leadEvents, leads, offers } from '../src/db/schema.ts';
 import { backfillCalendly, type BackfillItem } from '../src/lib/calendlyBackfill.ts';
 
 const url = process.env.TEST_DATABASE_URL;
@@ -21,6 +21,18 @@ before(async () => {
   }
   sql = postgres(url, { max: 2 });
   db = drizzle(sql, { schema });
+
+  // The backfill only accepts bookings on a linked offer, so one has to exist
+  // for any of this to be reachable at all.
+  await db
+    .insert(offers)
+    .values({
+      key: 'test_brotherhood',
+      label: 'Test Brotherhood',
+      schedulingUrl: 'https://calendly.com/test/brotherhood',
+      eventTypeUri: 'https://api.calendly.com/event_types/brotherhood',
+    })
+    .onConflictDoNothing({ target: offers.key });
 });
 
 after(async () => {
@@ -176,4 +188,117 @@ test('work a setter has already done is never cleared', { skip }, async () => {
   assert.equal(lead?.confirmed, true, 'a historical booking should not undo a confirmation');
   assert.equal(lead?.triaged, true);
   assert.equal(lead?.triageNotes, 'Warmed up, knows the price.');
+});
+
+test('a booking on a link that is not one of ours is left alone', { skip }, async () => {
+  await db.delete(leads);
+  const stats = await backfillCalendly(db, {
+    items: [
+      {
+        event: {
+          uri: 'ev/foreign',
+          status: 'active',
+          start_time: '2026-09-08T15:00:00Z',
+          // Somebody's own meeting on the same Calendly account.
+          event_type: 'https://api.calendly.com/event_types/internal-sync',
+          event_memberships: [{ user_email: 'nigel@thecalled.test', user_name: 'Nigel' }],
+        },
+        invitee: invitee('Internal Person', 'ip@x.test'),
+      },
+    ],
+  });
+
+  assert.equal(stats.notOurs, 1);
+  assert.equal(stats.created, 0, 'an internal meeting is not a lead');
+  const [{ n }] = await db.select({ n: count() }).from(leads);
+  assert.equal(n, 0);
+});
+
+test('a lead an earlier run invented from a foreign link is removed', { skip }, async () => {
+  await db.delete(leads);
+  const foreign = {
+    uri: 'ev/foreign2',
+    status: 'active',
+    start_time: '2026-09-09T15:00:00Z',
+    event_type: 'https://api.calendly.com/event_types/internal-sync',
+  };
+
+  // Stand in for what the unfiltered version wrote: a lead it created itself.
+  const [invented] = await db
+    .insert(leads)
+    .values({
+      igHandle: 'Internal Person',
+      needsHandle: true,
+      callBooked: true,
+      calendlyEventUri: foreign.uri,
+    })
+    .returning({ id: leads.id });
+  await db.insert(leadEvents).values({
+    leadId: invented.id,
+    type: 'created',
+    meta: { source: 'calendly_backfill' } as never,
+  });
+
+  const dry = await backfillCalendly(db, {
+    items: [{ event: foreign, invitee: invitee('Internal Person', 'ip@x.test') }],
+    dryRun: true,
+  });
+  assert.equal(dry.removed, 1);
+  const [{ n: stillThere }] = await db.select({ n: count() }).from(leads);
+  assert.equal(stillThere, 1, 'a dry run must not delete anything');
+
+  const stats = await backfillCalendly(db, {
+    items: [{ event: foreign, invitee: invitee('Internal Person', 'ip@x.test') }],
+  });
+  assert.equal(stats.removed, 1);
+  const [{ n }] = await db.select({ n: count() }).from(leads);
+  assert.equal(n, 0);
+});
+
+test('a real lead keeps everything but the booking that was not ours', { skip }, async () => {
+  await db.delete(leads);
+  const foreign = {
+    uri: 'ev/foreign3',
+    status: 'active',
+    start_time: '2026-09-10T15:00:00Z',
+    event_type: 'https://api.calendly.com/event_types/internal-sync',
+  };
+
+  const [real] = await db
+    .insert(leads)
+    .values({
+      igHandle: 'realperson',
+      igHandleKey: 'realperson',
+      triaged: true,
+      triageNotes: 'Knows the price.',
+      callBooked: true,
+      calendlyEventUri: foreign.uri,
+    })
+    .returning({ id: leads.id });
+
+  const stats = await backfillCalendly(db, {
+    items: [{ event: foreign, invitee: invitee('Real Person', 'rp@x.test') }],
+  });
+
+  assert.equal(stats.cleared, 1);
+  assert.equal(stats.removed, 0);
+  const lead = await db.query.leads.findFirst({ where: eq(leads.id, real.id) });
+  assert.ok(lead, 'a lead somebody has worked is never deleted');
+  assert.equal(lead.callBooked, false);
+  assert.equal(lead.calendlyEventUri, null);
+  assert.equal(lead.triaged, true, "the setter's work stays");
+  assert.equal(lead.triageNotes, 'Knows the price.');
+});
+
+test('with no offer linked, the backfill refuses rather than taking everything', { skip }, async () => {
+  await db.update(offers).set({ eventTypeUri: null });
+  await assert.rejects(
+    () => backfillCalendly(db, { items: [] }),
+    /Connect Calendly/,
+    'an empty filter must not mean "accept the whole account"'
+  );
+  await db
+    .update(offers)
+    .set({ eventTypeUri: 'https://api.calendly.com/event_types/brotherhood' })
+    .where(eq(offers.key, 'test_brotherhood'));
 });
