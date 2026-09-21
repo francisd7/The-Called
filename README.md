@@ -162,9 +162,15 @@ There are two entry points into the same code:
 **Testing against a mock database first:**
 
 ```bash
+npm run check-notion-setup                # is the Notion side ready? no Airtable needed
 npm run client-dashboard-dry-run          # reads everything, writes nothing
 npm run create-one-client-dashboard -- someone@example.com
 ```
+
+`check-notion-setup` is the first thing to run when a token arrives. It needs
+only `NOTION_TOKEN` and `NOTION_DASHBOARDS_DATABASE_ID`, so it separates a
+Notion problem from an Airtable one, and it names the specific fix — a 404 is
+nearly always a missing `•••` → Connections step rather than a wrong ID.
 
 The dry run prints the resolved data source ID, every template it found, every
 Notion column and its type, and the exact property payload each client would
