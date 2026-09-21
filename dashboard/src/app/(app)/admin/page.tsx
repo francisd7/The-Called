@@ -157,24 +157,6 @@ export default async function AdminPage() {
               </Check>
             </ul>
 
-            <div className="card-row">
-              <ActionForm action={runAirtableImport}>
-                <input type="hidden" name="dryRun" value="1" />
-                <button type="submit">Test Airtable import</button>
-              </ActionForm>
-              <ActionForm action={runAirtableImport}>
-                <input type="hidden" name="dryRun" value="0" />
-                <button className="btn-primary" type="submit">
-                  Import leads from Airtable
-                </button>
-              </ActionForm>
-            </div>
-            <p className="sub" style={{ marginTop: '0.4rem' }}>
-              Safe to re-run. Leads are keyed on their Airtable id, so a second run updates rather
-              than duplicating, and a blank tracker row never clears a booking Calendly made or an
-              outcome a post-call report recorded — the tracker fills gaps, it doesn&apos;t overwrite.
-              Needs <code>AIRTABLE_PAT</code> set on this service.
-            </p>
 
             <div className="card-row">
               <ActionForm action={runCalendlySetup}>
@@ -304,6 +286,32 @@ export default async function AdminPage() {
             </button>
           </div>
         </ActionForm>
+      </div>
+
+      <h2>Lead tracker</h2>
+      <p className="sub">
+        Pulls the Airtable lead tracker across. It fills gaps and never overwrites: a blank row
+        won&apos;t clear a booking Calendly made or an outcome a post-call report recorded, and a row
+        for somebody Calendly already created joins that lead instead of making a second copy of
+        them. Safe to re-run.
+      </p>
+      <div className="card">
+        <div className="card-row">
+          <ActionForm action={runAirtableImport}>
+            <input type="hidden" name="dryRun" value="1" />
+            <button type="submit">Test lead import</button>
+          </ActionForm>
+          <ActionForm action={runAirtableImport}>
+            <input type="hidden" name="dryRun" value="0" />
+            <button className="btn-primary" type="submit">
+              Import leads from Airtable
+            </button>
+          </ActionForm>
+        </div>
+        <p className="sub" style={{ marginTop: '0.6rem' }}>
+          {leadCount.toLocaleString()} leads here now. Needs <code>AIRTABLE_PAT</code> set on this
+          service.
+        </p>
       </div>
 
       <h2>Setter EOD reports</h2>
