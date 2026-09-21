@@ -417,3 +417,29 @@ export const postCallReports = pgTable(
   },
   (t) => [index('post_call_reports_status_idx').on(t.status, t.callDate)]
 );
+
+/**
+ * Every Calendly link the account has ever taken a booking on, and whether its
+ * bookings are sales calls.
+ *
+ * A webhook is registered against the whole organization and the
+ * scheduled-events API returns the whole organization, so something has to say
+ * which links count. The three current offers are not enough: most of the
+ * history is on links that have since been retired, and one live link is
+ * Nigel's coaching calls with existing clients, which are not leads at all.
+ *
+ * Discovered from the bookings themselves rather than from Calendly's event
+ * type list, so a link that was deleted still shows up as long as somebody
+ * once booked on it.
+ */
+export const calendlyEventTypes = pgTable('calendly_event_types', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  uri: text('uri').notNull().unique(),
+  name: text('name').notNull(),
+  /** How many bookings were seen on it the last time we looked. */
+  bookingCount: integer('booking_count').notNull().default(0),
+  /** Whether a booking here is a sales call. Set by an admin, never guessed. */
+  counted: boolean('counted').notNull().default(false),
+  lastSeenAt: timestamp('last_seen_at', { withTimezone: true }).notNull().defaultNow(),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+});

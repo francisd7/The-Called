@@ -4,7 +4,7 @@ import { drizzle } from 'drizzle-orm/postgres-js';
 import postgres from 'postgres';
 import { count, eq } from 'drizzle-orm';
 import * as schema from '../src/db/schema.ts';
-import { leadEvents, leads, offers } from '../src/db/schema.ts';
+import { calendlyEventTypes, leadEvents, leads, offers } from '../src/db/schema.ts';
 import { backfillCalendly, type BackfillItem } from '../src/lib/calendlyBackfill.ts';
 
 const url = process.env.TEST_DATABASE_URL;
@@ -22,8 +22,8 @@ before(async () => {
   sql = postgres(url, { max: 2 });
   db = drizzle(sql, { schema });
 
-  // The backfill only accepts bookings on a linked offer, so one has to exist
-  // for any of this to be reachable at all.
+  // The backfill only accepts bookings on a link marked as a sales call, so
+  // one has to be ticked for any of this to be reachable at all.
   await db
     .insert(offers)
     .values({
@@ -33,6 +33,17 @@ before(async () => {
       eventTypeUri: 'https://api.calendly.com/event_types/brotherhood',
     })
     .onConflictDoNothing({ target: offers.key });
+  await db
+    .insert(calendlyEventTypes)
+    .values({
+      uri: 'https://api.calendly.com/event_types/brotherhood',
+      name: 'Test Brotherhood',
+      counted: true,
+    })
+    .onConflictDoUpdate({
+      target: calendlyEventTypes.uri,
+      set: { counted: true },
+    });
 });
 
 after(async () => {
@@ -301,15 +312,89 @@ test('a real lead keeps everything but the booking that was not ours', { skip },
   assert.equal(lead.triageNotes, 'Knows the price.');
 });
 
-test('with no offer linked, the backfill refuses rather than taking everything', { skip }, async () => {
-  await db.update(offers).set({ eventTypeUri: null });
+test('with nothing ticked, the backfill refuses rather than taking everything', { skip }, async () => {
+  await db.update(calendlyEventTypes).set({ counted: false });
   await assert.rejects(
     () => backfillCalendly(db, { items: [] }),
-    /Connect Calendly/,
+    /Find Calendly links/,
     'an empty filter must not mean "accept the whole account"'
   );
   await db
-    .update(offers)
-    .set({ eventTypeUri: 'https://api.calendly.com/event_types/brotherhood' })
-    .where(eq(offers.key, 'test_brotherhood'));
+    .update(calendlyEventTypes)
+    .set({ counted: true })
+    .where(eq(calendlyEventTypes.uri, 'https://api.calendly.com/event_types/brotherhood'));
+});
+
+test('every link with a booking is found, retired ones included', { skip }, async () => {
+  const { discoverEventTypes } = await import('../src/lib/calendlyBackfill.ts');
+  await db.delete(calendlyEventTypes);
+
+  const stats = await discoverEventTypes(db, {
+    items: [
+      {
+        event: {
+          uri: 'ev/a',
+          status: 'active',
+          start_time: '2026-06-02T15:00:00Z',
+          name: '1-1 Personal Branding Call With Nigel Daley',
+          event_type: 'et/branding',
+        },
+        invitee: invitee('A', 'a@x.test'),
+      },
+      {
+        event: {
+          uri: 'ev/b',
+          status: 'active',
+          start_time: '2026-07-02T15:00:00Z',
+          name: '1-1 Personal Branding Call With Nigel Daley',
+          event_type: 'et/branding',
+        },
+        invitee: invitee('B', 'b@x.test'),
+      },
+      {
+        event: {
+          uri: 'ev/c',
+          status: 'active',
+          start_time: '2026-08-02T15:00:00Z',
+          name: '1 on 1 with Nigel Daley',
+          event_type: 'et/coaching',
+        },
+        invitee: invitee('C', 'c@x.test'),
+      },
+    ],
+  });
+
+  assert.equal(stats.found, 2);
+  assert.equal(stats.bookings, 3);
+  assert.deepEqual(stats.range, { from: '2026-06-02', to: '2026-08-02' });
+
+  const rows = await db.select().from(calendlyEventTypes);
+  const branding = rows.find((r) => r.uri === 'et/branding');
+  assert.equal(branding?.bookingCount, 2);
+  assert.equal(branding?.name, '1-1 Personal Branding Call With Nigel Daley');
+  assert.equal(branding?.counted, false, 'nothing counts until somebody says so');
+});
+
+test('re-finding links never un-ticks one somebody ticked', { skip }, async () => {
+  const { discoverEventTypes } = await import('../src/lib/calendlyBackfill.ts');
+  await db.delete(calendlyEventTypes);
+  const items = [
+    {
+      event: {
+        uri: 'ev/a',
+        status: 'active',
+        start_time: '2026-06-02T15:00:00Z',
+        name: 'Branding',
+        event_type: 'et/branding',
+      },
+      invitee: invitee('A', 'a@x.test'),
+    },
+  ];
+
+  await discoverEventTypes(db, { items });
+  await db.update(calendlyEventTypes).set({ counted: true });
+  await discoverEventTypes(db, { items });
+
+  const [row] = await db.select().from(calendlyEventTypes);
+  assert.equal(row.counted, true, 'a discovery run must not undo a decision');
 });

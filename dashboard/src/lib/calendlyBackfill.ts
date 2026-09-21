@@ -13,7 +13,7 @@
  */
 import { and, desc, eq, sql } from 'drizzle-orm';
 import type { PostgresJsDatabase } from 'drizzle-orm/postgres-js';
-import { leadEvents, leadNotes, leads, offers, users } from '../db/schema.ts';
+import { calendlyEventTypes, leadEvents, leadNotes, leads, offers, users } from '../db/schema.ts';
 import * as schema from '../db/schema.ts';
 import {
   hostFromPayload,
@@ -22,7 +22,7 @@ import {
   phoneFromPayload,
   type CalendlyInviteePayload,
 } from './calendly.ts';
-import { isOurEventType, linkedEventTypes } from './offerScope.ts';
+import { countedEventTypes, isCountedEventType } from './offerScope.ts';
 
 type Db = PostgresJsDatabase<typeof schema>;
 
@@ -218,11 +218,12 @@ export async function backfillCalendly(
   // The scheduled-events API returns the whole organization. Without this,
   // every internal sync and personal appointment on the account arrives as a
   // booked sales call.
-  const linked = linkedEventTypes(offerRows);
+  const linked = countedEventTypes(await db.select().from(calendlyEventTypes));
   if (linked.size === 0) {
     throw new Error(
-      'No offer is linked to a Calendly event type, so a sales call cannot be told apart from ' +
-        'anything else on the account. Press Connect Calendly first, then run this again.'
+      'No Calendly link is marked as a sales call, so a booking cannot be told apart from a ' +
+        'coaching call or a personal appointment. Press Find Calendly links first, tick the ' +
+        'ones that count, then run this again.'
     );
   }
 
@@ -235,7 +236,7 @@ export async function backfillCalendly(
     const entry = seen.get(uri) ?? {
       name: item.event.name?.trim() || uri.split('/').pop() || 'unnamed',
       count: 0,
-      ours: isOurEventType(item.event.event_type, linked),
+      ours: isCountedEventType(item.event.event_type, linked),
     };
     entry.count += 1;
     seen.set(uri, entry);
@@ -244,7 +245,7 @@ export async function backfillCalendly(
 
   for (const item of ordered) {
     const payload = toPayload(item);
-    if (!isOurEventType(payload.scheduled_event?.event_type, linked)) {
+    if (!isCountedEventType(payload.scheduled_event?.event_type, linked)) {
       stats.notOurs += 1;
       // An earlier run took every link on the account, so this booking may
       // already be sitting on a lead. Undoing it here rather than in a separate
@@ -484,4 +485,64 @@ async function undoForeignBooking(
     meta: { source: 'calendly_backfill', reason: 'not_an_offer_link', eventUri } as never,
   });
   return 'cleared';
+}
+
+export type DiscoverStats = {
+  found: number;
+  added: number;
+  bookings: number;
+  range: { from: string; to: string } | null;
+};
+
+/**
+ * Finds every Calendly link the account has taken a booking on, and how many.
+ *
+ * Read from the bookings rather than from Calendly's event-type list, because
+ * most of the history is on links that have been retired - and a retired link's
+ * bookings are still real calls. Nothing here decides whether a link counts;
+ * that is a person's call, and an existing answer is never overwritten.
+ */
+export async function discoverEventTypes(
+  db: Db,
+  { pat, since, items }: { pat?: string; since?: string; items?: BackfillItem[] } = {}
+): Promise<DiscoverStats> {
+  const from = since ?? '2026-06-01T00:00:00Z';
+  const history = items ?? (await fetchCalendlyHistory(pat ?? process.env.CALENDLY_PAT ?? '', from));
+
+  const seen = new Map<string, { name: string; count: number }>();
+  for (const item of history) {
+    const uri = item.event.event_type;
+    if (!uri) continue;
+    const entry = seen.get(uri) ?? {
+      name: item.event.name?.trim() || uri.split('/').pop() || 'unnamed',
+      count: 0,
+    };
+    entry.count += 1;
+    seen.set(uri, entry);
+  }
+
+  let added = 0;
+  for (const [uri, { name, count }] of seen) {
+    const [row] = await db
+      .insert(calendlyEventTypes)
+      .values({ uri, name, bookingCount: count, lastSeenAt: new Date() })
+      .onConflictDoUpdate({
+        target: calendlyEventTypes.uri,
+        // `counted` is deliberately absent: a person decided that, and a later
+        // discovery run has no business changing it.
+        set: { name, bookingCount: count, lastSeenAt: new Date() },
+      })
+      .returning({ createdAt: calendlyEventTypes.createdAt, id: calendlyEventTypes.id });
+    if (row && Date.now() - row.createdAt.getTime() < 5_000) added += 1;
+  }
+
+  const starts = history.map((h) => h.event.start_time ?? '').filter(Boolean).sort();
+  return {
+    found: seen.size,
+    added,
+    bookings: history.length,
+    range: starts.length
+      ? { from: starts[0].slice(0, 10), to: starts[starts.length - 1].slice(0, 10) }
+      : null,
+  };
 }

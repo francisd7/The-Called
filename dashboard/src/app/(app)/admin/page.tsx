@@ -2,7 +2,7 @@ import { redirect } from 'next/navigation';
 import { count, desc, eq } from 'drizzle-orm';
 import { auth } from '@/auth';
 import { db } from '@/db';
-import { eodReports, leads, offers, users } from '@/db/schema';
+import { calendlyEventTypes, eodReports, leads, offers, users } from '@/db/schema';
 import { ActionForm } from '@/components/ActionForm';
 import { formatCallTime, formatDay } from '@/lib/dates';
 import {
@@ -17,9 +17,11 @@ import {
   clearTestData,
   createTestBooking,
   runAirtableImport,
+  findCalendlyLinks,
   runCalendlyBackfill,
   runCalendlySetup,
   runEodImport,
+  saveCountedLinks,
 } from '@/lib/setupActions';
 import { syncPostCall, unlinkReport } from '@/lib/postCallActions';
 
@@ -50,6 +52,7 @@ export default async function AdminPage() {
     offerRows,
     [{ leadCount }],
     reports,
+    links,
   ] = await Promise.all([
     getPipelineSummary(),
     getUnmatchedBookings(),
@@ -60,6 +63,7 @@ export default async function AdminPage() {
     db.select().from(offers).orderBy(offers.sortOrder),
     db.select({ leadCount: count() }).from(leads),
     getAllPostCallReports(),
+    db.select().from(calendlyEventTypes).orderBy(desc(calendlyEventTypes.bookingCount)),
   ]);
 
   const [{ testCount }] = await db
@@ -199,6 +203,56 @@ export default async function AdminPage() {
           <div className="stat-l">unmatched bookings</div>
         </div>
       </div>
+
+      <h2>Which Calendly links are sales calls</h2>
+      <p className="sub">
+        A Calendly webhook covers the whole account, so something has to say which links are sales
+        calls and which are coaching calls or personal appointments. Most of the booking history
+        sits on links that have since been retired — those still count, and they&apos;re listed here
+        because the bookings are read from Calendly&apos;s history, not from its current link list.
+        Nothing is counted until you tick it.
+      </p>
+      <div className="card">
+        <ActionForm action={findCalendlyLinks}>
+          <input type="hidden" name="since" value="2026-06-01" />
+          <button type="submit">Find Calendly links</button>
+        </ActionForm>
+      </div>
+      {links.length === 0 ? (
+        <p className="empty">
+          Nothing found yet — press Find Calendly links to read them off the booking history.
+        </p>
+      ) : (
+        <div className="card">
+          <ActionForm action={saveCountedLinks} successMessage="Saved">
+            <ul className="todos">
+              {links.map((l) => (
+                <li className="todo" key={l.id}>
+                  <input
+                    type="checkbox"
+                    name="counted"
+                    value={l.uri}
+                    defaultChecked={l.counted}
+                    id={`link-${l.id}`}
+                    style={{ marginTop: '0.2rem' }}
+                  />
+                  <label className="todo-body" htmlFor={`link-${l.id}`}>
+                    <span className="todo-title">{l.name}</span>
+                    <span className="todo-meta">
+                      <span className="pill">
+                        {l.bookingCount} booking{l.bookingCount === 1 ? '' : 's'}
+                      </span>
+                    </span>
+                  </label>
+                </li>
+              ))}
+            </ul>
+            <button className="btn-primary" type="submit">
+              Save which links count
+            </button>
+          </ActionForm>
+        </div>
+      )}
 
       <h2>Calendly history</h2>
       <p className="sub">

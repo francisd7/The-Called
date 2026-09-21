@@ -1,15 +1,15 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
-import { asc, eq } from 'drizzle-orm';
+import { asc, desc, eq, inArray } from 'drizzle-orm';
 import { auth } from '@/auth';
 import { db } from '@/db';
-import { leadEvents, leadNotes, leads, offers, users } from '@/db/schema';
+import { calendlyEventTypes, leadEvents, leadNotes, leads, offers, users } from '@/db/schema';
 import { teamDateString } from './dates';
 import { importSetterEod } from './eodImport';
 import { importAirtableLeads } from './airtableImport';
 import { setupCalendly } from './calendlySetup';
-import { backfillCalendly } from './calendlyBackfill';
+import { backfillCalendly, discoverEventTypes } from './calendlyBackfill';
 
 type Result = { ok: true; message: string } | { ok: false; error: string };
 
@@ -271,5 +271,64 @@ export async function runCalendlyBackfill(formData: FormData): Promise<Result> {
     };
   } catch (err) {
     return { ok: false, error: err instanceof Error ? err.message : 'Backfill failed' };
+  }
+}
+
+/** Finds every Calendly link with a booking on it, so they can be ticked off. */
+export async function findCalendlyLinks(formData: FormData): Promise<Result> {
+  try {
+    await requireAdmin();
+    const pat = process.env.CALENDLY_PAT;
+    if (!pat) {
+      return {
+        ok: false,
+        error: 'CALENDLY_PAT is not set on this service. Add it in Railway, then redeploy.',
+      };
+    }
+
+    const since = (formData.get('since') as string | null)?.trim();
+    const from = since && /^\d{4}-\d{2}-\d{2}$/.test(since) ? `${since}T00:00:00Z` : undefined;
+    const stats = await discoverEventTypes(db, { pat, since: from });
+
+    revalidatePath('/admin');
+    const parts = [`${stats.found} link${stats.found === 1 ? '' : 's'} across ${stats.bookings} bookings`];
+    if (stats.range) parts.push(`${stats.range.from} to ${stats.range.to}`);
+    if (stats.added > 0) parts.push(`${stats.added} new`);
+    return { ok: true, message: `${parts.join(' · ')}. Tick the ones that are sales calls.` };
+  } catch (err) {
+    return { ok: false, error: err instanceof Error ? err.message : 'Could not read Calendly' };
+  }
+}
+
+/**
+ * Sets which links count, in one go.
+ *
+ * Unticked boxes aren't submitted at all, so anything missing from the form is
+ * explicitly set back to not counting - otherwise a link could never be
+ * un-ticked once it had been ticked.
+ */
+export async function saveCountedLinks(formData: FormData): Promise<Result> {
+  try {
+    await requireAdmin();
+    const ticked = formData.getAll('counted').filter((v): v is string => typeof v === 'string');
+
+    await db.update(calendlyEventTypes).set({ counted: false });
+    if (ticked.length > 0) {
+      await db
+        .update(calendlyEventTypes)
+        .set({ counted: true })
+        .where(inArray(calendlyEventTypes.uri, ticked));
+    }
+
+    revalidatePath('/admin');
+    return {
+      ok: true,
+      message:
+        ticked.length === 0
+          ? 'Nothing counts as a sales call — bookings will be ignored until you tick one.'
+          : `${ticked.length} link${ticked.length === 1 ? '' : 's'} count as sales calls.`,
+    };
+  } catch (err) {
+    return { ok: false, error: err instanceof Error ? err.message : 'Could not save' };
   }
 }

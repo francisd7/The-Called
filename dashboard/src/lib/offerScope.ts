@@ -1,38 +1,37 @@
 /**
- * Which Calendly bookings belong to this business.
+ * Which Calendly bookings are sales calls.
  *
  * A Calendly webhook is registered against the whole organization, and the
  * scheduled-events API returns the whole organization too. Neither can be
- * narrowed to particular links. So the three offers are the filter: a booking
- * on any other event type - an internal sync, a personal appointment, someone
- * else's link on the same account - is not a sales call and has no business in
- * the lead tracker.
+ * narrowed to particular links, so something has to decide.
  *
- * Kept free of database imports so both the webhook and the backfill can apply
- * exactly the same rule, and so the rule itself can be tested.
+ * That decision is a list an admin keeps, not a rule derived from the three
+ * current offers. Most of the booking history sits on links that have since
+ * been retired, and at least one live link is Nigel's coaching calls with
+ * existing clients - real calls, but not leads.
+ *
+ * Kept free of database imports so the webhook and the backfill apply exactly
+ * the same rule, and so the rule itself can be tested.
  */
 
-export type OfferLike = { eventTypeUri: string | null; active?: boolean };
+export type CountableLink = { uri: string; counted: boolean };
 
-/** The event types the three offer links point at. */
-export function linkedEventTypes(offers: OfferLike[]): Set<string> {
-  return new Set(
-    offers.filter((o) => o.active !== false && o.eventTypeUri).map((o) => o.eventTypeUri as string)
-  );
+/** The event types whose bookings are sales calls. */
+export function countedEventTypes(links: CountableLink[]): Set<string> {
+  return new Set(links.filter((l) => l.counted).map((l) => l.uri));
 }
 
 /**
- * Whether a booking is on one of our links.
+ * Whether a booking is one of ours.
  *
- * An empty set means no offer has been linked to its Calendly event type yet,
- * which is a setup problem rather than a licence to accept everything. Saying
- * no is the safe answer: the delivery is still recorded and can be replayed
- * once the offers are connected.
+ * An empty set means nothing has been ticked yet, which is a setup problem
+ * rather than a licence to accept everything. Saying no is the safe answer:
+ * the delivery is still recorded and can be replayed once the list is set.
  */
-export function isOurEventType(
+export function isCountedEventType(
   eventTypeUri: string | null | undefined,
-  linked: Set<string>
+  counted: Set<string>
 ): boolean {
   if (!eventTypeUri) return false;
-  return linked.has(eventTypeUri);
+  return counted.has(eventTypeUri);
 }
