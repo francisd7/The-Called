@@ -97,15 +97,35 @@ function isSendable(lead: Lead): boolean {
   return true;
 }
 
-/** Fires when Calendly tells us a call was booked. */
-export async function notifyBooking(lead: Lead, offerLabel: string | null): Promise<boolean> {
+/**
+ * Fires when Calendly tells us a call was booked.
+ *
+ * Names come in as arguments rather than being looked up here: this module
+ * has no database of its own, which is what lets the whole of it be tested
+ * against a stub.
+ */
+export async function notifyBooking(
+  lead: Lead,
+  offerLabel: string | null,
+  people: { setterName?: string | null; closers?: string[] } = {}
+): Promise<boolean> {
   if (!isSendable(lead)) return false;
+
+  // Calendly names a host, but in practice either closer may end up taking it,
+  // so the line offers both and gets edited in Discord if it matters. The host
+  // still goes first, because that is who the calendar actually has.
+  const closers = (people.closers ?? []).filter(Boolean);
+  const ordered = lead.closerName
+    ? [lead.closerName, ...closers.filter((c) => c !== lead.closerName)]
+    : closers;
+  const closerLine = ordered.length > 0 ? ordered.join(' and/or ') : lead.closerName;
 
   const lines = [
     `📅 **Call booked** — ${leadLabel(lead)}`,
     offerLabel ? `**Offer:** ${offerLabel}` : null,
     `**When:** ${formatCallTime(lead.callScheduledFor)}`,
-    lead.closerName ? `**Closer:** ${lead.closerName}` : null,
+    people.setterName ? `**Setter:** ${people.setterName}` : null,
+    closerLine ? `**Closer:** ${closerLine}` : null,
     lead.needsHandle ? null : lead.igHandle ? `**IG:** @${lead.igHandle}` : null,
     // Somebody booked off a link without ever being in the tracker. That is
     // the booking most likely to be walked into cold, so the ping says so

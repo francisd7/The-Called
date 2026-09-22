@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { and, desc, eq, isNull } from 'drizzle-orm';
+import { and, asc, desc, eq, isNull } from 'drizzle-orm';
 import { db } from '@/db';
 import { calendlyEventTypes, calendlyWebhookEvents, leadEvents, leads, offers, users } from '@/db/schema';
 import { notifyBooking } from '@/lib/discord';
@@ -149,7 +149,22 @@ async function handleCreated(leadId: string, payload: CalendlyInviteePayload) {
           where: eq(calendlyEventTypes.uri, payload.scheduled_event.event_type),
         })
       : null;
-    const posted = await notifyBooking(updated, offer?.label ?? link?.name ?? null);
+    // Who is on it, and who might take it. Both read off the users table so
+    // adding or standing down a closer changes the message on its own.
+    const [setter, closers] = await Promise.all([
+      updated.setterId
+        ? db.query.users.findFirst({ where: eq(users.id, updated.setterId) })
+        : null,
+      db.query.users.findMany({
+        where: and(eq(users.role, 'closer'), eq(users.active, true)),
+        orderBy: [asc(users.createdAt)],
+      }),
+    ]);
+
+    const posted = await notifyBooking(updated, offer?.label ?? link?.name ?? null, {
+      setterName: setter?.name ?? null,
+      closers: closers.map((c) => c.name),
+    });
     // A booking nobody is told about is the one failure this path exists to
     // prevent. postToChannel returns false for a missing token, a missing
     // channel id and a rejected post alike, and used to say so only to a

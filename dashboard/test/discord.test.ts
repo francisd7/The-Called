@@ -262,11 +262,50 @@ test('an outcome with no call date is treated as a backfill', () => {
 
 test('a booking with an owner reads as normal', async () => {
   captured = [];
-  await notifyBooking(fakeLead({ setterId: 'user-loui', needsHandle: false }), 'Brotherhood');
+  await notifyBooking(fakeLead({ setterId: 'user-loui', needsHandle: false }), 'Brotherhood', {
+    setterName: 'Loui',
+    closers: ['Nigel', 'Andrew'],
+  });
   const text = captured[0].body.content ?? '';
   assert.ok(text.includes('Call booked'));
   assert.ok(text.includes('@grittraining_'), 'the handle should be there to search on');
+  assert.ok(text.includes('**Setter:** Loui'), 'whose lead it is belongs in the message');
   assert.ok(!text.includes('Nobody is on this one'), 'an owned booking was flagged as unowned');
+});
+
+test('the closer line offers both, host first', async () => {
+  // Calendly names a host, but either of them may end up taking it, so the
+  // message says so and gets edited in Discord when it matters.
+  captured = [];
+  await notifyBooking(fakeLead({ setterId: 'user-loui', closerName: 'Nigel' }), null, {
+    setterName: 'Loui',
+    closers: ['Andrew', 'Nigel'],
+  });
+  assert.ok(
+    (captured[0].body.content ?? '').includes('**Closer:** Nigel and/or Andrew'),
+    'the host should lead, with the other offered alongside'
+  );
+});
+
+test('one closer is named on their own, not "and/or"', async () => {
+  captured = [];
+  await notifyBooking(fakeLead({ setterId: 'user-loui', closerName: 'Nigel' }), null, {
+    setterName: 'Loui',
+    closers: ['Nigel'],
+  });
+  assert.ok((captured[0].body.content ?? '').includes('**Closer:** Nigel'));
+  assert.ok(!(captured[0].body.content ?? '').includes('and/or'));
+});
+
+test('no setter means no setter line, the warning carries it', async () => {
+  captured = [];
+  await notifyBooking(fakeLead({ setterId: null, needsHandle: false }), null, {
+    setterName: null,
+    closers: ['Nigel'],
+  });
+  const text = captured[0].body.content ?? '';
+  assert.ok(!text.includes('**Setter:**'), 'an empty setter line says nothing the warning does not');
+  assert.ok(text.includes('Nobody is on this one'));
 });
 
 test('a booking nobody owns says so', async () => {
