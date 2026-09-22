@@ -106,7 +106,13 @@ export async function notifyBooking(lead: Lead, offerLabel: string | null): Prom
     offerLabel ? `**Offer:** ${offerLabel}` : null,
     `**When:** ${formatCallTime(lead.callScheduledFor)}`,
     lead.closerName ? `**Closer:** ${lead.closerName}` : null,
-    lead.igHandle ? `**IG:** @${lead.igHandle}` : null,
+    lead.needsHandle ? null : lead.igHandle ? `**IG:** @${lead.igHandle}` : null,
+    // Somebody booked off a link without ever being in the tracker. That is
+    // the booking most likely to be walked into cold, so the ping says so
+    // rather than looking like every other one.
+    lead.needsHandle || !lead.setterId
+      ? `⚠️ **Nobody is on this one.**${lead.email ? ` They booked as ${lead.email}.` : ''} Claim it in the dashboard and triage it before the call.`
+      : null,
   ].filter(Boolean);
 
   return postToChannel(process.env.DISCORD_SETTER_CHANNEL_ID, lines.join('\n'));

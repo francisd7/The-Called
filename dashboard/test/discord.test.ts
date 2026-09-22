@@ -252,3 +252,42 @@ test('an outcome with no call date is treated as a backfill', () => {
   // which means this is being typed up long afterwards.
   assert.equal(outcomeIsNews({ callScheduledFor: null, postCallRecordId: null }), false);
 });
+
+// --- the booking nobody is expecting ---------------------------------------
+//
+// Someone booked a sales call at 8:54 on a Monday night, matched no lead, and
+// the dashboard told nobody: the webhook only acted when it recognised the
+// person. That booking is the one most likely to be walked into cold, so the
+// ping has to say so rather than reading like every other one.
+
+test('a booking with an owner reads as normal', async () => {
+  captured = [];
+  await notifyBooking(fakeLead({ setterId: 'user-loui', needsHandle: false }), 'Brotherhood');
+  const text = captured[0].body.content ?? '';
+  assert.ok(text.includes('Call booked'));
+  assert.ok(text.includes('@grittraining_'), 'the handle should be there to search on');
+  assert.ok(!text.includes('Nobody is on this one'), 'an owned booking was flagged as unowned');
+});
+
+test('a booking nobody owns says so', async () => {
+  captured = [];
+  await notifyBooking(
+    fakeLead({ setterId: null, needsHandle: true, igHandle: 'Arthur Cembales', name: 'Arthur Cembales', email: 'arthur@example.com' }),
+    'Brotherhood'
+  );
+  const text = captured[0].body.content ?? '';
+  assert.ok(text.includes('Nobody is on this one'), 'the warning is the whole point of the message');
+  assert.ok(text.includes('arthur@example.com'), 'the email is the only way to work out who they are');
+  assert.ok(
+    !text.includes('**IG:** @Arthur Cembales'),
+    'a name standing in for a handle must not be printed as one'
+  );
+});
+
+test('a claimed lead without a handle is still flagged', async () => {
+  // Claiming it is not the same as knowing who they are - the handle is what
+  // ties the call back to a conversation.
+  captured = [];
+  await notifyBooking(fakeLead({ setterId: 'user-loui', needsHandle: true }), null);
+  assert.ok((captured[0].body.content ?? '').includes('Nobody is on this one'));
+});

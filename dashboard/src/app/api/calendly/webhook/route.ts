@@ -323,24 +323,74 @@ export async function POST(request: Request) {
     }
 
     const match = await matchLead(payload);
+    let leadId = match.leadId;
+    let strategy = match.strategy;
 
-    if (match.leadId) {
-      if (eventType === 'invitee.created') await handleCreated(match.leadId, payload);
-      else if (eventType === 'invitee.canceled') await handleCanceled(match.leadId, payload);
+    // A booking that matches nobody used to stop here: no lead, no Discord,
+    // nothing but a row in the delivery log. That is backwards. An unmatched
+    // booking is a real call on a real calendar that *nobody owns and nobody
+    // is preparing for* - more urgent than a matched one, not less. The
+    // Calendly history backfill has always created a lead in this case; the
+    // webhook, which is the one that runs while it still matters, did not.
+    if (!leadId && eventType === 'invitee.created') {
+      const handle = igHandleFromAnswers(payload);
+      const name = payload.name?.trim() || null;
+      const email = payload.email?.trim().toLowerCase() || null;
+      const [row] = await db
+        .insert(leads)
+        .values({
+          // Whatever we have to call them by. No handle on the booking form
+          // means there is nothing to key on, so a person fills it in rather
+          // than the app inventing one.
+          igHandle: handle ?? name ?? email ?? 'unknown booking',
+          igHandleKey: handle ?? null,
+          needsHandle: !handle,
+          name,
+          email,
+          // Anyone who books has replied, and it is live by definition.
+          responded: true,
+          respondedAt: new Date(),
+          isActiveConvo: true,
+          leadCreatedAt: new Date(),
+          lastContactAt: new Date(),
+        })
+        .returning({ id: leads.id });
+      leadId = row.id;
+      strategy = 'created_from_booking';
+      await db.insert(leadEvents).values({
+        leadId,
+        type: 'created',
+        meta: { source: 'calendly_webhook', inviteeUri: payload.uri } as never,
+      });
+      await recordIssue({
+        title: 'A call was booked by somebody not in the tracker',
+        detail:
+          `${name || email || 'Somebody'} booked a call and matched no lead, so one was created ` +
+          'for them. Nobody owns it and it has no Instagram handle yet.',
+        remedy:
+          'Open the lead, put the real handle in and set a setter. If they are already in the ' +
+          'tracker under another row, merge the two from Possible duplicates.',
+        context: { leadId, email },
+      });
+    }
+
+    if (leadId) {
+      if (eventType === 'invitee.created') await handleCreated(leadId, payload);
+      else if (eventType === 'invitee.canceled') await handleCanceled(leadId, payload);
     }
 
     await db
       .update(calendlyWebhookEvents)
       .set({
-        matchedLeadId: match.leadId,
-        matchStrategy: match.strategy,
+        matchedLeadId: leadId,
+        matchStrategy: strategy,
         processedAt: new Date(),
       })
       .where(eq(calendlyWebhookEvents.id, logged.id));
 
     // An unmatched booking is a real call on someone's calendar, so it stays
     // queued for a human rather than being retried forever or dropped.
-    return NextResponse.json({ ok: true, matched: Boolean(match.leadId), strategy: match.strategy });
+    return NextResponse.json({ ok: true, matched: Boolean(leadId), strategy });
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     console.error('Calendly webhook processing failed:', message);
