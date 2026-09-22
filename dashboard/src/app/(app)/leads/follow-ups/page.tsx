@@ -83,8 +83,12 @@ export default async function FollowUpsPage({ searchParams }: { searchParams: Se
   // theirs - it's the imported backlog - so it's offered up rather than parked.
   // A setterId narrows it to one person, which is what the tiles on the lead
   // tracker link to: a tile that says 12 should open 12, not everybody's.
-  const focus = one(params, 'setterId');
   const allColumns = setters.filter((s) => s.role === 'setter');
+  // An id that matches nobody - a stale bookmark, a setter since deactivated -
+  // falls back to everybody rather than rendering an empty page under a title
+  // built from a name that isn't there.
+  const asked = one(params, 'setterId');
+  const focus = allColumns.some((s) => s.id === asked) ? asked : undefined;
   const columns = focus ? allColumns.filter((s) => s.id === focus) : allColumns;
   const grabbers = setters.filter((s) => s.role !== 'setter').map((s) => s.id);
 

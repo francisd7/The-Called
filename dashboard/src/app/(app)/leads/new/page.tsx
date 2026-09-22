@@ -1,3 +1,4 @@
+import { auth } from '@/auth';
 import { ActionForm } from '@/components/ActionForm';
 import { createLead } from '@/lib/actions';
 import { getOptions, getSetters } from '@/lib/queries';
@@ -5,6 +6,7 @@ import { getOptions, getSetters } from '@/lib/queries';
 export const dynamic = 'force-dynamic';
 
 export default async function NewLeadPage() {
+  const session = await auth();
   const [setters, sources, openers, stages, qualities, icps] = await Promise.all([
     getSetters(),
     getOptions('lead_source'),
@@ -33,11 +35,13 @@ export default async function NewLeadPage() {
           </div>
           <div className="grid2">
             <div className="field">
-              <label htmlFor="setterId">Setter *</label>
-              <select id="setterId" name="setterId" required defaultValue="">
-                <option value="" disabled>
-                  Choose…
-                </option>
+              {/* Whoever is filling this in is almost always the person who
+                  will work it, and the action defaults to them anyway. It used
+                  to open on a disabled "Choose…" and be marked required, so the
+                  form refused to submit on the one field the page says you do
+                  not have to fill in. */}
+              <label htmlFor="setterId">Setter</label>
+              <select id="setterId" name="setterId" defaultValue={session?.user?.id ?? ''}>
                 {setters.map((s) => (
                   <option key={s.id} value={s.id}>
                     {s.name}

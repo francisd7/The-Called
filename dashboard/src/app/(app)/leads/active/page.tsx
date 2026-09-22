@@ -39,7 +39,10 @@ export default async function ActiveConvosPage({ searchParams }: { searchParams:
       </p>
       <h1>{title}</h1>
       <p className="sub">
-        {result.total === 1 ? '1 live conversation' : `${result.total} live conversations`}. Press
+        {result.total === 1 ? '1 live conversation' : `${result.total} live conversations`}
+        {/* The query caps a page at 500. Showing 500 under a heading that says
+            620 is worse than saying which it is. */}
+        {result.rows.length < result.total ? `, showing the first ${result.rows.length}` : ''}. Press
         Sent when you message someone — that is what the follow-up timers read. The × marks one
         finished and takes it off this list.
       </p>
