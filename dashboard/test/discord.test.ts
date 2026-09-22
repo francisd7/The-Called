@@ -1,7 +1,7 @@
 import { strict as assert } from 'node:assert';
 import { createServer, type Server } from 'node:http';
 import { after, before, test } from 'node:test';
-import { notifyBooking, notifyTriage, outcomeIsNews } from '../src/lib/discord.ts';
+import { notifyBooking, notifyOutcome, notifyTriage, outcomeIsNews } from '../src/lib/discord.ts';
 
 type Captured = { path: string; auth: string | undefined; body: { content?: string } };
 let captured: Captured[] = [];
@@ -329,4 +329,19 @@ test('a claimed lead without a handle is still flagged', async () => {
   captured = [];
   await notifyBooking(fakeLead({ setterId: 'user-loui', needsHandle: true }), null);
   assert.ok((captured[0].body.content ?? '').includes('Nobody is on this one'));
+});
+
+test('a cancelled call is not announced as a call that happened', async () => {
+  // It fell through to "Call done", which is worse than saying nothing about a
+  // call that never took place.
+  captured = [];
+  await notifyOutcome(
+    fakeLead({ callOutcome: 'cancelled', cancelReason: 'could_not_make_it', closed: false }),
+    'Loui'
+  );
+  const text = captured[0].body.content ?? '';
+  assert.ok(text.includes('**Cancelled**'), 'a cancellation should read as one');
+  assert.ok(!text.includes('Call done'));
+  assert.ok(text.includes('**Reason:** could not make it'), 'the reason is the useful part');
+  assert.ok(!text.includes('**Outcome:**'), 'the headline already said it');
 });

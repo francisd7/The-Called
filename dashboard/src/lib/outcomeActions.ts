@@ -47,6 +47,7 @@ export async function logCallOutcome(formData: FormData): Promise<Result> {
     if (!outcome) return { ok: false, error: 'Pick what happened on the call' };
 
     const closed = outcome === 'closed';
+    const cancelled = outcome === 'cancelled';
     const cash = money(formData, 'cashCollected');
     const contract = money(formData, 'contractValue');
 
@@ -71,6 +72,13 @@ export async function logCallOutcome(formData: FormData): Promise<Result> {
         fathomUrl: field(formData, 'fathomUrl'),
         postCallNotes: field(formData, 'postCallNotes'),
         lostReason: closed ? null : field(formData, 'lostReason'),
+        // A cancelled call has to stop counting as a live booking, or it sits
+        // in the numbers as a call that is still coming. Recording the word on
+        // its own would leave callCancelled false and the booking on the
+        // calendar as far as every count is concerned.
+        callCancelled: cancelled,
+        callCancelledAt: cancelled ? new Date() : null,
+        cancelReason: cancelled ? field(formData, 'cancelReason') : null,
         // isActiveConvo is deliberately untouched. Rapport carries on after a
         // call - a close becomes a client relationship, a no-close is often
         // still being worked - so the call outcome is not the team's signal for

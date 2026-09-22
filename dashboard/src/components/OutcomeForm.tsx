@@ -18,16 +18,19 @@ export function OutcomeForm({
   tiers,
   payments,
   lostReasons,
+  cancelReasons,
 }: {
   lead: Lead;
   outcomes: Option[];
   tiers: Option[];
   payments: Option[];
   lostReasons: Option[];
+  cancelReasons: Option[];
 }) {
   const [outcome, setOutcome] = useState(lead.callOutcome ?? '');
   const closed = outcome === 'closed';
   const didNotClose = outcome === 'no_close';
+  const cancelled = outcome === 'cancelled';
 
   return (
     <ActionForm action={logCallOutcome} successMessage="Saved">
@@ -98,6 +101,26 @@ export function OutcomeForm({
               ))}
             </select>
           </div>
+        </div>
+      )}
+
+      {cancelled && (
+        <div className="field">
+          <label htmlFor="cancelReason">Why was it cancelled?</label>
+          {/* Calendly writes a free-text reason when somebody cancels through
+              the link. If what is already on the lead isn't one of ours, it is
+              offered as-is rather than quietly replaced with a dash. */}
+          <select id="cancelReason" name="cancelReason" defaultValue={lead.cancelReason ?? ''}>
+            <option value="">—</option>
+            {cancelReasons.map((r) => (
+              <option key={r.id} value={r.value}>
+                {r.label}
+              </option>
+            ))}
+            {lead.cancelReason && !cancelReasons.some((r) => r.value === lead.cancelReason) && (
+              <option value={lead.cancelReason}>{lead.cancelReason}</option>
+            )}
+          </select>
         </div>
       )}
 

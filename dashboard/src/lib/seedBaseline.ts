@@ -73,6 +73,18 @@ const BASE_OPTIONS: Array<[string, string, string]> = [
   ['call_outcome', 'no_show', 'No Show'],
   ['call_outcome', 'rescheduled', 'Rescheduled'],
   ['call_outcome', 'follow_up_scheduled', 'Follow Up Scheduled'],
+  ['call_outcome', 'cancelled', 'Cancelled'],
+  // Why a booked call never happened. Calendly writes its own reason as free
+  // text when someone cancels through the link, so these are for the ones
+  // cancelled in the DMs or over the phone.
+  ['cancel_reason', 'rescheduling', 'Rescheduling'],
+  ['cancel_reason', 'could_not_make_it', 'Could not make it'],
+  ['cancel_reason', 'not_interested', 'No longer interested'],
+  ['cancel_reason', 'not_ready', 'Not ready yet'],
+  ['cancel_reason', 'cant_afford', 'Cannot afford it'],
+  ['cancel_reason', 'went_elsewhere', 'Went with someone else'],
+  ['cancel_reason', 'ghosted', 'Stopped replying'],
+  ['cancel_reason', 'no_reason', 'No reason given'],
   ['tier', 'the_called', 'The Called'],
   ['tier', 'foundations', 'Foundations'],
   ['tier', 'momentum', 'Momentum'],
@@ -83,6 +95,9 @@ const BASE_OPTIONS: Array<[string, string, string]> = [
   ['payment_method', 'klarna', 'Klarna'],
   ['payment_method', 'affirm', 'Affirm'],
   ['payment_method', 'claritypay', 'Claritypay'],
+  ['payment_method', 'in_house', 'In-house financing'],
+  ['payment_method', 'credit_card', 'Credit card'],
+  ['payment_method', 'whop', 'Whop'],
   ['icp', 'yes', 'Yes'],
   ['icp', 'maybe', 'Maybe'],
   ['icp', 'no', 'No'],

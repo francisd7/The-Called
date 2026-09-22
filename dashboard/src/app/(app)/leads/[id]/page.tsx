@@ -43,6 +43,7 @@ export default async function LeadPage({ params }: { params: Promise<{ id: strin
     tiers,
     payments,
     lostReasons,
+    cancelReasons,
     closers,
     offers,
   ] = await Promise.all([
@@ -55,6 +56,7 @@ export default async function LeadPage({ params }: { params: Promise<{ id: strin
     getOptions('tier'),
     getOptions('payment_method'),
     getOptions('lost_reason'),
+    getOptions('cancel_reason'),
     getClosers(),
     getActiveOffers(),
   ]);
@@ -457,6 +459,7 @@ export default async function LeadPage({ params }: { params: Promise<{ id: strin
               tiers={tiers}
               payments={payments}
               lostReasons={lostReasons}
+              cancelReasons={cancelReasons}
             />
           </div>
         </>
