@@ -177,8 +177,9 @@ export default async function TodayPage({ searchParams }: { searchParams: Search
         </div>
       </div>
 
-      <PostCallInbox reports={postCall.pending} staleMinutes={postCall.staleMinutes} />
-
+      {/* Ordered by what somebody has to do about it, soonest first: the
+          calls happening today, then the week ahead, then the reports
+          waiting to be put on a lead, then the calls still owed a result. */}
       <h2>Calls today</h2>
       {todaysCalls.length === 0 ? (
         <p className="empty">No calls booked for today.</p>
@@ -195,6 +196,26 @@ export default async function TodayPage({ searchParams }: { searchParams: Search
           ))}
         </div>
       )}
+
+      <h2>Next 7 days</h2>
+      {upcoming.length === 0 ? (
+        <p className="empty">Nothing booked in the next week.</p>
+      ) : (
+        <div className="tile-grid">
+          {upcoming.map((lead) => (
+            <CallTile
+              key={lead.id}
+              lead={lead}
+              offerKey={lead.offerId ? offerById.get(lead.offerId)?.key : null}
+              offerLabel={lead.offerId ? offerById.get(lead.offerId)?.label : null}
+              showDate
+              {...tileProps}
+            />
+          ))}
+        </div>
+      )}
+
+      <PostCallInbox reports={postCall.pending} staleMinutes={postCall.staleMinutes} />
 
       {awaitingOutcome.total > 0 && (
         <>
@@ -217,25 +238,6 @@ export default async function TodayPage({ searchParams }: { searchParams: Search
           </div>
         </>
       )}
-
-      <h2>Next 7 days</h2>
-      {upcoming.length === 0 ? (
-        <p className="empty">Nothing booked in the next week.</p>
-      ) : (
-        <div className="tile-grid">
-          {upcoming.map((lead) => (
-            <CallTile
-              key={lead.id}
-              lead={lead}
-              offerKey={lead.offerId ? offerById.get(lead.offerId)?.key : null}
-              offerLabel={lead.offerId ? offerById.get(lead.offerId)?.label : null}
-              showDate
-              {...tileProps}
-            />
-          ))}
-        </div>
-      )}
-
       <h2>This week</h2>
       {/* Column count comes from how many panels there actually are. Hardcoding
           three looked right with two setters and wrapped the moment there was
