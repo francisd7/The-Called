@@ -887,3 +887,48 @@ th { color: var(--muted); font-weight: 550; font-size: 0.78rem; }
 /* Stacked charts need air between them, and a little room above each heading
    so a legend doesn't read as belonging to the chart below it. */
 .panel + .panel { margin-top: 0.9rem; }
+
+/* Viewing as somebody else.
+
+   Fixed to the bottom rather than sitting under the sticky header: the one
+   thing that must never scroll out of reach is the way back to your own view,
+   and on a phone the bottom of the screen is where a thumb already is. Wears
+   the warn tokens because a borrowed identity is a state to get out of, not a
+   feature to admire. */
+.viewas-bar {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  padding: 0.6rem 1rem;
+  background: var(--warn-bg);
+  color: var(--warn);
+  border-top: 2px solid var(--warn);
+  font-size: 0.9rem;
+}
+.viewas-bar strong { color: var(--warn); }
+.viewas-bar form { margin: 0; }
+.viewas-bar button {
+  background: var(--warn);
+  color: var(--warn-bg);
+  border: none;
+  border-radius: 0.4rem;
+  padding: 0.35rem 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  min-height: auto;
+}
+
+/* Keeps the last row of a table clear of the bar. The bar wraps onto three
+   rows once the sentence no longer fits beside the button, so a narrow screen
+   has to reserve roughly twice the height - measured, not guessed. */
+main.has-viewas { padding-bottom: 5rem; }
+@media (max-width: 48rem) {
+  main.has-viewas { padding-bottom: 9rem; }
+}

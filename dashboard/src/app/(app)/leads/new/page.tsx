@@ -1,4 +1,4 @@
-import { auth } from '@/auth';
+import { currentUser } from '@/lib/session';
 import { ActionForm } from '@/components/ActionForm';
 import { createLead } from '@/lib/actions';
 import { getOptions, getSetters } from '@/lib/queries';
@@ -6,7 +6,7 @@ import { getOptions, getSetters } from '@/lib/queries';
 export const dynamic = 'force-dynamic';
 
 export default async function NewLeadPage() {
-  const session = await auth();
+  const me = await currentUser();
   const [setters, sources, openers, stages, qualities, icps] = await Promise.all([
     getSetters(),
     getOptions('lead_source'),
@@ -41,7 +41,7 @@ export default async function NewLeadPage() {
                   form refused to submit on the one field the page says you do
                   not have to fill in. */}
               <label htmlFor="setterId">Setter</label>
-              <select id="setterId" name="setterId" defaultValue={session?.user?.id ?? ''}>
+              <select id="setterId" name="setterId" defaultValue={me?.id ?? ''}>
                 {setters.map((s) => (
                   <option key={s.id} value={s.id}>
                     {s.name}

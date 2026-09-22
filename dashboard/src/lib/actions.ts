@@ -2,7 +2,7 @@
 
 import { revalidatePath } from 'next/cache';
 import { and, eq, sql } from 'drizzle-orm';
-import { auth } from '@/auth';
+import { requireUser } from './session';
 import { db } from '@/db';
 import { eodReports, leadEvents, leadNotes, leads, users } from '@/db/schema';
 import { notifyEodSubmitted, notifyTriage } from './discord';
@@ -13,17 +13,6 @@ import { respondedFromStage } from './stages';
 import { parseTeamDateTime, teamDateString } from './dates';
 
 type ActionResult = { ok: true; message?: string } | { ok: false; error: string };
-
-/**
- * Every action goes through this. Server actions are reachable by anyone who
- * can guess the endpoint, so the session is re-checked here rather than trusted
- * from whatever page rendered the form.
- */
-async function requireUser() {
-  const session = await auth();
-  if (!session?.user?.id) throw new Error('Not signed in');
-  return { id: session.user.id, name: session.user.name ?? 'Someone', role: session.user.role };
-}
 
 function str(form: FormData, key: string): string | null {
   const v = form.get(key);

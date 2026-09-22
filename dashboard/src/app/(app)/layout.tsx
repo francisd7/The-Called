@@ -1,17 +1,21 @@
 import type { ReactNode } from 'react';
 import Image from 'next/image';
 import { redirect } from 'next/navigation';
-import { auth, signOut } from '@/auth';
+import { signOut } from '@/auth';
+import { currentUser } from '@/lib/session';
+import { stopViewingAs } from '@/lib/viewAsActions';
 import { NavLinks } from '@/components/NavLinks';
 import { ReportProblem } from '@/components/ReportProblem';
 import { getOpenIssueCount } from '@/lib/issues';
 
 export default async function AppLayout({ children }: { children: ReactNode }) {
-  const session = await auth();
-  if (!session?.user?.id) redirect('/signin');
+  const me = await currentUser();
+  if (!me) redirect('/signin');
 
-  // Only an admin acts on these, so only an admin pays for the query.
-  const openIssues = session.user.role === 'admin' ? await getOpenIssueCount() : 0;
+  // Only an admin acts on these, so only an admin pays for the query. Read off
+  // the effective role, so viewing as a setter hides the count the same way it
+  // is hidden for them.
+  const openIssues = me.role === 'admin' ? await getOpenIssueCount() : 0;
 
   return (
     <>
@@ -28,7 +32,7 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
             />
             <span className="brand-sub">Setter Dashboard</span>
           </a>
-          <NavLinks role={session.user.role} openIssues={openIssues} />
+          <NavLinks role={me.role} openIssues={openIssues} />
           <div className="topbar-right">
             <ReportProblem />
             <form
@@ -37,7 +41,7 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
               await signOut({ redirectTo: '/signin' });
             }}
           >
-              <span className="whoami">{session.user.name} · </span>
+              <span className="whoami">{me.name} · </span>
               <button
                 type="submit"
                 style={{ border: 'none', background: 'none', padding: 0, minHeight: 'auto' }}
@@ -48,7 +52,23 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
           </div>
         </div>
       </header>
-      <main>{children}</main>
+      {me.viewingAs && (
+        <div className="viewas-bar">
+          <span>
+            Viewing as <strong>{me.name}</strong> — read-only. You are signed in as{' '}
+            {me.viewingAs.realName}.
+          </span>
+          <form
+            action={async () => {
+              'use server';
+              await stopViewingAs();
+            }}
+          >
+            <button type="submit">Back to my view</button>
+          </form>
+        </div>
+      )}
+      <main className={me.viewingAs ? 'has-viewas' : undefined}>{children}</main>
     </>
   );
 }

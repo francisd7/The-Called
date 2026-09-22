@@ -1,6 +1,6 @@
 import { redirect } from 'next/navigation';
 import { count, desc, eq } from 'drizzle-orm';
-import { auth } from '@/auth';
+import { currentUser } from '@/lib/session';
 import { db } from '@/db';
 import { calendlyEventTypes, leads, offers, users } from '@/db/schema';
 import { ActionForm } from '@/components/ActionForm';
@@ -40,8 +40,8 @@ export const dynamic = 'force-dynamic';
  * in with the numbers they made the page long enough that nobody read either.
  */
 export default async function SetupPage() {
-  const session = await auth();
-  if (session?.user?.role !== 'admin') redirect('/');
+  const me = await currentUser();
+  if (me?.role !== 'admin') redirect('/');
 
   const [people, offerRows, [{ leadCount }], reports, activity, links] = await Promise.all([
     db.select().from(users).orderBy(users.name),

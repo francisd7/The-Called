@@ -1,6 +1,6 @@
 import { redirect } from 'next/navigation';
 import { and, count, desc, eq, isNull } from 'drizzle-orm';
-import { auth } from '@/auth';
+import { currentUser } from '@/lib/session';
 import { db } from '@/db';
 import { eodReports, leads, users } from '@/db/schema';
 import { ActionForm } from '@/components/ActionForm';
@@ -9,6 +9,7 @@ import { getPipelineSummary, getUnmatchedBookings } from '@/lib/queries';
 import { countDuplicateGroups } from '@/lib/duplicates';
 import { getIssues } from '@/lib/issues';
 import { resolveIssue } from '@/lib/issueActions';
+import { startViewingAs } from '@/lib/viewAsActions';
 
 export const dynamic = 'force-dynamic';
 
@@ -32,10 +33,10 @@ function Attention({
 }
 
 export default async function AdminPage() {
-  const session = await auth();
+  const me = await currentUser();
   // The nav hides this link for non-admins, but the route has to enforce it
   // too - a hidden link is not access control.
-  if (session?.user?.role !== 'admin') redirect('/');
+  if (me?.role !== 'admin') redirect('/');
 
   const [summary, unmatched, issues, people, recentEod, duplicates] = await Promise.all([
     getPipelineSummary(),
@@ -177,6 +178,11 @@ export default async function AdminPage() {
       <p className="sub">
         <a href="/admin/people">Add someone, change an address or revoke access →</a>
       </p>
+      <p className="sub">
+        Viewing as somebody shows you the dashboard their sign-in actually
+        returns — their leads, their numbers, their menu. It is read-only, so
+        nothing you click can land on their record.
+      </p>
       <div className="table-wrap">
         <table>
           <thead>
@@ -185,6 +191,7 @@ export default async function AdminPage() {
               <th>Email</th>
               <th>Role</th>
               <th>Can sign in</th>
+              <th>See their view</th>
             </tr>
           </thead>
           <tbody>
@@ -194,6 +201,16 @@ export default async function AdminPage() {
                 <td>{p.email.startsWith('CHANGEME') ? <em>needs a real address</em> : p.email}</td>
                 <td>{p.role}</td>
                 <td>{p.active ? 'yes' : 'no'}</td>
+                <td>
+                  {p.active && p.id !== me.id ? (
+                    <ActionForm action={startViewingAs}>
+                      <input type="hidden" name="userId" value={p.id} />
+                      <button type="submit">View as {p.name.split(' ')[0]}</button>
+                    </ActionForm>
+                  ) : (
+                    <span className="sub">&mdash;</span>
+                  )}
+                </td>
               </tr>
             ))}
           </tbody>

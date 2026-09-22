@@ -1,4 +1,4 @@
-import { auth } from '@/auth';
+import { currentUser } from '@/lib/session';
 import { CallTile } from '@/components/CallTile';
 import { MiniLeadTile } from '@/components/MiniLeadTile';
 import { formatCallTime } from '@/lib/dates';
@@ -39,9 +39,9 @@ export default async function TodayPage({ searchParams }: { searchParams: Search
     typeof rawPeriod === 'string' && PERIODS.some((p) => p.key === rawPeriod) ? rawPeriod : 'today'
   ) as Period;
 
-  const session = await auth();
-  const userId = session!.user.id;
-  const isSetter = session!.user.role === 'setter';
+  const me = await currentUser();
+  const userId = me!.id;
+  const isSetter = me!.role === 'setter';
 
   const [
     summary,
@@ -74,7 +74,7 @@ export default async function TodayPage({ searchParams }: { searchParams: Search
     getPeriodSummary(period),
     getCallsAwaitingOutcome(),
     getPostCallInbox(),
-    session!.user.role === 'admin' ? getCalendlyHealth() : null,
+    me!.role === 'admin' ? getCalendlyHealth() : null,
   ]);
 
   // A webhook that has quietly stopped delivering looks exactly like a quiet

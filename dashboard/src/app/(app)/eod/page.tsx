@@ -1,5 +1,5 @@
 import { eq, and } from 'drizzle-orm';
-import { auth } from '@/auth';
+import { currentUser } from '@/lib/session';
 import { db } from '@/db';
 import { eodReports } from '@/db/schema';
 import { ActionForm } from '@/components/ActionForm';
@@ -17,9 +17,9 @@ export const dynamic = 'force-dynamic';
 type SearchParams = Promise<Record<string, string | string[] | undefined>>;
 
 export default async function EodPage({ searchParams }: { searchParams: SearchParams }) {
-  const session = await auth();
-  const userId = session!.user.id;
-  const isAdmin = session!.user.role === 'admin';
+  const me = await currentUser();
+  const userId = me!.id;
+  const isAdmin = me!.role === 'admin';
   const today = teamDateString();
   const thisWeek = weekStart();
 

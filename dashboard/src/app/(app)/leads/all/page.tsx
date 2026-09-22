@@ -1,4 +1,4 @@
-import { auth } from '@/auth';
+import { currentUser } from '@/lib/session';
 import { LeadBrowser, pageSizeFrom, one, type Params } from '@/components/LeadBrowser';
 import {
   getLeadCardLookups,
@@ -22,9 +22,9 @@ type SearchParams = Promise<Params>;
  */
 export default async function AllLeadsPage({ searchParams }: { searchParams: SearchParams }) {
   const params = await searchParams;
-  const session = await auth();
-  const isAdmin = session?.user?.role === 'admin';
-  const meId = session?.user?.id ?? '';
+  const me = await currentUser();
+  const isAdmin = me?.role === 'admin';
+  const meId = me?.id ?? '';
 
   const page = Number.parseInt(one(params, 'page') ?? '1', 10) || 1;
 

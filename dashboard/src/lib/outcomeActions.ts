@@ -2,7 +2,7 @@
 
 import { revalidatePath } from 'next/cache';
 import { eq } from 'drizzle-orm';
-import { auth } from '@/auth';
+import { requireUser } from './session';
 import { db } from '@/db';
 import { leadEvents, leads } from '@/db/schema';
 import { notifyOutcome, outcomeIsNews } from './discord';
@@ -37,9 +37,7 @@ function money(form: FormData, key: string): string | null {
  */
 export async function logCallOutcome(formData: FormData): Promise<Result> {
   try {
-    const session = await auth();
-    if (!session?.user?.id) return { ok: false, error: 'Not signed in' };
-    const user = { id: session.user.id, name: session.user.name ?? 'Someone' };
+    const user = await requireUser();
 
     const leadId = field(formData, 'leadId');
     const outcome = field(formData, 'callOutcome');

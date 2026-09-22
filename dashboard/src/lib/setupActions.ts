@@ -2,7 +2,7 @@
 
 import { revalidatePath } from 'next/cache';
 import { asc, desc, eq, inArray } from 'drizzle-orm';
-import { auth } from '@/auth';
+import { requireAdmin } from './session';
 import { db } from '@/db';
 import { calendlyEventTypes, leadEvents, leadNotes, leads, offers, users } from '@/db/schema';
 import { teamDateString } from './dates';
@@ -12,16 +12,6 @@ import { setupCalendly } from './calendlySetup';
 import { backfillCalendly, discoverEventTypes } from './calendlyBackfill';
 
 type Result = { ok: true; message: string } | { ok: false; error: string };
-
-/**
- * These actions change production data wholesale, so they re-check the role
- * here. The admin page already redirects non-admins, but a server action is
- * reachable directly and a hidden button is not access control.
- */
-async function requireAdmin() {
-  const session = await auth();
-  if (session?.user?.role !== 'admin') throw new Error('Admins only');
-}
 
 export async function runAirtableImport(formData: FormData): Promise<Result> {
   try {

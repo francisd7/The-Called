@@ -2,19 +2,13 @@
 
 import { revalidatePath } from 'next/cache';
 import { eq, inArray, sql } from 'drizzle-orm';
-import { auth } from '@/auth';
+import { requireUser } from './session';
 import { db } from '@/db';
 import { leadEvents, leads, users } from '@/db/schema';
 import { planBulkAssign } from './assignRules';
 import { teamDateString } from './dates';
 
 type Result = { ok: true; message?: string } | { ok: false; error: string };
-
-async function requireUser() {
-  const session = await auth();
-  if (!session?.user?.id) throw new Error('Not signed in');
-  return { id: session.user.id, name: session.user.name ?? 'Someone' };
-}
 
 function field(form: FormData, key: string): string | null {
   const v = form.get(key);

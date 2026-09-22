@@ -1,17 +1,11 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
-import { auth } from '@/auth';
+import { requireUser } from './session';
 import { db } from '@/db';
 import { dismissPair, mergeLeads } from './duplicates';
 
 type Result = { ok: true; message?: string } | { ok: false; error: string };
-
-async function requireUser() {
-  const session = await auth();
-  if (!session?.user?.id) throw new Error('Not signed in');
-  return session.user.id;
-}
 
 function field(form: FormData, key: string): string | null {
   const v = form.get(key);
@@ -44,7 +38,7 @@ function refresh() {
  */
 export async function mergeDuplicate(formData: FormData): Promise<Result> {
   try {
-    const actorId = await requireUser();
+    const { id: actorId } = await requireUser();
     const keepId = field(formData, 'keepId');
     const dropIds = ids(formData, 'dropId').filter((id) => id !== keepId);
     if (!keepId || dropIds.length === 0) {
@@ -75,7 +69,7 @@ export async function mergeDuplicate(formData: FormData): Promise<Result> {
 /** Rules out every pair in the group at once, so none of them comes back. */
 export async function markNotDuplicates(formData: FormData): Promise<Result> {
   try {
-    const actorId = await requireUser();
+    const { id: actorId } = await requireUser();
     const leadIds = ids(formData, 'leadId');
     if (leadIds.length < 2) return { ok: false, error: 'Need two leads to tell apart' };
 

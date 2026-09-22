@@ -2,7 +2,7 @@
 
 import { revalidatePath } from 'next/cache';
 import { count, eq, ne, and } from 'drizzle-orm';
-import { auth } from '@/auth';
+import { requireAdmin } from './session';
 import { db } from '@/db';
 import { users } from '@/db/schema';
 
@@ -10,12 +10,6 @@ type Result = { ok: true; message?: string } | { ok: false; error: string };
 
 const ROLES = ['admin', 'setter', 'closer'] as const;
 type Role = (typeof ROLES)[number];
-
-async function requireAdmin() {
-  const session = await auth();
-  if (session?.user?.role !== 'admin') throw new Error('Admins only');
-  return session.user;
-}
 
 function field(form: FormData, key: string): string | null {
   const v = form.get(key);

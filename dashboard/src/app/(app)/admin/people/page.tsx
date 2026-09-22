@@ -1,6 +1,6 @@
 import { redirect } from 'next/navigation';
 import { asc } from 'drizzle-orm';
-import { auth } from '@/auth';
+import { currentUser } from '@/lib/session';
 import { db } from '@/db';
 import { users } from '@/db/schema';
 import { ActionForm } from '@/components/ActionForm';
@@ -60,8 +60,8 @@ function PersonFields({
 }
 
 export default async function PeoplePage() {
-  const session = await auth();
-  if (session?.user?.role !== 'admin') redirect('/');
+  const me = await currentUser();
+  if (me?.role !== 'admin') redirect('/');
 
   const people = await db.select().from(users).orderBy(asc(users.name));
 
@@ -116,7 +116,7 @@ export default async function PeoplePage() {
             </div>
           </ActionForm>
 
-          {person.active && person.id !== session.user.id && (
+          {person.active && person.id !== me.id && (
             <ActionForm action={removePerson}>
               <input type="hidden" name="id" value={person.id} />
               <button type="submit">Revoke access</button>

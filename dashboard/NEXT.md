@@ -2,29 +2,13 @@
 
 Parked work, newest ask first. Everything here is deliberate, not forgotten.
 
-## 1. "View as Loui / Alexis" in admin
+## 1. ~~"View as Loui / Alexis" in admin~~ — built
 
-Francis needs to see the dashboard exactly as a setter sees it, so he can
-reproduce what they report rather than guess at it.
-
-The requirement that makes this non-trivial: **it has to be accurate.** A
-preview that only swaps the name in the corner is worse than nothing - it
-would show Francis a working page while the setter is looking at a broken
-one. Whatever is built has to run the real queries through the real
-permission checks as that user, not re-render admin's data under a
-different label.
-
-Notes for whoever picks it up:
-
-- Role and identity come off the JWT (`src/auth.ts`), and pages read it
-  through the session. An impersonation that does not change what the
-  session resolves to will not change what the queries return.
-- Leaving it on by accident is the obvious hazard - anything written while
-  viewing-as would be written as that setter. Either make the whole session
-  read-only while impersonating, or keep an unmissable banner with a one
-  click way out. Read-only is the safer default.
-- Admin only, and it should be visible in the audit trail: if a lead event
-  gets written during a view-as session, it should say who really did it.
+Admin -> People has a **View as** button per active person. It swaps the
+identity the whole app resolves to, so the menu, the numbers and the pages
+are the ones that sign-in actually returns - not admin's data relabelled.
+Read-only while it is on, with a fixed bar at the bottom of every screen to
+get back out.
 
 ## 2. A "Data" tab, starting with boosted reels
 
