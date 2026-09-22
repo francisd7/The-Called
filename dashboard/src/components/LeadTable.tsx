@@ -14,17 +14,21 @@ export function LeadTable({
   setterNames,
   setterColors,
   stageLabels,
+  selectable = false,
 }: {
   rows: Lead[];
   setterNames?: Map<string, string>;
   setterColors?: Map<string, string | null>;
   stageLabels?: Map<string, string>;
+  /** Adds a tick box per row, named leadId, for whatever form encloses this. */
+  selectable?: boolean;
 }) {
   return (
     <div className="table-wrap">
       <table className="lead-table">
         <thead>
           <tr>
+            {selectable && <th className="pick-col" aria-label="Select" />}
             <th>Lead</th>
             <th>Stage</th>
             <th>Setter</th>
@@ -40,6 +44,16 @@ export function LeadTable({
               : '—';
             return (
               <tr key={lead.id}>
+                {selectable && (
+                  <td className="pick-col">
+                    <input
+                      type="checkbox"
+                      name="leadId"
+                      value={lead.id}
+                      aria-label={`Select ${lead.igHandle}`}
+                    />
+                  </td>
+                )}
                 <td>
                   <a href={`/leads/${lead.id}`}>{lead.name?.trim() || `@${lead.igHandle}`}</a>
                 </td>

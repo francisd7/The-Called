@@ -2,6 +2,10 @@ import { BookingLinks } from '@/components/BookingLinks';
 import { ConvoRow } from '@/components/ConvoRow';
 import { FilterDialog } from '@/components/FilterDialog';
 import { LeadTable } from '@/components/LeadTable';
+import { ActionForm } from '@/components/ActionForm';
+import { BulkAssignBar } from '@/components/BulkAssignBar';
+import { auth } from '@/auth';
+import { bulkSetSetter } from '@/lib/assignActions';
 import { StreakStrip } from '@/components/StreakStrip';
 import {
   getActiveConvos,
@@ -30,6 +34,11 @@ function one(params: Record<string, string | string[] | undefined>, key: string)
 
 export default async function LeadsPage({ searchParams }: { searchParams: SearchParams }) {
   const params = await searchParams;
+  // The layout has already turned anyone without a session away, so this is
+  // only ever read for the role and the id.
+  const session = await auth();
+  const isAdmin = session?.user?.role === 'admin';
+  const meId = session?.user?.id ?? '';
   const page = Number.parseInt(one(params, 'page') ?? '1', 10) || 1;
 
   const perPage = PAGE_SIZES.includes(Number(one(params, 'perPage')))
@@ -279,12 +288,24 @@ export default async function LeadsPage({ searchParams }: { searchParams: Search
       {result.rows.length === 0 ? (
         <p className="empty">No leads match those filters.</p>
       ) : (
-        <LeadTable
-          rows={result.rows}
-          setterNames={lookups.setterNames}
-          setterColors={lookups.setterColors}
-          stageLabels={lookups.stageLabels}
-        />
+        /* Filter to Unassigned, tick the lot, hand them over. 432 of the rows
+           the tracker brought across name nobody, so doing this a lead at a
+           time is an afternoon's clicking - which means it doesn't happen. */
+        <ActionForm action={bulkSetSetter}>
+          <BulkAssignBar
+            setters={setters}
+            canAssignOthers={isAdmin}
+            meId={meId}
+            total={result.rows.length}
+          />
+          <LeadTable
+            rows={result.rows}
+            setterNames={lookups.setterNames}
+            setterColors={lookups.setterColors}
+            stageLabels={lookups.stageLabels}
+            selectable
+          />
+        </ActionForm>
       )}
 
       <div className="pager">

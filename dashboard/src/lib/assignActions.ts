@@ -1,10 +1,11 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
-import { eq, sql } from 'drizzle-orm';
+import { eq, inArray, sql } from 'drizzle-orm';
 import { auth } from '@/auth';
 import { db } from '@/db';
 import { leadEvents, leads, users } from '@/db/schema';
+import { planBulkAssign } from './assignRules';
 import { teamDateString } from './dates';
 
 type Result = { ok: true; message?: string } | { ok: false; error: string };
@@ -95,6 +96,88 @@ export async function setSetter(formData: FormData): Promise<Result> {
     return { ok: true, message: named ? `Setter: ${named.name}` : 'Setter cleared' };
   } catch (err) {
     return { ok: false, error: err instanceof Error ? err.message : 'Could not change setter' };
+  }
+}
+
+/**
+ * Hands a whole filtered list to one person.
+ *
+ * 432 of the 592 rows the tracker brought across name no setter, and about 330
+ * of those are live conversations - 33 of them with a call already booked. One
+ * at a time that is an afternoon of clicking, which means in practice it does
+ * not happen and two thirds of the pipeline belongs to nobody.
+ *
+ * Same rule as claiming one: a lead a setter is already working is never taken
+ * off them, even when it is inside the selection. A lead parked with an admin
+ * is the imported backlog rather than somebody's work, so that one moves.
+ */
+export async function bulkSetSetter(formData: FormData): Promise<Result> {
+  try {
+    const user = await requireUser();
+    const setterId = field(formData, 'setterId');
+    const leadIds = formData
+      .getAll('leadId')
+      .filter((v): v is string => typeof v === 'string')
+      .map((v) => v.trim())
+      .filter((v) => v.length > 0);
+
+    if (leadIds.length === 0) return { ok: false, error: 'Nothing selected' };
+    if (!setterId) return { ok: false, error: 'Pick who they belong to' };
+
+    // A setter can take leads, not hand them out. Only an admin decides whose
+    // conversation somebody else's is.
+    const me = await db.query.users.findFirst({ where: eq(users.id, user.id) });
+    if (me?.role !== 'admin' && setterId !== user.id) {
+      return { ok: false, error: 'You can take leads, but only an admin can assign someone else.' };
+    }
+
+    const named = await db.query.users.findFirst({ where: eq(users.id, setterId) });
+    if (!named) return { ok: false, error: 'No such person' };
+
+    const rows = await db.query.leads.findMany({
+      where: inArray(leads.id, leadIds),
+      columns: { id: true, setterId: true },
+    });
+
+    const owners = await db.query.users.findMany({ columns: { id: true, role: true } });
+    const roleById = new Map(owners.map((o) => [o.id, o.role]));
+
+    const { moved, alreadyTheirs, leftAlone } = planBulkAssign(rows, setterId, roleById);
+
+    if (moved.length > 0) {
+      await db
+        .update(leads)
+        .set({ setterId, updatedAt: new Date() })
+        .where(inArray(leads.id, moved));
+      await db.insert(leadEvents).values(
+        moved.map((leadId) => ({
+          leadId,
+          actorId: user.id,
+          type: 'setter_changed',
+          toValue: named.name,
+        }))
+      );
+    }
+
+    revalidatePath('/');
+    revalidatePath('/leads');
+
+    const parts = [
+      moved.length === 1
+        ? `1 lead is now ${named.name}'s.`
+        : `${moved.length} leads are now ${named.name}'s.`,
+    ];
+    if (alreadyTheirs > 0) parts.push(`${alreadyTheirs} already were.`);
+    if (leftAlone > 0) {
+      parts.push(
+        leftAlone === 1
+          ? '1 was left alone \u2014 somebody else is working it.'
+          : `${leftAlone} were left alone \u2014 somebody else is working them.`
+      );
+    }
+    return { ok: true, message: parts.join(' ') };
+  } catch (err) {
+    return { ok: false, error: err instanceof Error ? err.message : 'Could not assign those' };
   }
 }
 
