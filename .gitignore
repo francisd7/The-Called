@@ -1,4 +1,8 @@
 node_modules/
-data/
+# Anchored to the repo root on purpose. Unanchored, this matched every
+# directory named data anywhere in the tree, which silently swallowed the
+# dashboard's own /data route - the page would simply not have been in the
+# deploy.
+/data/
 .env
 *.log

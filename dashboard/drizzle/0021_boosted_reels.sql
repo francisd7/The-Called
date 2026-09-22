@@ -1,0 +1,32 @@
+CREATE TABLE "boosted_reels" (
+	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+	"title" text NOT NULL,
+	"reel_url" text,
+	"shortcode" text,
+	"hook" text,
+	"posted_on" text,
+	"status" text DEFAULT 'running' NOT NULL,
+	"boost_started_on" text,
+	"boost_ended_on" text,
+	"spend" numeric(12, 2),
+	"spend_currency" text DEFAULT 'USD' NOT NULL,
+	"views" integer,
+	"reach" integer,
+	"likes" integer,
+	"comments" integer,
+	"shares" integer,
+	"saves" integer,
+	"profile_visits" integer,
+	"follows_gained" integer,
+	"leads_generated" integer,
+	"calls_booked" integer,
+	"closes" integer,
+	"cash_collected" numeric(12, 2),
+	"notes" text,
+	"sort_order" integer DEFAULT 0 NOT NULL,
+	"created_by_id" uuid,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
+);
+--> statement-breakpoint
+ALTER TABLE "boosted_reels" ADD CONSTRAINT "boosted_reels_created_by_id_users_id_fk" FOREIGN KEY ("created_by_id") REFERENCES "public"."users"("id") ON DELETE no action ON UPDATE no action;

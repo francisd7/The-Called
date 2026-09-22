@@ -10,17 +10,29 @@ are the ones that sign-in actually returns - not admin's data relabelled.
 Read-only while it is on, with a fixed bar at the bottom of every screen to
 get back out.
 
-## 2. A "Data" tab, starting with boosted reels
+## 2. ~~A "Data" tab, starting with boosted reels~~ — built, waiting on the reels
 
-A new top-level section for reference data the team keeps by hand, rather
-than anything the pipeline generates.
+`/data` holds one tile per boosted reel: an Instagram embed, the spend, the
+cash, and the rates worked out from them. Below it, the same reels side by
+side in a table.
 
-First use: boosted reels. Roughly five tiles across, one per reel, with
-performance numbers on each. Francis will paste the current set of boosted
-reels to seed it - **ask him for that list before building the schema**, so
-the fields match what he actually tracks rather than what seems likely.
+Every number is entered by hand — Instagram insights and Ads Manager are
+not readable from here, and the ones that matter most (did this reel produce
+a call, did that call close) only exist in this dashboard anyway. Nothing
+derived is stored: cost per lead, return, net and the funnel rates are
+computed on read so they cannot drift from the numbers they came from.
 
-Build the table around the numbers he gives, not around a guess.
+**Still open:** Francis pastes the current boosted reels. Two things to
+settle when he does:
+
+- **Spend currency.** Each reel carries its own, defaulting to USD. If the
+  ad account bills CAD while contracts are USD, a cost-per-lead that mixes
+  them is nonsense — so the figure is only ever shown next to its own
+  currency. Worth confirming which the ad account actually uses.
+- **Whether "conversations started" should be counted rather than typed.**
+  Leads already carry a source; if setters tagged a lead with the reel it
+  came from, that column and the two after it would fill themselves. That is
+  a behaviour change for the team, so it is not assumed.
 
 ## Open items Francis is handling himself
 

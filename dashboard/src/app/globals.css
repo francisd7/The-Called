@@ -932,3 +932,165 @@ main.has-viewas { padding-bottom: 5rem; }
 @media (max-width: 48rem) {
   main.has-viewas { padding-bottom: 9rem; }
 }
+
+/* --- Boosted reels ------------------------------------------------------ */
+
+/* Five across on a wide screen, folding to two and then one rather than
+   shrinking past the point the preview can render. */
+.reel-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 0.9rem;
+  margin-top: 0.9rem;
+}
+
+.reel-tile {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 0.6rem;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Instagram's embed will not render below 326px, so the tile holds a full-width
+   iframe and scales it down instead of narrowing it. The wrapper is what the
+   grid sees; the iframe inside is always 326px wide in its own coordinates. */
+.reel-preview {
+  position: relative;
+  display: block;
+  width: 100%;
+  aspect-ratio: 326 / 420;
+  overflow: hidden;
+  background: var(--muted-bg, #f1f3f7);
+  border-bottom: 1px solid var(--border);
+}
+.reel-preview iframe {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 326px;
+  height: 420px;
+  border: 0;
+  transform-origin: top left;
+  /* 200px is the grid's minimum tile; the container query below re-scales for
+     wider tiles. */
+  transform: scale(calc(100% / 326 * 1));
+}
+@supports (container-type: inline-size) {
+  .reel-preview { container-type: inline-size; }
+  .reel-preview iframe { transform: scale(calc(100cqw / 326)); }
+}
+/* The iframe swallows clicks, so an invisible layer above it takes them and
+   lets the anchor do its job. */
+.reel-preview-hit {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+}
+.reel-preview-none {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--ink-muted, #6b7280);
+  font-size: 0.85rem;
+  text-align: center;
+  padding: 1rem;
+}
+
+.reel-body { padding: 0.7rem 0.75rem 0.8rem; }
+.reel-body h3 { margin: 0 0 0.15rem; font-size: 0.98rem; line-height: 1.25; }
+.reel-hook {
+  margin: 0 0 0.35rem;
+  font-size: 0.82rem;
+  color: var(--ink-muted, #6b7280);
+  font-style: italic;
+}
+.reel-notes {
+  margin: 0.5rem 0 0;
+  font-size: 0.8rem;
+  color: var(--ink-muted, #6b7280);
+}
+
+.reel-status {
+  display: inline-block;
+  font-size: 0.72rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  padding: 0.1rem 0.4rem;
+  border-radius: 0.3rem;
+}
+.reel-status-running { background: var(--ok-bg, #e7f6ee); color: var(--ok, #1baf7a); }
+.reel-status-paused { background: var(--warn-bg); color: var(--warn); }
+.reel-status-finished { background: var(--border); color: var(--ink-muted, #6b7280); }
+
+/* Two columns of small figures rather than the full-width stat tiles the
+   dashboard uses: at this width a stat tile fits one number per row. */
+.reel-figures {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.3rem 0.5rem;
+  margin-top: 0.55rem;
+}
+.reel-figure { display: flex; flex-direction: column; line-height: 1.15; }
+.reel-figure-n { font-weight: 700; font-size: 0.95rem; }
+.reel-figure-l {
+  font-size: 0.7rem;
+  color: var(--ink-muted, #6b7280);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.reel-edit { margin-top: 0.6rem; }
+.reel-edit summary {
+  cursor: pointer;
+  font-size: 0.82rem;
+  color: var(--accent);
+}
+.reel-edit .grid2 { margin-top: 0.5rem; }
+.field-wide { grid-column: 1 / -1; }
+.danger-link {
+  background: none;
+  border: none;
+  color: var(--danger);
+  padding: 0.3rem 0;
+  font-size: 0.8rem;
+  cursor: pointer;
+  min-height: auto;
+}
+
+/* Behind the embed, not instead of it - see the comment on the component. */
+.reel-preview-fallback {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  padding: 1rem;
+  text-align: center;
+}
+.reel-preview-title { font-weight: 600; font-size: 0.85rem; line-height: 1.25; }
+.reel-preview-cta { font-size: 0.75rem; color: var(--accent); }
+
+/* Two lines for every hook, so tiles in a row start their numbers level even
+   when one headline is twice the length of the next. */
+.reel-hook {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  min-height: 2.1em;
+}
+
+/* Same two-line treatment as the hook, for the same reason: a title that wraps
+   must not push its tile's numbers below its neighbour's. */
+.reel-body h3 {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  min-height: 2.5em;
+}

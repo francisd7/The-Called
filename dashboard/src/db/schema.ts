@@ -503,3 +503,70 @@ export const leadNotDuplicates = pgTable(
   },
   (t) => [unique('lead_not_duplicates_pair').on(t.leadAId, t.leadBId)]
 );
+
+/**
+ * Boosted reels, and what each one actually returned.
+ *
+ * Kept by hand rather than pulled from Meta: the numbers live in two places
+ * the dashboard cannot see (Instagram insights and Ads Manager), and the ones
+ * that matter most - did this reel produce a call, did that call close - only
+ * exist here anyway.
+ *
+ * Everything derivable is deliberately absent. Cost per lead, cost per call and
+ * return are computed on read, so they can never drift from the spend and the
+ * counts they came from.
+ */
+export const boostedReels = pgTable('boosted_reels', {
+  id: uuid('id').defaultRandom().primaryKey(),
+
+  // --- which reel ---
+  /** What the team calls it, e.g. "3 lies about discipline". */
+  title: text('title').notNull(),
+  /** The Instagram link, as pasted. */
+  reelUrl: text('reel_url'),
+  /**
+   * The bit of the URL Instagram's embed needs, pulled out on save so the
+   * preview never has to re-parse a link that might have been edited by hand.
+   */
+  shortcode: text('shortcode'),
+  /** The opening line, so the pattern behind a winner is visible next to it. */
+  hook: text('hook'),
+  postedOn: text('posted_on'), // YYYY-MM-DD in ET, like every other plain date here
+
+  // --- the boost ---
+  status: text('status').notNull().default('running'),
+  boostStartedOn: text('boost_started_on'),
+  /** Null while it is still running. */
+  boostEndedOn: text('boost_ended_on'),
+  spend: numeric('spend', { precision: 12, scale: 2 }),
+  /**
+   * Ad spend is billed in whatever currency the ad account is set to, which is
+   * not necessarily the currency the contracts are in. Storing it next to the
+   * amount keeps a cost-per-lead from quietly mixing the two.
+   */
+  spendCurrency: text('spend_currency').notNull().default('USD'),
+
+  // --- what Instagram reports ---
+  views: integer('views'),
+  reach: integer('reach'),
+  likes: integer('likes'),
+  comments: integer('comments'),
+  shares: integer('shares'),
+  saves: integer('saves'),
+  profileVisits: integer('profile_visits'),
+  followsGained: integer('follows_gained'),
+
+  // --- what it turned into ---
+  /** Conversations that started because of this reel. */
+  leadsGenerated: integer('leads_generated'),
+  callsBooked: integer('calls_booked'),
+  closes: integer('closes'),
+  cashCollected: numeric('cash_collected', { precision: 12, scale: 2 }),
+
+  notes: text('notes'),
+  /** Position on the page, so the order is the team's rather than the clock's. */
+  sortOrder: integer('sort_order').notNull().default(0),
+  createdById: uuid('created_by_id').references(() => users.id),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+});
