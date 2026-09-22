@@ -299,6 +299,24 @@ export async function getPipelineSummary() {
 }
 
 /**
+ * The headline counts for the whole book, so the lead tracker can say how big
+ * it is without fetching a page of it. Test leads are left out everywhere they
+ * would otherwise be counted as real work.
+ */
+export async function getLeadTotals() {
+  const [row] = await db
+    .select({
+      total: count(),
+      booked: sql<number>`COUNT(*) FILTER (WHERE ${leads.callBooked} AND NOT ${leads.callCancelled})::int`,
+      closed: sql<number>`COUNT(*) FILTER (WHERE ${leads.closed} IS TRUE)::int`,
+      unassigned: sql<number>`COUNT(*) FILTER (WHERE ${leads.setterId} IS NULL)::int`,
+    })
+    .from(leads)
+    .where(eq(leads.isTest, false));
+  return row;
+}
+
+/**
  * The name and label maps the lead cards need, fetched once per page rather
  * than once per card.
  */

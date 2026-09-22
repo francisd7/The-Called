@@ -81,17 +81,23 @@ export default async function FollowUpsPage({ searchParams }: { searchParams: Se
 
   // A column per setter. Anything still sitting with an admin was never really
   // theirs - it's the imported backlog - so it's offered up rather than parked.
-  const columns = setters.filter((s) => s.role === 'setter');
+  // A setterId narrows it to one person, which is what the tiles on the lead
+  // tracker link to: a tile that says 12 should open 12, not everybody's.
+  const focus = one(params, 'setterId');
+  const allColumns = setters.filter((s) => s.role === 'setter');
+  const columns = focus ? allColumns.filter((s) => s.id === focus) : allColumns;
   const grabbers = setters.filter((s) => s.role !== 'setter').map((s) => s.id);
 
   const [perSetter, upForGrabs] = await Promise.all([
     Promise.all(columns.map((s) => getFollowUps(bucket, s.id))),
-    Promise.all(grabbers.map((id) => getFollowUps(bucket, id))).then((lists) => lists.flat()),
+    focus
+      ? Promise.resolve([])
+      : Promise.all(grabbers.map((id) => getFollowUps(bucket, id))).then((lists) => lists.flat()),
   ]);
 
   const qs = (over: Record<string, string | undefined>) => {
     const next = new URLSearchParams();
-    for (const k of ['bucket']) {
+    for (const k of ['bucket', 'setterId']) {
       const v = k in over ? over[k] : one(params, k);
       if (v) next.set(k, v);
     }
@@ -103,7 +109,12 @@ export default async function FollowUpsPage({ searchParams }: { searchParams: Se
       <p className="sub">
         <a href="/leads">← Lead Tracker</a>
       </p>
-      <h1>Follow Ups</h1>
+      <h1>{focus ? `${columns[0]?.name ?? 'Follow'} — follow ups` : 'Follow Ups'}</h1>
+      {focus && (
+        <p className="sub" style={{ marginBottom: '0.4rem' }}>
+          <a href="/leads/follow-ups">Show everybody</a>
+        </p>
+      )}
       <p className="sub">
         Active conversations that have gone quiet, measured from the last time somebody actually
         reached out. Logging a message moves one straight back into live conversations.

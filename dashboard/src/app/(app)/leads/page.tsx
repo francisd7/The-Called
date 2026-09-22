@@ -1,23 +1,12 @@
 import { BookingLinks } from '@/components/BookingLinks';
-import {
-  LeadBrowser,
-  leadsUrl,
-  FILTER_KEYS,
-  one,
-  pageSizeFrom,
-  type Params,
-} from '@/components/LeadBrowser';
-import { ConvoRow } from '@/components/ConvoRow';
-import { auth } from '@/auth';
 import { StreakStrip } from '@/components/StreakStrip';
+import { one, type Params } from '@/components/LeadBrowser';
 import {
   getActiveConvos,
   getActiveOffers,
   getFollowUpCounts,
-  getLeadCardLookups,
-  getOptions,
+  getLeadTotals,
   getSetters,
-  searchLeads,
 } from '@/lib/queries';
 import { getStreaks } from '@/lib/streaks';
 import { db } from '@/db';
@@ -27,72 +16,65 @@ export const dynamic = 'force-dynamic';
 
 type SearchParams = Promise<Params>;
 
+/** A count big enough to read across the room, and the page it opens. */
+function Tile({
+  n,
+  label,
+  href,
+  tone = '',
+}: {
+  n: number;
+  label: string;
+  href: string;
+  tone?: string;
+}) {
+  return (
+    <a className={`tile ${tone}`} href={href}>
+      <span className="tile-n">{n}</span>
+      <span className="tile-l">{label}</span>
+    </a>
+  );
+}
 
-
+/**
+ * The morning page.
+ *
+ * It used to print every setter's live conversations in full, capped at 25
+ * each, and then the whole lead table underneath - so the thing you came to
+ * look at was four screens down, and every press reloaded the lot. Now it
+ * carries counts that open the page they stand for, and nothing else.
+ */
 export default async function LeadsPage({ searchParams }: { searchParams: SearchParams }) {
-  const params = await searchParams;
-  // The layout has already turned anyone without a session away, so this is
-  // only ever read for the role and the id.
-  const session = await auth();
-  const isAdmin = session?.user?.role === 'admin';
-  const meId = session?.user?.id ?? '';
-  const page = Number.parseInt(one(params, 'page') ?? '1', 10) || 1;
+  await searchParams;
 
-  const perPage = pageSizeFrom(params);
+  const setters = await getSetters();
+  const workers = setters.filter((s) => s.role === 'setter');
 
-  const [
-    result,
-    convos,
-    setters,
-    stages,
-    qualities,
-    sources,
-    lookups,
-    streaks,
-    offers,
-    followUps,
-    duplicateCount,
-  ] = await Promise.all([
-    searchLeads({
-      q: one(params, 'q'),
-      setterId: one(params, 'setterId'),
-      stage: one(params, 'stage'),
-      quality: one(params, 'quality'),
-      source: one(params, 'source'),
-      booked: one(params, 'booked') === '1',
-      activity: one(params, 'activity'),
-      page,
-      perPage,
-    }),
-    getActiveConvos(),
-    getSetters(),
-    getOptions('conversation_stage'),
-    getOptions('lead_quality'),
-    getOptions('lead_source'),
-    getLeadCardLookups(),
-    getStreaks(),
-    getActiveOffers(),
-    getFollowUpCounts(),
-    countDuplicateGroups(db),
-  ]);
+  const [convos, streaks, offers, duplicateCount, totals, followUpsBySetter, teamFollowUps] =
+    await Promise.all([
+      getActiveConvos(),
+      getStreaks(),
+      getActiveOffers(),
+      countDuplicateGroups(db),
+      getLeadTotals(),
+      Promise.all(workers.map((s) => getFollowUpCounts(s.id))),
+      getFollowUpCounts(),
+    ]);
 
-
+  // The bands are exclusive, so a tile that means "how many are waiting on you"
+  // has to add them up rather than show one of them.
+  const sumBands = (b: Record<string, number>) => Object.values(b).reduce((a, n) => a + n, 0);
+  const teamDue = sumBands(teamFollowUps);
 
   return (
     <>
       <h1>Lead Tracker</h1>
 
       <div className="stats">
-        <div className="stat stat-hero">
+        <div className="stat stat-hero tone-teal">
           <div className="stat-n">{convos.teamTotal}</div>
           <div className="stat-l">team active conversations</div>
         </div>
-        {convos.groups.map((g) => (
-          <div className="stat" key={g.id}>
-            <div className="stat-n">{g.total}</div>
-            <div className="stat-l">{g.name}</div>
-          </div>
-        ))}
         {convos.unassigned.total > 0 && (
           <div className="stat alert">
             <div className="stat-n">{convos.unassigned.total}</div>
@@ -106,12 +88,7 @@ export default async function LeadsPage({ searchParams }: { searchParams: Search
       <div className="card-row" style={{ marginBottom: '0.9rem' }}>
         <a className="btn" href="/leads/follow-ups">
           Follow Ups
-          <span className="pill warn">{followUps['1w']}</span>
-        </a>
-        {/* The same list with none of this page above it, for when the job is
-            the list rather than the morning. */}
-        <a className="btn" href="/leads/all?perPage=250">
-          All leads
+          <span className="pill warn">{teamDue}</span>
         </a>
         {/* Only when there is something to sort out - a nought beside a link
             nobody needs is just another thing to read past. */}
@@ -131,67 +108,81 @@ export default async function LeadsPage({ searchParams }: { searchParams: Search
       <BookingLinks offers={offers} />
 
       <h2>Active conversations</h2>
-      <div className="convo-board">
-        {convos.groups.map((group) => (
-          <section className="panel" key={group.id}>
-            <div className="panel-head">
-              <h3>{group.name}</h3>
-              <span className="card-meta">{group.total}</span>
-            </div>
-            {group.leads.length === 0 ? (
-              <p className="panel-empty">No active conversations.</p>
-            ) : (
-              <ul className="convos">
-                {group.leads.map((lead) => (
-                  <ConvoRow key={lead.id} lead={lead} stageLabels={lookups.stageLabels} />
-                ))}
-              </ul>
-            )}
-            {group.total > group.leads.length && (
-              <a className="btn" href={leadsUrl('/leads/all', { setterId: group.id, activity: 'active', perPage: '250' })}>
-                See all {group.total}
-              </a>
-            )}
-          </section>
+      <p className="sub">
+        What each of you is working right now. Open one to see the conversations and log a message.
+      </p>
+      {/* Both rows walk the same list of people in the same order. The active
+          counts come from a query that sorts by when somebody joined and the
+          follow-ups from one that sorts by name, so reading each row's own
+          order put the two setters in opposite places on one screen. */}
+      <div className="tile-row">
+        {workers.map((s) => (
+          <Tile
+            key={s.id}
+            n={convos.groups.find((g) => g.id === s.id)?.total ?? 0}
+            label={s.name}
+            href={`/leads/active?setterId=${s.id}`}
+            tone="tone-teal"
+          />
+        ))}
+        {convos.unassigned.total > 0 && (
+          <Tile
+            n={convos.unassigned.total}
+            label="Unassigned"
+            href="/leads/active?setterId=none"
+            tone="tone-warn"
+          />
+        )}
+      </div>
+
+      <h2>Follow ups</h2>
+      <p className="sub">
+        Live conversations that have gone quiet for a week or more, counted from the last time
+        somebody actually reached out.
+      </p>
+      <div className="tile-row">
+        {workers.map((s, i) => (
+          <Tile
+            key={s.id}
+            n={sumBands(followUpsBySetter[i])}
+            label={s.name}
+            href={`/leads/follow-ups?setterId=${s.id}`}
+            tone="tone-violet"
+          />
         ))}
       </div>
 
-      {convos.unassigned.total > 0 && (
-        <section className="panel" style={{ marginTop: '0.7rem' }}>
-          <div className="panel-head">
-            <h3>Unassigned</h3>
-            <span className="card-meta">{convos.unassigned.total}</span>
-          </div>
-          <p className="sub" style={{ marginTop: 0 }}>
-            Live conversations with nobody on them — mostly the imported backlog. Open one and set
-            a setter, or mark it not active.
-          </p>
-          <ul className="convos">
-            {convos.unassigned.leads.map((lead) => (
-              <ConvoRow key={lead.id} lead={lead} stageLabels={lookups.stageLabels} />
-            ))}
-          </ul>
-          {convos.unassigned.total > convos.unassigned.leads.length && (
-            <a className="btn" href={leadsUrl('/leads/all', { setterId: 'none', activity: 'active', perPage: '250' })}>
-              See all {convos.unassigned.total}
-            </a>
-          )}
-        </section>
-      )}
-
-      <LeadBrowser
-        heading="All leads"
-        result={result}
-        setters={setters}
-        stages={stages}
-        qualities={qualities}
-        sources={sources}
-        lookups={lookups}
-        params={params}
-        basePath="/leads"
-        isAdmin={isAdmin}
-        meId={meId}
-      />
+      <h2>All leads</h2>
+      <p className="sub">
+        Everyone the team has ever talked to, live or not. The list itself is a page of its own so
+        this one stays short.
+      </p>
+      <div className="stats">
+        <div className="stat tone-blue">
+          <div className="stat-n">{totals.total.toLocaleString()}</div>
+          <div className="stat-l">leads</div>
+        </div>
+        <div className="stat tone-green">
+          <div className="stat-n">{totals.booked}</div>
+          <div className="stat-l">live bookings</div>
+        </div>
+        <div className="stat tone-green">
+          <div className="stat-n">{totals.closed}</div>
+          <div className="stat-l">closed</div>
+        </div>
+        <div className={`stat${totals.unassigned > 0 ? ' alert' : ''}`}>
+          <div className="stat-n">{totals.unassigned}</div>
+          <div className="stat-l">unassigned</div>
+        </div>
+      </div>
+      <div className="card-row">
+        <a className="btn btn-primary" href="/leads/all?perPage=250">
+          Open the full list
+        </a>
+        <a className="btn btn-new" href="/leads/new">
+          + New lead
+        </a>
+      </div>
     </>
   );
 }

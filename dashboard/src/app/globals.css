@@ -829,3 +829,33 @@ th { color: var(--muted); font-weight: 550; font-size: 0.78rem; }
 /* Narrow enough that the tick box is the column, wide enough to hit on a phone. */
 .pick-col { width: 2.2rem; text-align: center; }
 .bulk-sep { width: 1px; align-self: stretch; background: var(--border); margin: 0 0.15rem; }
+
+/* A count you can read across the room, and the page it opens. Bigger than a
+   stat tile on purpose: these are the numbers somebody comes to the lead
+   tracker to act on, rather than to know. */
+.tile-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr));
+  gap: 0.6rem;
+  margin: 0.6rem 0 0.25rem;
+}
+.tile {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  padding: 0.9rem 1rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--border);
+  border-radius: var(--radius);
+  text-decoration: none;
+  color: var(--fg);
+}
+.tile:hover { border-color: var(--accent); border-left-color: var(--accent); }
+.tile-n { font-size: 2.1rem; font-weight: 680; line-height: 1.05; font-variant-numeric: tabular-nums; }
+.tile-l { color: var(--muted); font-size: 0.85rem; }
+.tile:hover .tile-l { color: var(--accent); }
+.tile.tone-teal { border-left-color: #1baf7a; }
+.tile.tone-violet { border-left-color: #4a3aa7; }
+.tile.tone-warn { border-left-color: var(--warn); }
+.tile.tone-warn .tile-n { color: var(--warn); }
