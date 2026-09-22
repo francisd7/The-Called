@@ -7,6 +7,7 @@ import { ActionForm } from '@/components/ActionForm';
 import { formatCallTime, formatDay } from '@/lib/dates';
 import { getAllPostCallReports, getRecentCalendlyActivity } from '@/lib/queries';
 import {
+  clearActiveConvos,
   clearTestData,
   createTestBooking,
   runAirtableImport,
@@ -244,6 +245,27 @@ export default async function SetupPage() {
           {leadCount.toLocaleString()} leads here now. Needs <code>AIRTABLE_PAT</code> set on this
           service.
         </p>
+      </div>
+
+      <h2>Start everyone from a blank slate</h2>
+      <p className="sub">
+        Clears the active-conversation tick on every lead so the setters mark their own. The flag
+        the import set was guessed from whatever stage each Airtable row carried, and that guess is
+        months old — but it drives the counts, the Going quiet list and each setter&apos;s column, so
+        it is better empty than wrong. Nothing else is touched: the stage, the notes and the history
+        all stay, and a setter turns theirs back on from the lead itself.
+      </p>
+      <div className="card">
+        <ActionForm action={clearActiveConvos}>
+          <div className="card-row" style={{ marginTop: 0 }}>
+            <button type="submit" name="dryRun" value="1">
+              Test it
+            </button>
+            <button className="btn-danger" type="submit" name="dryRun" value="0">
+              Clear every active tick
+            </button>
+          </div>
+        </ActionForm>
       </div>
 
       <h2>Setter EOD reports</h2>

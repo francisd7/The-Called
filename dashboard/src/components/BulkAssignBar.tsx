@@ -72,8 +72,27 @@ export function BulkAssignBar({
         <input type="hidden" name="setterId" value={meId} />
       )}
 
-      <button className="btn-primary" type="submit" disabled={picked === 0}>
+      <button
+        className="btn-primary"
+        type="submit"
+        name="op"
+        value="assign"
+        disabled={picked === 0}
+      >
         {canAssignOthers ? 'Assign' : 'Take these'}
+      </button>
+
+      {/* The other half of a handover: everybody starts with nothing marked
+          live, and saying which conversations are back on one lead page at a
+          time is the same afternoon of clicking that assigning one at a time
+          was. Its own submit button rather than another form, so it acts on
+          the same ticked rows. */}
+      <span className="bulk-sep" aria-hidden="true" />
+      <button type="submit" name="op" value="live" disabled={picked === 0}>
+        Mark live
+      </button>
+      <button type="submit" name="op" value="finished" disabled={picked === 0}>
+        Mark finished
       </button>
     </div>
   );

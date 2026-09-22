@@ -212,6 +212,66 @@ export async function clearTestData(): Promise<Result> {
 
 
 /**
+ * Clears the active-conversation flag on every lead.
+ *
+ * A handover button, pressed once. The flag arrived by guesswork: the import
+ * set it from whatever conversation stage the Airtable row happened to carry,
+ * because 541 leads landing unticked would have meant somebody working through
+ * the lot by hand. That guess is now months stale, and "active" is the flag the
+ * whole dashboard leans on - the counts, the Going quiet list, each setter's
+ * own column.
+ *
+ * So it is reset to nothing and the setters mark their own. A blank slate they
+ * fill in is worth more than a full one they have to audit.
+ *
+ * Nothing is lost. The conversation stage, the notes and the history are
+ * untouched; this is one boolean, and a setter turns theirs back on from the
+ * lead itself.
+ */
+export async function clearActiveConvos(formData: FormData): Promise<Result> {
+  try {
+    await requireAdmin();
+    const dryRun = formData.get('dryRun') === '1';
+
+    const flagged = await db
+      .select({ id: leads.id })
+      .from(leads)
+      .where(eq(leads.isActiveConvo, true));
+
+    if (dryRun) {
+      return {
+        ok: true,
+        message:
+          flagged.length === 0
+            ? 'Test run \u2014 nothing written. No conversation is marked active.'
+            : `Test run \u2014 nothing written. ${flagged.length} conversations are marked active and would be cleared.`,
+      };
+    }
+
+    if (flagged.length === 0) {
+      return { ok: true, message: 'No conversation was marked active. Nothing to do.' };
+    }
+
+    await db
+      .update(leads)
+      .set({ isActiveConvo: false, updatedAt: new Date() })
+      .where(eq(leads.isActiveConvo, true));
+
+    revalidatePath('/');
+    revalidatePath('/admin');
+    revalidatePath('/leads');
+    return {
+      ok: true,
+      message:
+        `${flagged.length} conversations are no longer marked active. ` +
+        'Everyone starts from nothing and ticks their own.',
+    };
+  } catch (err) {
+    return { ok: false, error: err instanceof Error ? err.message : 'Could not clear those' };
+  }
+}
+
+/**
  * Pulls the Airtable Setter EOD form across.
  *
  * Safe to re-run: rows already brought over are updated in place, and a report

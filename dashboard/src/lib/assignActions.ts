@@ -111,10 +111,10 @@ export async function setSetter(formData: FormData): Promise<Result> {
  * off them, even when it is inside the selection. A lead parked with an admin
  * is the imported backlog rather than somebody's work, so that one moves.
  */
-export async function bulkSetSetter(formData: FormData): Promise<Result> {
+export async function bulkLeadAction(formData: FormData): Promise<Result> {
   try {
     const user = await requireUser();
-    const setterId = field(formData, 'setterId');
+    const op = field(formData, 'op') ?? 'assign';
     const leadIds = formData
       .getAll('leadId')
       .filter((v): v is string => typeof v === 'string')
@@ -122,6 +122,35 @@ export async function bulkSetSetter(formData: FormData): Promise<Result> {
       .filter((v) => v.length > 0);
 
     if (leadIds.length === 0) return { ok: false, error: 'Nothing selected' };
+
+    // Marking a run of conversations live is the other half of handing them
+    // out: everybody starts from nothing on day one, and saying so one lead
+    // page at a time is the same trap as assigning one lead at a time.
+    if (op === 'live' || op === 'finished') {
+      const live = op === 'live';
+      await db
+        .update(leads)
+        .set({ isActiveConvo: live, updatedAt: new Date() })
+        .where(inArray(leads.id, leadIds));
+      await db.insert(leadEvents).values(
+        leadIds.map((leadId) => ({
+          leadId,
+          actorId: user.id,
+          type: live ? 'convo_reopened' : 'convo_closed',
+        }))
+      );
+      revalidatePath('/');
+      revalidatePath('/leads');
+      const n = leadIds.length;
+      return {
+        ok: true,
+        message: live
+          ? `${n} ${n === 1 ? 'conversation is' : 'conversations are'} marked live.`
+          : `${n} ${n === 1 ? 'conversation is' : 'conversations are'} marked finished.`,
+      };
+    }
+
+    const setterId = field(formData, 'setterId');
     if (!setterId) return { ok: false, error: 'Pick who they belong to' };
 
     // A setter can take leads, not hand them out. Only an admin decides whose

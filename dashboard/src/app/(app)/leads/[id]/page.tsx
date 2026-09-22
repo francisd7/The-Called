@@ -12,6 +12,7 @@ import {
   updateLead,
 } from '@/lib/actions';
 import { formatCallTime, formatDay, teamDateTimeInputValue } from '@/lib/dates';
+import { toggleActiveConvo } from '@/lib/assignActions';
 import { getActiveOffers, getClosers, getLead, getOptions, getSetters } from '@/lib/queries';
 
 export const dynamic = 'force-dynamic';
@@ -110,6 +111,25 @@ export default async function LeadPage({ params }: { params: Promise<{ id: strin
         {lead.phone && <span>{lead.phone}</span>}
         {lead.email && <span>{lead.email}</span>}
       </p>
+
+      {/* The one control that says whether anybody is working this. It lived
+          only on the active-conversations list, which meant that once a
+          conversation came off that list there was no way to put it back -
+          and after a handover, where everybody starts with nothing marked
+          live, there would have been no way to start at all. */}
+      <div className="card">
+        <div className="card-row" style={{ marginTop: 0 }}>
+          <span className={`pill ${lead.isActiveConvo ? 'ok' : ''}`}>
+            {lead.isActiveConvo ? 'Live conversation' : 'Not being worked'}
+          </span>
+          <ActionForm action={toggleActiveConvo}>
+            <input type="hidden" name="leadId" value={lead.id} />
+            <button type="submit">
+              {lead.isActiveConvo ? 'Mark it finished' : 'This one is live'}
+            </button>
+          </ActionForm>
+        </div>
+      </div>
 
       {hasLiveCall && (
         <div className="card">

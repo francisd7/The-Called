@@ -5,7 +5,7 @@ import { LeadTable } from '@/components/LeadTable';
 import { ActionForm } from '@/components/ActionForm';
 import { BulkAssignBar } from '@/components/BulkAssignBar';
 import { auth } from '@/auth';
-import { bulkSetSetter } from '@/lib/assignActions';
+import { bulkLeadAction } from '@/lib/assignActions';
 import { StreakStrip } from '@/components/StreakStrip';
 import {
   getActiveConvos,
@@ -291,7 +291,7 @@ export default async function LeadsPage({ searchParams }: { searchParams: Search
         /* Filter to Unassigned, tick the lot, hand them over. 432 of the rows
            the tracker brought across name nobody, so doing this a lead at a
            time is an afternoon's clicking - which means it doesn't happen. */
-        <ActionForm action={bulkSetSetter}>
+        <ActionForm action={bulkLeadAction}>
           <BulkAssignBar
             setters={setters}
             canAssignOthers={isAdmin}

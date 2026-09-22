@@ -828,3 +828,4 @@ th { color: var(--muted); font-weight: 550; font-size: 0.78rem; }
 .bulk-bar button:disabled { opacity: 0.45; cursor: not-allowed; }
 /* Narrow enough that the tick box is the column, wide enough to hit on a phone. */
 .pick-col { width: 2.2rem; text-align: center; }
+.bulk-sep { width: 1px; align-self: stretch; background: var(--border); margin: 0 0.15rem; }
