@@ -127,7 +127,7 @@ export function LineChart({
             {runs(s.points).map((run, ri) => (
               <polyline
                 key={ri}
-                className={`chart-line series-${si + 1}`}
+                className={`chart-line series-${s.tone ?? si + 1}`}
                 points={run.map(({ i, v }) => `${x(i)},${y(v)}`).join(' ')}
               />
             ))}
@@ -138,7 +138,7 @@ export function LineChart({
                   cx={x(i)}
                   cy={y(p.y)}
                   r={hover === i ? 5 : 3.5}
-                  className={`chart-dot series-${si + 1}`}
+                  className={`chart-dot series-${s.tone ?? si + 1}`}
                 />
               )
             )}
@@ -165,7 +165,7 @@ export function LineChart({
       <div className="chart-legend">
         {series.map((s, si) => (
           <span key={s.key} className="chart-legend-item">
-            <span className={`chart-swatch series-${si + 1}`} />
+            <span className={`chart-swatch series-${s.tone ?? si + 1}`} />
             {s.label}
             {hover !== null && (
               <strong>

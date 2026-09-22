@@ -9,13 +9,6 @@ export const dynamic = 'force-dynamic';
 
 type SearchParams = Promise<Record<string, string | string[] | undefined>>;
 
-const VIEWS = [
-  { key: 'funnel', label: 'Funnel conversion' },
-  { key: 'booked', label: 'Calls booked over time' },
-  { key: 'money', label: 'Cash and revenue' },
-  { key: 'outreach', label: 'Outreach volume' },
-] as const;
-
 function one(params: Record<string, string | string[] | undefined>, key: string) {
   const v = params[key];
   return typeof v === 'string' && v.length > 0 ? v : undefined;
@@ -37,26 +30,27 @@ export default async function KpisPage({ searchParams }: { searchParams: SearchP
     from: validDate(one(params, 'from'), fallback.from),
     to: validDate(one(params, 'to'), fallback.to),
   };
-  const view = (one(params, 'view') ?? 'funnel') as (typeof VIEWS)[number]['key'];
   const setterId = one(params, 'setterId');
 
+  // All four, always. Picking one at a time meant four page loads to answer a
+  // question about one week, and no way to see a dip in bookings next to the
+  // outreach that did or didn't cause it.
   const [setters, streaks, steps, booked, cash, activity] = await Promise.all([
     getSetters(),
     getStreaks(),
-    view === 'funnel' ? funnel(range, setterId) : Promise.resolve(null),
-    view === 'booked' ? callsBooked(range, setterId) : Promise.resolve(null),
-    view === 'money' ? money(range, setterId) : Promise.resolve(null),
-    view === 'outreach' ? outreach(range, setterId) : Promise.resolve(null),
+    funnel(range, setterId),
+    callsBooked(range, setterId),
+    money(range, setterId),
+    outreach(range, setterId),
   ]);
 
   const who = setterId ? (setters.find((s) => s.id === setterId)?.name ?? 'Someone') : 'Team';
-  const current = VIEWS.find((v) => v.key === view) ?? VIEWS[0];
 
   return (
     <>
       <h1>KPIs</h1>
       <p className="sub">
-        {current.label} · {who} · {range.from} to {range.to}
+        {who} · {range.from} to {range.to}
       </p>
 
       <h2>Consistency</h2>
@@ -67,16 +61,6 @@ export default async function KpisPage({ searchParams }: { searchParams: SearchP
       <StreakStrip rows={streaks} secondary="eod" />
 
       <form className="toolbar" method="get">
-        <div className="field">
-          <label htmlFor="view">Show</label>
-          <select id="view" name="view" defaultValue={view}>
-            {VIEWS.map((v) => (
-              <option key={v.key} value={v.key}>
-                {v.label}
-              </option>
-            ))}
-          </select>
-        </div>
         <div className="field">
           <label htmlFor="setterId">Who</label>
           <select id="setterId" name="setterId" defaultValue={setterId ?? ''}>
@@ -103,30 +87,44 @@ export default async function KpisPage({ searchParams }: { searchParams: SearchP
 
       <section className="panel">
         <div className="panel-head">
-          <h3>{current.label}</h3>
+          <h3>Funnel conversion</h3>
         </div>
+        <FunnelChart steps={steps} />
+        <p className="sub" style={{ marginTop: '0.7rem' }}>
+          Counted by when the lead was created, so a lead that closed after the window still counts
+          in the window it entered.
+        </p>
+      </section>
 
-        {steps && (
-          <>
-            <FunnelChart steps={steps} />
-            <p className="sub" style={{ marginTop: '0.7rem' }}>
-              Counted by when the lead was created, so a lead that closed after the window still
-              counts in the window it entered.
-            </p>
-          </>
-        )}
-        {booked && <LineChart series={booked} tableCaption="Calls booked per week by setter" />}
-        {cash && (
-          <LineChart series={cash} format="usd" tableCaption="Cash collected and contract value per week" />
-        )}
-        {activity && (
-          <>
-            <LineChart series={activity} tableCaption="Outreach volume per week" />
-            <p className="sub" style={{ marginTop: '0.7rem' }}>
-              From the numbers setters enter in EOD Reports — it only covers days they filed one.
-            </p>
-          </>
-        )}
+      <section className="panel">
+        <div className="panel-head">
+          <h3>Calls booked over time</h3>
+        </div>
+        <LineChart series={booked} tableCaption="Calls booked per week by setter" />
+      </section>
+
+      <section className="panel">
+        <div className="panel-head">
+          <h3>Cash and revenue</h3>
+        </div>
+        <LineChart
+          series={cash}
+          format="usd"
+          tableCaption="Cash collected and contract value per week"
+        />
+        <p className="sub" style={{ marginTop: '0.7rem' }}>
+          Counted by the day the call closed, not the day somebody typed it up.
+        </p>
+      </section>
+
+      <section className="panel">
+        <div className="panel-head">
+          <h3>Outreach volume</h3>
+        </div>
+        <LineChart series={activity} tableCaption="Outreach volume per week" />
+        <p className="sub" style={{ marginTop: '0.7rem' }}>
+          From the numbers setters enter in EOD Reports — it only covers days they filed one.
+        </p>
       </section>
     </>
   );

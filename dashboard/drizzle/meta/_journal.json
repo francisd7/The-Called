@@ -141,6 +141,13 @@
       "when": 1790052313771,
       "tag": "0019_keep_their_cancel_reasons",
       "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "7",
+      "when": 1790052800419,
+      "tag": "0020_close_dates_follow_the_call",
+      "breakpoints": true
     }
   ]
 }

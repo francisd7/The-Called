@@ -57,7 +57,7 @@ export default async function LeadPage({ params }: { params: Promise<{ id: strin
     getOptions('payment_method'),
     getOptions('lost_reason'),
     getOptions('cancel_reason'),
-    getClosers(),
+    getClosers(lead.closerId),
     getActiveOffers(),
   ]);
 

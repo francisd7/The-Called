@@ -344,12 +344,29 @@ export async function getLeadCardLookups() {
   };
 }
 
-/** People who can be picked as the closer on a call. */
-export async function getClosers() {
+/**
+ * People who can be picked as the closer on a call.
+ *
+ * Active only. The baseline seed creates a closer row per person with a
+ * placeholder address and active false, so once somebody sets up the real one
+ * the dropdown carried both - "Nigel Daley" beside a "Nigel" nobody can sign in
+ * as. Every other list of people already filters this way.
+ *
+ * `keep` is the closer a lead already has. A select whose value is not among
+ * its options falls back to the first one, so narrowing this list without it
+ * would show "-" on a call that has a closer and quietly clear them on the next
+ * save. Whoever took the call stays pickable on that call, and nowhere else.
+ */
+export async function getClosers(keep?: string | null) {
   return db
     .select()
     .from(users)
-    .where(eq(users.role, 'closer'))
+    .where(
+      and(
+        eq(users.role, 'closer'),
+        keep ? or(eq(users.active, true), eq(users.id, keep)) : eq(users.active, true)
+      )
+    )
     .orderBy(asc(users.name));
 }
 

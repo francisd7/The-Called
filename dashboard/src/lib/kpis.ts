@@ -70,7 +70,29 @@ export async function funnel(range: Range, setterId?: string) {
  * A null y is "we don't know", not zero - a day nobody filed a report is not a
  * day of no work, and a chart that draws it at the baseline says it was.
  */
-export type Series = { key: string; label: string; points: Array<{ x: string; y: number | null }> };
+export type Series = {
+  key: string;
+  label: string;
+  points: Array<{ x: string; y: number | null }>;
+  /**
+   * Which of the chart's colours this series wears, 1-based.
+   *
+   * Set where a series stands for a person, so the colour follows them rather
+   * than their position in the result. Without it, filtering to one setter
+   * repaints whoever survives as series 1 - Loui green on one chart and blue on
+   * the next, on a page that now shows all four at once.
+   */
+  tone?: number;
+};
+
+/**
+ * A stable colour slot per person, from one ordering of everybody rather than
+ * of whoever happens to appear in a given range.
+ */
+export function toneFor(id: string, order: string[]): number {
+  const at = order.indexOf(id);
+  return at === -1 ? order.length + 1 : at + 1;
+}
 
 /** Calls booked per week, one series per setter (plus unassigned when present). */
 export async function callsBooked(range: Range, setterId?: string): Promise<Series[]> {
@@ -89,14 +111,22 @@ export async function callsBooked(range: Range, setterId?: string): Promise<Seri
     .groupBy(sql`1`, leads.setterId)
     .orderBy(asc(sql`1`));
 
-  const people = await db.select().from(users);
+  const people = await db.select().from(users).orderBy(asc(users.name));
   const nameOf = new Map(people.map((p) => [p.id, p.name]));
+  // One fixed order, spanning only the people who can hold a lead - not just
+  // whoever booked something in this range, or the colours would shift with the
+  // date picker, and not the closers either, who would spend slots the chart
+  // never draws.
+  const order = people
+    .filter((p) => p.active && (p.role === 'setter' || p.role === 'admin'))
+    .map((p) => p.id);
   const buckets = weekBuckets(range);
   const keys = [...new Set(rows.map((r) => r.setterId ?? 'none'))];
 
   return keys.map((key) => ({
     key,
     label: key === 'none' ? 'Unassigned' : (nameOf.get(key) ?? 'Unknown'),
+    tone: key === 'none' ? order.length + 1 : toneFor(key, order),
     points: buckets.map((week) => ({
       x: week,
       y: rows.find((r) => r.week === week && (r.setterId ?? 'none') === key)?.n ?? 0,

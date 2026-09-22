@@ -460,9 +460,27 @@ th { color: var(--muted); font-weight: 550; font-size: 0.78rem; }
    light / 9.4 dark against an ≥8 target; normal-vision 27.6 / 26.5 against a
    ≥15 floor. Aqua sits at 2.74:1 on the light surface, below the 3:1 line, so
    every chart using it ships named legend entries and a table view. */
-.chart { --series-1: #2a78d6; --series-2: #eb6834; --series-3: #1baf7a; }
+/* Five categorical slots, assigned in fixed order and never cycled. Both sets
+   pass the palette checks against their own surface (lightness band, chroma
+   floor, colour-blind separation, contrast) rather than the dark one being a
+   flip of the light one. The green sits just under 3:1 on the light surface,
+   which the legend and the "Show as table" button underneath every chart
+   answer for. */
+.chart {
+  --series-1: #2a78d6;
+  --series-2: #eb6834;
+  --series-3: #1baf7a;
+  --series-4: #8a4fd8;
+  --series-5: #c2185b;
+}
 @media (prefers-color-scheme: dark) {
-  .chart { --series-1: #3987e5; --series-2: #d95926; --series-3: #199e70; }
+  .chart {
+    --series-1: #3987e5;
+    --series-2: #d95926;
+    --series-3: #199e70;
+    --series-4: #9a63e8;
+    --series-5: #e0457f;
+  }
 }
 
 .chart-svg { width: 100%; height: auto; display: block; }
@@ -475,9 +493,13 @@ th { color: var(--muted); font-weight: 550; font-size: 0.78rem; }
 .chart-line.series-1 { stroke: var(--series-1); }
 .chart-line.series-2 { stroke: var(--series-2); }
 .chart-line.series-3 { stroke: var(--series-3); }
+.chart-line.series-5 { stroke: var(--series-5); }
+.chart-line.series-4 { stroke: var(--series-4); }
 .chart-dot.series-1 { fill: var(--series-1); }
 .chart-dot.series-2 { fill: var(--series-2); }
 .chart-dot.series-3 { fill: var(--series-3); }
+.chart-dot.series-5 { fill: var(--series-5); }
+.chart-dot.series-4 { fill: var(--series-4); }
 
 .chart-legend {
   display: flex;
@@ -495,6 +517,8 @@ th { color: var(--muted); font-weight: 550; font-size: 0.78rem; }
 .chart-swatch.series-1 { background: var(--series-1); }
 .chart-swatch.series-2 { background: var(--series-2); }
 .chart-swatch.series-3 { background: var(--series-3); }
+.chart-swatch.series-5 { background: var(--series-5); }
+.chart-swatch.series-4 { background: var(--series-4); }
 .chart-legend-when { margin-left: auto; }
 .chart-table-toggle { margin-top: 0.6rem; font-size: 0.8rem; }
 
@@ -859,3 +883,7 @@ th { color: var(--muted); font-weight: 550; font-size: 0.78rem; }
 .tile.tone-violet { border-left-color: #4a3aa7; }
 .tile.tone-warn { border-left-color: var(--warn); }
 .tile.tone-warn .tile-n { color: var(--warn); }
+
+/* Stacked charts need air between them, and a little room above each heading
+   so a legend doesn't read as belonging to the chart below it. */
+.panel + .panel { margin-top: 0.9rem; }

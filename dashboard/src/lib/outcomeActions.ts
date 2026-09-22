@@ -51,6 +51,16 @@ export async function logCallOutcome(formData: FormData): Promise<Result> {
     const cash = money(formData, 'cashCollected');
     const contract = money(formData, 'contractValue');
 
+    // A close belongs to the day the call happened, not the day somebody got
+    // round to typing it up. Stamping it with now() put nine backfilled closes
+    // on one afternoon and read $41,320 collected "today" - money that came in
+    // over weeks. Only a close with no call behind it falls back to now.
+    const before = await db.query.leads.findFirst({
+      where: eq(leads.id, leadId),
+      columns: { callScheduledFor: true },
+    });
+    const happenedOn = before?.callScheduledFor ?? new Date();
+
     if (closed && !contract) {
       return { ok: false, error: 'A closed call needs a contract value' };
     }
@@ -64,7 +74,7 @@ export async function logCallOutcome(formData: FormData): Promise<Result> {
         // close?" invites the two to disagree.
         showed: SHOWED.has(outcome),
         closed,
-        closedDate: closed ? new Date() : null,
+        closedDate: closed ? happenedOn : null,
         cashCollected: cash,
         contractValue: contract,
         tier: field(formData, 'tier'),
@@ -77,7 +87,7 @@ export async function logCallOutcome(formData: FormData): Promise<Result> {
         // its own would leave callCancelled false and the booking on the
         // calendar as far as every count is concerned.
         callCancelled: cancelled,
-        callCancelledAt: cancelled ? new Date() : null,
+        callCancelledAt: cancelled ? happenedOn : null,
         cancelReason: cancelled ? field(formData, 'cancelReason') : null,
         // isActiveConvo is deliberately untouched. Rapport carries on after a
         // call - a close becomes a client relationship, a no-close is often
