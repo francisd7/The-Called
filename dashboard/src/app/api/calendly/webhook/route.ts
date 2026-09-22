@@ -99,6 +99,7 @@ async function handleCreated(leadId: string, payload: CalendlyInviteePayload) {
       closerId: closer?.id ?? null,
       closerName: closer?.name ?? host.name,
       calendlyEventUri: payload.scheduled_event?.uri ?? null,
+      calendlyEventTypeUri: payload.scheduled_event?.event_type ?? null,
       calendlyInviteeUri: payload.uri ?? null,
       // Kept on the lead so a setter can read what they wrote before the call,
       // instead of it being buried in the raw webhook log.
@@ -140,7 +141,15 @@ async function handleCreated(leadId: string, payload: CalendlyInviteePayload) {
   });
 
   if (updated) {
-    const posted = await notifyBooking(updated, offer?.label ?? null);
+    // Name the Calendly link when no offer matches it. Four of the five links
+    // that count are retired and have no offer row, so "Offer: —" would be the
+    // normal case rather than the exception.
+    const link = payload.scheduled_event?.event_type
+      ? await db.query.calendlyEventTypes.findFirst({
+          where: eq(calendlyEventTypes.uri, payload.scheduled_event.event_type),
+        })
+      : null;
+    const posted = await notifyBooking(updated, offer?.label ?? link?.name ?? null);
     // A booking nobody is told about is the one failure this path exists to
     // prevent. postToChannel returns false for a missing token, a missing
     // channel id and a rejected post alike, and used to say so only to a

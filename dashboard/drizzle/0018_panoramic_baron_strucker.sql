@@ -1,0 +1,1 @@
+ALTER TABLE "leads" ADD COLUMN "calendly_event_type_uri" text;

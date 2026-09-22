@@ -3,6 +3,7 @@ import type { PgColumn } from 'drizzle-orm/pg-core';
 import { db } from '@/db';
 import { awaitingOutcome } from './outcomeRules.ts';
 import {
+  calendlyEventTypes,
   calendlyWebhookEvents,
   eodReports,
   focuses,
@@ -136,11 +137,19 @@ export async function getLead(id: string) {
   const lead = await db.query.leads.findFirst({ where: eq(leads.id, id) });
   if (!lead) return null;
 
-  const [notes, setter, closer, offer] = await Promise.all([
+  const [notes, setter, closer, offer, bookingLink] = await Promise.all([
     db.select().from(leadNotes).where(eq(leadNotes.leadId, id)).orderBy(desc(leadNotes.createdAt)),
     lead.setterId ? db.query.users.findFirst({ where: eq(users.id, lead.setterId) }) : null,
     lead.closerId ? db.query.users.findFirst({ where: eq(users.id, lead.closerId) }) : null,
     lead.offerId ? db.query.offers.findFirst({ where: eq(offers.id, lead.offerId) }) : null,
+    // Only the links live today have an offer row. Most of the history is on
+    // retired ones, so without this the lead says "Offer unknown" about a call
+    // whose link the dashboard can name perfectly well.
+    lead.calendlyEventTypeUri
+      ? db.query.calendlyEventTypes.findFirst({
+          where: eq(calendlyEventTypes.uri, lead.calendlyEventTypeUri),
+        })
+      : null,
   ]);
 
   const authorIds = [...new Set(notes.map((n) => n.authorId).filter(Boolean))] as string[];
@@ -152,6 +161,7 @@ export async function getLead(id: string) {
     setter,
     closer,
     offer,
+    bookingLink,
     notes: notes.map((n) => ({
       ...n,
       authorName: n.authorId ? (authorById.get(n.authorId) ?? 'Unknown') : 'Airtable import',

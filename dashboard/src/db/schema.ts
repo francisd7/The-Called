@@ -108,6 +108,11 @@ export const leads = pgTable(
     closerId: uuid('closer_id').references(() => users.id),
     closerName: text('closer_name'),
     calendlyEventUri: text('calendly_event_uri'),
+    // Which Calendly link they booked on. The offer row only exists for the
+    // handful of links live today, and most of the history sits on retired
+    // ones - so without this a lead reads "Offer unknown" while the dashboard
+    // has the link's name sitting in calendly_event_types all along.
+    calendlyEventTypeUri: text('calendly_event_type_uri'),
     calendlyInviteeUri: text('calendly_invitee_uri'),
     // What they typed into the booking form. Kept on the lead rather than left
     // in the raw webhook log so a setter can read it before the call.

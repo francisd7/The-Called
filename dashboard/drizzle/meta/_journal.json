@@ -127,6 +127,13 @@
       "when": 1790029160718,
       "tag": "0017_thankful_starhawk",
       "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1790043152790,
+      "tag": "0018_panoramic_baron_strucker",
+      "breakpoints": true
     }
   ]
 }

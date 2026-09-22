@@ -32,7 +32,7 @@ export default async function LeadPage({ params }: { params: Promise<{ id: strin
   const data = await getLead(id);
   if (!data) notFound();
 
-  const { lead, setter, offer, notes } = data;
+  const { lead, setter, offer, bookingLink, notes } = data;
   const [
     setters,
     stages,
@@ -138,7 +138,7 @@ export default async function LeadPage({ params }: { params: Promise<{ id: strin
             <span className="card-meta">{formatCallTime(lead.callScheduledFor)}</span>
           </div>
           <div className="card-meta">
-            {offer?.label ?? 'Offer unknown'}
+            {offer?.label ?? bookingLink?.name ?? 'Offer unknown'}
             {lead.closerName ? ` · with ${lead.closerName}` : ''}
           </div>
           <div className="card-row">
