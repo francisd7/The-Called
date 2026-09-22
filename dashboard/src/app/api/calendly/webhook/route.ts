@@ -139,7 +139,27 @@ async function handleCreated(leadId: string, payload: CalendlyInviteePayload) {
     meta: { source: 'calendly', inviteeUri: payload.uri, offer: offer?.label ?? null },
   });
 
-  if (updated) await notifyBooking(updated, offer?.label ?? null);
+  if (updated) {
+    const posted = await notifyBooking(updated, offer?.label ?? null);
+    // A booking nobody is told about is the one failure this path exists to
+    // prevent. postToChannel returns false for a missing token, a missing
+    // channel id and a rejected post alike, and used to say so only to a
+    // console nobody reads - so a real call sat in the dashboard while the
+    // team waited for a ping that was never coming.
+    if (!posted && !updated.isTest) {
+      await recordIssue({
+        title: 'A booking did not reach Discord',
+        detail:
+          `${updated.igHandle} booked a call and the dashboard recorded it, but the Discord ` +
+          'post did not go out. The booking itself is safe - this is only the notification.',
+        remedy:
+          'Check DISCORD_BOT_TOKEN and DISCORD_SETTER_CHANNEL_ID are set on this service, and ' +
+          'that the bot can post in that channel. Tell whoever is taking the call in the ' +
+          'meantime.',
+        context: { leadId: updated.id, igHandle: updated.igHandle },
+      });
+    }
+  }
 }
 
 async function handleCanceled(leadId: string, payload: CalendlyInviteePayload) {
@@ -268,8 +288,32 @@ export async function POST(request: Request) {
             'A booking arrived but no Calendly link is marked as a sales call, so there is no ' +
             'way to tell one from a coaching call or a personal appointment.',
           remedy:
-            'Open Admin, press Find Calendly links, and tick the ones whose bookings are sales ' +
-            'calls. The delivery is stored and can be replayed afterwards.',
+            'Open Admin → Setup & imports, press Find Calendly links, and tick the ones whose ' +
+            'bookings are sales calls. The delivery is stored and can be replayed afterwards.',
+        });
+      } else {
+        // Some links count and this one doesn't. That is usually correct - a
+        // coaching call or somebody's own meeting - but it is also exactly what
+        // a brand new sales link looks like, and until now the booking simply
+        // vanished: no lead, no Discord, and nothing on the Problems page to
+        // say why. Silence is the wrong answer to "did that come through?".
+        const uri = payload.scheduled_event?.event_type ?? null;
+        const known = uri ? await db.query.calendlyEventTypes.findFirst({
+          where: eq(calendlyEventTypes.uri, uri),
+        }) : null;
+        await recordIssue({
+          title: 'A booking came in on a link that is not counted',
+          detail:
+            `${payload.name?.trim() || payload.email || 'Somebody'} booked on ` +
+            `${known ? `"${known.name}"` : 'a link this dashboard has never seen'}, which is not ` +
+            'ticked as a sales call. No lead was touched and nobody was told.',
+          remedy: known
+            ? 'If that link is a sales call, tick it under Admin → Setup & imports → Which ' +
+              'Calendly links are sales calls, then pull the Calendly history to bring the ' +
+              'booking in. If it is not, nothing needs doing.'
+            : 'Open Admin → Setup & imports and press Find Calendly links so the dashboard knows ' +
+              'about it, then tick it if its bookings are sales calls.',
+          context: { eventTypeUri: uri, inviteeUri: payload.uri },
         });
       }
 
