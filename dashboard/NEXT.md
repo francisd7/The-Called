@@ -34,6 +34,14 @@ settle when he does:
   came from, that column and the two after it would fill themselves. That is
   a behaviour change for the team, so it is not assumed.
 
+## Waiting on Francis, off the dashboard
+
+- **Turn on Railway's Postgres backups.** Admin → Take a copy gives a manual
+  CSV export of everything, which is the escape hatch, but it is not a
+  schedule. This database is now the only copy of the pipeline: the Airtable
+  tracker stopped being the record of anything weeks ago. Railway's own
+  backup setting is the missing half, and it can only be set there.
+
 ## Open items Francis is handling himself
 
 - Merge the duplicate pairs on `/leads/duplicates`.

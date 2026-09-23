@@ -69,6 +69,10 @@ function leadLabel(lead: Lead): string {
  * friction is why post-call outcomes end up being typed into a separate
  * Airtable form and then linked back by hand.
  *
+ * Only on messages the setters read. The closers work from Discord and the
+ * Airtable post-call form and do not sign in here, so a link on their pre-call
+ * brief would point them at a sign-in page for work that is not theirs.
+ *
  * Null when AUTH_URL is unset, which is the local and test case; a message
  * with a half-built link in it would be worse than one without.
  */
@@ -165,8 +169,6 @@ export async function notifyBooking(
 export async function notifyTriage(lead: Lead, setterName: string): Promise<boolean> {
   if (!isSendable(lead)) return false;
 
-  const link = leadUrl(lead);
-
   const lines = [
     `🧠 **Pre-call notes** — ${leadLabel(lead)}`,
     `**Call:** ${formatCallTime(lead.callScheduledFor)}${lead.closerName ? ` with ${lead.closerName}` : ''}`,
@@ -177,7 +179,6 @@ export async function notifyTriage(lead: Lead, setterName: string): Promise<bool
     lead.triageNotes?.trim() || '_No notes written._',
     '',
     `— triaged by ${setterName}`,
-    link ? `\nLog what happened here: <${link}>` : null,
   ].filter((l) => l !== null);
 
   return postToChannel(

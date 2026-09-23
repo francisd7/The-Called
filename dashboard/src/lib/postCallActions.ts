@@ -43,6 +43,9 @@ export async function syncPostCall(): Promise<Result> {
     const parts = [`${stats.loaded} report${stats.loaded === 1 ? '' : 's'} read`];
     if (stats.added > 0) parts.push(`${stats.added} new`);
     if (stats.changed > 0) parts.push(`${stats.changed} edited in Airtable`);
+    if (stats.autoLinked > 0) {
+      parts.push(`${stats.autoLinked} placed automatically (one call that day, one name)`);
+    }
     if (stats.reapplied > 0) parts.push(`${stats.reapplied} re-applied to a lead`);
     parts.push(`${stats.pending} waiting to be linked`);
     return { ok: true, message: parts.join(' · ') };

@@ -371,7 +371,9 @@ test('a booking carries a link straight to the lead', async () => {
   }
 });
 
-test('the pre-call brief says where to log the result', async () => {
+test('the closers\u2019 brief carries no dashboard link', async () => {
+  // They work from Discord and the Airtable post-call form and do not sign in
+  // here, so a link would send them to a sign-in page for somebody else's job.
   const was = process.env.AUTH_URL;
   process.env.AUTH_URL = 'https://dash.example.com';
   try {
@@ -379,8 +381,8 @@ test('the pre-call brief says where to log the result', async () => {
     const lead = fakeLead({ triageNotes: 'Runs a gym.' });
     await notifyTriage(lead, 'Loui');
     const text = captured[0].body.content ?? '';
-    assert.ok(text.includes('Log what happened here'));
-    assert.ok(text.includes(`/leads/${lead.id}`));
+    assert.ok(text.includes('Pre-call notes'), 'the brief itself still goes out');
+    assert.ok(!text.includes('/leads/'), 'and carries no link they cannot use');
   } finally {
     process.env.AUTH_URL = was;
   }

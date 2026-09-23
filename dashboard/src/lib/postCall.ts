@@ -13,6 +13,8 @@
 import { and, eq, ne, sql } from 'drizzle-orm';
 import type { PostgresJsDatabase } from 'drizzle-orm/postgres-js';
 import { leadEvents, leads, postCallReports, users } from '../db/schema.ts';
+import { teamDateString } from './dates.ts';
+import { pickAutoMatch, type Candidate } from './postCallMatch.ts';
 import * as schema from '../db/schema.ts';
 
 type Db = PostgresJsDatabase<typeof schema>;
@@ -173,6 +175,8 @@ export type SyncStats = {
   changed: number;
   reapplied: number;
   pending: number;
+  /** Reports placed without anyone having to, because there was one answer. */
+  autoLinked: number;
 };
 
 /**
@@ -188,7 +192,7 @@ export async function syncPostCallReports(
   { pat, records }: { pat?: string; records?: PostCallRecord[] } = {}
 ): Promise<SyncStats> {
   const rows = records ?? (await fetchRecords(pat ?? process.env.AIRTABLE_PAT ?? ''));
-  const stats: SyncStats = { loaded: 0, added: 0, changed: 0, reapplied: 0, pending: 0 };
+  const stats: SyncStats = { loaded: 0, added: 0, changed: 0, reapplied: 0, pending: 0, autoLinked: 0 };
 
   for (const rec of rows) {
     const mapped = mapRecord(rec);
@@ -250,6 +254,8 @@ export async function syncPostCallReports(
     }
   }
 
+  stats.autoLinked = await autoLinkPending(db);
+
   const [{ n }] = await db
     .select({ n: sql<number>`COUNT(*)::int` })
     .from(postCallReports)
@@ -257,6 +263,76 @@ export async function syncPostCallReports(
   stats.pending = n;
 
   return stats;
+}
+
+/**
+ * Places every pending report that has exactly one possible lead.
+ *
+ * Run over the whole queue rather than only what just arrived, so a backlog
+ * clears itself the first time this runs and a report that became unambiguous
+ * later - because the other candidate got its own report - is picked up on the
+ * next sync.
+ */
+export async function autoLinkPending(db: Db): Promise<number> {
+  const pending = await db.query.postCallReports.findMany({
+    where: eq(postCallReports.status, 'pending'),
+  });
+
+  let placed = 0;
+  for (const report of pending) {
+    if (!report.callDate) continue;
+    const day = teamDateString(report.callDate);
+
+    // Every non-test lead whose booked call falls on the report's own day, in
+    // the team's timezone - a call at 8pm ET is not the next day's call.
+    const sameDay = await db
+      .select({
+        id: leads.id,
+        name: leads.name,
+        igHandle: leads.igHandle,
+        igHandleKey: leads.igHandleKey,
+        linkedReportId: postCallReports.id,
+      })
+      .from(leads)
+      .leftJoin(
+        postCallReports,
+        and(
+          eq(postCallReports.leadId, leads.id),
+          eq(postCallReports.status, 'linked'),
+          ne(postCallReports.id, report.id)
+        )
+      )
+      .where(
+        and(
+          eq(leads.isTest, false),
+          eq(leads.callBooked, true),
+          eq(leads.callCancelled, false),
+          sql`(${leads.callScheduledFor} AT TIME ZONE 'America/New_York')::date = ${day}::date`
+        )
+      );
+
+    const match = pickAutoMatch(report, sameDay as Candidate[]);
+    if (!match.leadId) continue;
+
+    await db
+      .update(postCallReports)
+      .set({ status: 'linked', leadId: match.leadId, linkedAt: new Date(), leadWasCreated: false })
+      .where(eq(postCallReports.id, report.id));
+    await applyToLead(db, { report, leadId: match.leadId });
+
+    // Recorded, because somebody looking at a close on a lead should be able to
+    // see that the app placed it rather than a person, and undo it if it is wrong.
+    await db.insert(leadEvents).values({
+      leadId: match.leadId,
+      actorId: null,
+      type: 'post_call_auto_linked',
+      toValue: report.outcome ?? null,
+      meta: { reportId: report.id, leadName: report.leadName, callDay: day },
+    });
+    placed += 1;
+  }
+
+  return placed;
 }
 
 /**
