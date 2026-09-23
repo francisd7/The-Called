@@ -962,7 +962,7 @@ main.has-viewas { padding-bottom: 5rem; }
   width: 100%;
   aspect-ratio: 326 / 420;
   overflow: hidden;
-  background: var(--muted-bg, #f1f3f7);
+  background: var(--bg);
   border-bottom: 1px solid var(--border);
 }
 .reel-preview iframe {
@@ -992,7 +992,7 @@ main.has-viewas { padding-bottom: 5rem; }
   display: flex;
   align-items: center;
   justify-content: center;
-  color: var(--ink-muted, #6b7280);
+  color: var(--muted);
   font-size: 0.85rem;
   text-align: center;
   padding: 1rem;
@@ -1003,13 +1003,13 @@ main.has-viewas { padding-bottom: 5rem; }
 .reel-hook {
   margin: 0 0 0.35rem;
   font-size: 0.82rem;
-  color: var(--ink-muted, #6b7280);
+  color: var(--muted);
   font-style: italic;
 }
 .reel-notes {
   margin: 0.5rem 0 0;
   font-size: 0.8rem;
-  color: var(--ink-muted, #6b7280);
+  color: var(--muted);
 }
 
 .reel-status {
@@ -1023,7 +1023,7 @@ main.has-viewas { padding-bottom: 5rem; }
 }
 .reel-status-running { background: var(--ok-bg, #e7f6ee); color: var(--ok, #1baf7a); }
 .reel-status-paused { background: var(--warn-bg); color: var(--warn); }
-.reel-status-finished { background: var(--border); color: var(--ink-muted, #6b7280); }
+.reel-status-finished { background: var(--border); color: var(--muted); }
 
 /* Two columns of small figures rather than the full-width stat tiles the
    dashboard uses: at this width a stat tile fits one number per row. */
@@ -1037,7 +1037,7 @@ main.has-viewas { padding-bottom: 5rem; }
 .reel-figure-n { font-weight: 700; font-size: 0.95rem; }
 .reel-figure-l {
   font-size: 0.7rem;
-  color: var(--ink-muted, #6b7280);
+  color: var(--muted);
   text-transform: uppercase;
   letter-spacing: 0.03em;
 }
