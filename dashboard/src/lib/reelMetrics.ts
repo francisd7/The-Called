@@ -119,3 +119,69 @@ function ratio(top: number | null, bottom: number | null): number | null {
 
 export const REEL_STATUSES = ['running', 'paused', 'finished'] as const;
 export type ReelStatus = (typeof REEL_STATUSES)[number];
+
+type Summable = Counts & { spendCurrency: string };
+
+export type ReelTotals = {
+  currency: string;
+  reels: number;
+  spend: number;
+  cash: number;
+  net: number;
+  leads: number;
+  calls: number;
+  closes: number;
+  costPerLead: number | null;
+  costPerCall: number | null;
+  costPerClose: number | null;
+  roas: number | null;
+};
+
+/**
+ * The top line: what boosting cost and what came back.
+ *
+ * Grouped by currency rather than summed across it. An ad account billing CAD
+ * against contracts written in USD would otherwise produce a blended cost per
+ * lead that is not a number in any currency - the kind of figure a boosting
+ * decision gets made on and should not be.
+ *
+ * Most of the time there is one currency and this is a single row.
+ */
+export function summariseReels(reels: Summable[]): ReelTotals[] {
+  const byCurrency = new Map<string, Summable[]>();
+  for (const r of reels) {
+    const key = r.spendCurrency || 'USD';
+    byCurrency.set(key, [...(byCurrency.get(key) ?? []), r]);
+  }
+
+  // A sum of nothing is zero, but a sum of things nobody has filled in is not:
+  // a reel with no spend entered contributes nothing rather than dragging a
+  // total down to a number somebody would act on.
+  const total = (rows: Summable[], pick: (r: Summable) => string | number | null) =>
+    rows.reduce((acc, r) => acc + (num(pick(r)) ?? 0), 0);
+
+  return [...byCurrency.entries()]
+    .map(([currency, rows]) => {
+      const spend = total(rows, (r) => r.spend);
+      const cash = total(rows, (r) => r.cashCollected);
+      const leads = total(rows, (r) => r.leadsGenerated);
+      const calls = total(rows, (r) => r.callsBooked);
+      const closes = total(rows, (r) => r.closes);
+
+      return {
+        currency,
+        reels: rows.length,
+        spend,
+        cash,
+        net: cash - spend,
+        leads,
+        calls,
+        closes,
+        costPerLead: per(spend, leads),
+        costPerCall: per(spend, calls),
+        costPerClose: per(spend, closes),
+        roas: spend === 0 ? null : cash / spend,
+      };
+    })
+    .sort((a, b) => b.spend - a.spend);
+}

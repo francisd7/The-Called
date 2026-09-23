@@ -106,3 +106,61 @@ test('spend of zero gives free leads, but no return figure', () => {
   assert.equal(m.roas, null);
   assert.equal(m.net, 100);
 });
+
+// --- totals ---
+import { summariseReels } from '../src/lib/reelMetrics.ts';
+
+const reel = (over: Record<string, unknown> = {}) => ({ ...blank, spendCurrency: 'USD', ...over });
+
+test('totals add the reels up and work the rates off the sums', () => {
+  const [t] = summariseReels([
+    reel({ spend: '400', cashCollected: '8000', leadsGenerated: 40, callsBooked: 8, closes: 2 }),
+    reel({ spend: '100', cashCollected: '2000', leadsGenerated: 10, callsBooked: 2, closes: 1 }),
+  ]);
+  assert.equal(t.reels, 2);
+  assert.equal(t.spend, 500);
+  assert.equal(t.cash, 10000);
+  assert.equal(t.net, 9500);
+  assert.equal(t.costPerLead, 10);
+  assert.equal(t.costPerCall, 50);
+  assert.equal(t.roas, 20);
+});
+
+test('two currencies never blend into one meaningless figure', () => {
+  // A cost per lead mixing CAD spend with USD spend is not a number in either
+  // currency, and it is exactly the number a boosting decision gets made on.
+  const rows = summariseReels([
+    reel({ spend: '400', leadsGenerated: 40 }),
+    reel({ spendCurrency: 'CAD', spend: '200', leadsGenerated: 10 }),
+  ]);
+  assert.equal(rows.length, 2);
+  const usd = rows.find((r) => r.currency === 'USD')!;
+  const cad = rows.find((r) => r.currency === 'CAD')!;
+  assert.equal(usd.costPerLead, 10);
+  assert.equal(cad.costPerLead, 20);
+});
+
+test('the bigger spend is listed first', () => {
+  const rows = summariseReels([
+    reel({ spendCurrency: 'CAD', spend: '50' }),
+    reel({ spend: '900' }),
+  ]);
+  assert.equal(rows[0].currency, 'USD');
+});
+
+test('a reel with nothing filled in drags no total down', () => {
+  const [t] = summariseReels([reel({ spend: '300', leadsGenerated: 30 }), reel()]);
+  assert.equal(t.reels, 2);
+  assert.equal(t.spend, 300);
+  assert.equal(t.costPerLead, 10);
+});
+
+test('no reels, no rows', () => {
+  assert.deepEqual(summariseReels([]), []);
+});
+
+test('a currency nobody set falls back to USD rather than its own row', () => {
+  const rows = summariseReels([reel({ spend: '100' }), reel({ spendCurrency: '', spend: '50' })]);
+  assert.equal(rows.length, 1);
+  assert.equal(rows[0].spend, 150);
+});

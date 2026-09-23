@@ -4,7 +4,7 @@ import { boostedReels } from '@/db/schema';
 import { currentUser } from '@/lib/session';
 import { ActionForm } from '@/components/ActionForm';
 import { addReel, deleteReel, updateReel } from '@/lib/reelActions';
-import { embedUrl, permalink, reelMetrics, REEL_STATUSES } from '@/lib/reelMetrics';
+import { embedUrl, permalink, reelMetrics, summariseReels, REEL_STATUSES } from '@/lib/reelMetrics';
 
 export const dynamic = 'force-dynamic';
 
@@ -218,6 +218,8 @@ export default async function DataPage() {
     .from(boostedReels)
     .orderBy(asc(boostedReels.sortOrder), desc(boostedReels.createdAt));
 
+  const totals = summariseReels(reels);
+
   return (
     <>
       <h1>Data</h1>
@@ -226,6 +228,41 @@ export default async function DataPage() {
         rates below are worked out from the numbers on the right, so there is
         nothing to keep in step by hand.
       </p>
+
+      {totals.map((t) => (
+        <div key={t.currency} className="stats">
+          <div className="stat tone-blue">
+            <div className="stat-n">{money(t.spend, t.currency)}</div>
+            <div className="stat-l">spent{totals.length > 1 ? ` (${t.currency})` : ''}</div>
+          </div>
+          <div className="stat tone-green">
+            <div className="stat-n">{money(t.cash, t.currency)}</div>
+            <div className="stat-l">cash collected</div>
+          </div>
+          <div className={`stat ${t.net >= 0 ? 'tone-green' : 'tone-amber'}`}>
+            <div className="stat-n">{money(t.net, t.currency)}</div>
+            <div className="stat-l">net</div>
+          </div>
+          <div className="stat tone-violet">
+            <div className="stat-n">{money(t.costPerLead, t.currency, 2)}</div>
+            <div className="stat-l">per conversation</div>
+          </div>
+          <div className="stat tone-violet">
+            <div className="stat-n">{money(t.costPerCall, t.currency, 2)}</div>
+            <div className="stat-l">per call booked</div>
+          </div>
+          <div className="stat tone-green">
+            <div className="stat-n">{t.roas === null ? '—' : `${t.roas.toFixed(1)}×`}</div>
+            <div className="stat-l">return on spend</div>
+          </div>
+        </div>
+      ))}
+      {totals.length > 1 && (
+        <p className="sub">
+          Totalled separately per currency. Adding {totals.map((t) => t.currency).join(' and ')}{' '}
+          together would give a cost per lead that is not a figure in either.
+        </p>
+      )}
 
       {reels.length === 0 ? (
         <p className="empty">
