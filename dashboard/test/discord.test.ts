@@ -345,3 +345,73 @@ test('a cancelled call is not announced as a call that happened', async () => {
   assert.ok(text.includes('**Reason:** could not make it'), 'the reason is the useful part');
   assert.ok(!text.includes('**Outcome:**'), 'the headline already said it');
 });
+
+// --- getting from Discord to the lead ---------------------------------------
+//
+// Everything these messages ask for - confirm it, triage it, say what happened
+// - meant opening the dashboard and searching for a first name. That friction
+// is why outcomes get typed into a separate form and linked back by hand.
+
+test('a booking carries a link straight to the lead', async () => {
+  const was = process.env.AUTH_URL;
+  process.env.AUTH_URL = 'https://dash.example.com';
+  try {
+    captured = [];
+    const lead = fakeLead({ setterId: 'user-loui', needsHandle: false });
+    await notifyBooking(lead, 'Brotherhood', { setterName: 'Loui', closers: ['Nigel'] });
+    const text = captured[0].body.content ?? '';
+    assert.ok(
+      text.includes(`https://dash.example.com/leads/${lead.id}`),
+      'the booking should link to the lead it is about'
+    );
+    // Angle brackets stop Discord unfurling a sign-in page under every message.
+    assert.ok(text.includes(`<https://dash.example.com/leads/${lead.id}>`));
+  } finally {
+    process.env.AUTH_URL = was;
+  }
+});
+
+test('the pre-call brief says where to log the result', async () => {
+  const was = process.env.AUTH_URL;
+  process.env.AUTH_URL = 'https://dash.example.com';
+  try {
+    captured = [];
+    const lead = fakeLead({ triageNotes: 'Runs a gym.' });
+    await notifyTriage(lead, 'Loui');
+    const text = captured[0].body.content ?? '';
+    assert.ok(text.includes('Log what happened here'));
+    assert.ok(text.includes(`/leads/${lead.id}`));
+  } finally {
+    process.env.AUTH_URL = was;
+  }
+});
+
+test('a trailing slash on AUTH_URL does not become a double slash', async () => {
+  const was = process.env.AUTH_URL;
+  process.env.AUTH_URL = 'https://dash.example.com/';
+  try {
+    captured = [];
+    const lead = fakeLead({ setterId: 'user-loui', needsHandle: false });
+    await notifyBooking(lead, null, { setterName: 'Loui' });
+    const text = captured[0].body.content ?? '';
+    assert.ok(text.includes(`https://dash.example.com/leads/${lead.id}`));
+    assert.ok(!text.includes('.com//leads'), 'a doubled slash would 404');
+  } finally {
+    process.env.AUTH_URL = was;
+  }
+});
+
+test('with no AUTH_URL the message goes out without a half-built link', async () => {
+  const was = process.env.AUTH_URL;
+  delete process.env.AUTH_URL;
+  try {
+    captured = [];
+    await notifyBooking(fakeLead({ setterId: 'user-loui' }), 'Brotherhood', { setterName: 'Loui' });
+    const text = captured[0].body.content ?? '';
+    assert.ok(text.includes('Call booked'), 'the message still sends');
+    assert.ok(!text.includes('undefined'), 'and never says undefined');
+    assert.ok(!text.includes('/leads/'), 'no link at all beats a broken one');
+  } finally {
+    if (was) process.env.AUTH_URL = was;
+  }
+});

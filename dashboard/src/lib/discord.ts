@@ -62,6 +62,23 @@ function leadLabel(lead: Lead): string {
 }
 
 /**
+ * A tap from Discord to the lead itself.
+ *
+ * Without it, everything these messages ask for - confirm, triage, log what
+ * happened - means opening the dashboard and searching for a first name. That
+ * friction is why post-call outcomes end up being typed into a separate
+ * Airtable form and then linked back by hand.
+ *
+ * Null when AUTH_URL is unset, which is the local and test case; a message
+ * with a half-built link in it would be worse than one without.
+ */
+function leadUrl(lead: Lead): string | null {
+  const base = process.env.AUTH_URL?.replace(/\/+$/, '');
+  if (!base) return null;
+  return `${base}/leads/${lead.id}`;
+}
+
+/**
  * The last line of defence for test data. Every caller is also expected to
  * check, but a forgotten guard somewhere would put a brief for a call that
  * doesn't exist in front of the closers, so the send itself refuses too.
@@ -119,6 +136,7 @@ export async function notifyBooking(
     ? [lead.closerName, ...closers.filter((c) => c !== lead.closerName)]
     : closers;
   const closerLine = ordered.length > 0 ? ordered.join(' and/or ') : lead.closerName;
+  const link = leadUrl(lead);
 
   const lines = [
     `📅 **Call booked** — ${leadLabel(lead)}`,
@@ -133,6 +151,7 @@ export async function notifyBooking(
     lead.needsHandle || !lead.setterId
       ? `⚠️ **Nobody is on this one.**${lead.email ? ` They booked as ${lead.email}.` : ''} Claim it in the dashboard and triage it before the call.`
       : null,
+    link ? `<${link}>` : null,
   ].filter(Boolean);
 
   return postToChannel(process.env.DISCORD_SETTER_CHANNEL_ID, lines.join('\n'));
@@ -146,6 +165,8 @@ export async function notifyBooking(
 export async function notifyTriage(lead: Lead, setterName: string): Promise<boolean> {
   if (!isSendable(lead)) return false;
 
+  const link = leadUrl(lead);
+
   const lines = [
     `🧠 **Pre-call notes** — ${leadLabel(lead)}`,
     `**Call:** ${formatCallTime(lead.callScheduledFor)}${lead.closerName ? ` with ${lead.closerName}` : ''}`,
@@ -156,6 +177,7 @@ export async function notifyTriage(lead: Lead, setterName: string): Promise<bool
     lead.triageNotes?.trim() || '_No notes written._',
     '',
     `— triaged by ${setterName}`,
+    link ? `\nLog what happened here: <${link}>` : null,
   ].filter((l) => l !== null);
 
   return postToChannel(
