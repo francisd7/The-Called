@@ -247,6 +247,21 @@ export default async function AdminPage() {
         </div>
       )}
 
+      <h2>Take a copy</h2>
+      <p className="sub">
+        Everything the dashboard holds, as CSV. The Airtable tracker stopped
+        being the record of anything weeks ago, so this database is the only
+        copy of the pipeline — keep one of these somewhere else, and take a
+        fresh one before any big import.
+      </p>
+      <p className="export-row">
+        <a href="/api/export/leads">Leads</a>
+        <a href="/api/export/eod">EOD reports</a>
+        <a href="/api/export/post-call">Post-call reports</a>
+        <a href="/api/export/reels">Boosted reels</a>
+        <a href="/api/export/people">People</a>
+      </p>
+
       <h2>Setup &amp; imports</h2>
       <p className="sub">
         Connecting Calendly, pulling data across from Airtable, and trying the booking flow without
