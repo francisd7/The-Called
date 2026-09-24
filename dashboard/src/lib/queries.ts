@@ -1,4 +1,5 @@
 import { and, asc, count, desc, eq, gte, ilike, isNotNull, isNull, lt, lte, ne, or, sql } from 'drizzle-orm';
+import { alias } from 'drizzle-orm/pg-core';
 import type { PgColumn } from 'drizzle-orm/pg-core';
 import { db } from '@/db';
 import { awaitingOutcome } from './outcomeRules.ts';
@@ -747,4 +748,76 @@ export async function getCalendlyHealth() {
   const lastAt = last?.at ?? null;
   const daysQuiet = lastAt ? Math.floor((Date.now() - lastAt.getTime()) / 86_400_000) : null;
   return { lastAt, daysQuiet, everDelivered: lastAt !== null };
+}
+
+export type CallFilters = {
+  setterId?: string;
+  closerId?: string;
+  from?: string;
+  to?: string;
+};
+
+/**
+ * Every call that was ever booked, newest first.
+ *
+ * Keyed on the day of the call rather than the day the row was made, so a week
+ * means the calls that happened that week. Cancelled ones are included and
+ * marked: they were booked, and a page about booked calls that hides them
+ * cannot answer how many fall over.
+ */
+export async function getBookedCalls(f: CallFilters = {}, limit = 500) {
+  const setter = alias(users, 'setter');
+  const closer = alias(users, 'closer');
+
+  const where = [eq(leads.isTest, false), eq(leads.callBooked, true)];
+  if (f.setterId) where.push(eq(leads.setterId, f.setterId));
+  if (f.closerId) where.push(eq(leads.closerId, f.closerId));
+  if (f.from) {
+    where.push(sql`(${leads.callScheduledFor} AT TIME ZONE 'America/New_York')::date >= ${f.from}::date`);
+  }
+  if (f.to) {
+    where.push(sql`(${leads.callScheduledFor} AT TIME ZONE 'America/New_York')::date <= ${f.to}::date`);
+  }
+
+  const rows = await db
+    .select({
+      id: leads.id,
+      igHandle: leads.igHandle,
+      name: leads.name,
+      callScheduledFor: leads.callScheduledFor,
+      setterName: setter.name,
+      closerName: closer.name,
+      closerFallback: leads.closerName,
+      offerLabel: offers.label,
+      confirmed: leads.confirmed,
+      triaged: leads.triaged,
+      cancelled: leads.callCancelled,
+      cancelReason: leads.cancelReason,
+      showed: leads.showed,
+      closed: leads.closed,
+      callOutcome: leads.callOutcome,
+      cashCollected: leads.cashCollected,
+      contractValue: leads.contractValue,
+      outcomeLoggedAt: leads.outcomeLoggedAt,
+      postCallRecordId: leads.postCallRecordId,
+    })
+    .from(leads)
+    .leftJoin(setter, eq(setter.id, leads.setterId))
+    .leftJoin(closer, eq(closer.id, leads.closerId))
+    .leftJoin(offers, eq(offers.id, leads.offerId))
+    .where(and(...where))
+    .orderBy(desc(leads.callScheduledFor))
+    .limit(limit);
+
+  return rows.map((r) => ({
+    ...r,
+    closerName: r.closerName ?? r.closerFallback,
+    // "Somebody has said what happened", by any of the routes that can say it.
+    settled:
+      r.outcomeLoggedAt !== null ||
+      r.postCallRecordId !== null ||
+      r.callOutcome !== null ||
+      r.closed === true ||
+      r.showed === true,
+  }));
 }

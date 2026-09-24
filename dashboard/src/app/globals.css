@@ -65,19 +65,28 @@ a { color: var(--accent); }
   justify-content: space-between;
 }
 
-/* On a phone the brand and the sign-out squeeze the nav until the later links
-   are clipped mid-word. Below this width the nav takes its own full row. */
-@media (max-width: 34rem) {
-  .topbar-inner {
-    flex-wrap: wrap;
-    gap: 0.4rem 1rem;
-    padding: 0.55rem 1rem;
-  }
-  .topbar-inner .nav {
+/* The nav gets its own row, at every width.
+
+   Squeezed between the brand and the sign-out it never had enough: at 850px
+   more than a third of it sat off-screen behind a scrollbar, and eight links
+   clipped "Admin" mid-word even on a full desktop. On its own row it has the
+   whole width, the labels stay readable, and the next link added does not
+   start this again. */
+.topbar-inner {
+  flex-wrap: wrap;
+  gap: 0.4rem 1rem;
+  padding: 0.55rem 1rem;
+}
+.topbar-inner .nav {
     order: 3;
     flex-basis: 100%;
-    justify-content: space-between;
-  }
+    /* Wraps rather than scrolls once even its own row is too narrow, which is
+       most phones. A second row is two millimetres of header; a link nobody
+       can see is a feature nobody uses. */
+    flex-wrap: wrap;
+    row-gap: 0.3rem;
+}
+@media (max-width: 34rem) {
   .topbar-inner .nav a { padding: 0.3rem 0.75rem; }
 }
 .brand {
@@ -111,9 +120,20 @@ a { color: var(--accent); }
 @media (max-width: 34rem) {
   .brand-sub { display: none; }
 }
-.nav { display: flex; gap: 0.35rem; overflow-x: auto; }
+.nav {
+  display: flex;
+  gap: 0.25rem;
+  /* Still scrollable, so a link is never unreachable on a narrow phone - but
+     without the chunky native bar, which is a desktop control sitting in the
+     middle of a header and matches nothing else here. The breakpoints above
+     mean there is nothing to scroll at any ordinary width. */
+  overflow-x: auto;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.nav::-webkit-scrollbar { display: none; }
 .nav a {
-  padding: 0.35rem 0.7rem;
+  padding: 0.35rem 0.6rem;
   border-radius: 99px;
   text-decoration: none;
   color: var(--muted);
@@ -123,7 +143,7 @@ a { color: var(--accent); }
 .nav a:hover { background: var(--bg); }
 .nav a[aria-current="page"] { background: var(--accent); color: var(--accent-fg); }
 .nav-short { display: none; }
-@media (max-width: 34rem) {
+@media (max-width: 44rem) {
   .nav-long { display: none; }
   .nav-short { display: inline; }
 }
@@ -1160,3 +1180,8 @@ main.has-viewas { padding-bottom: 5rem; }
 .help-section p { margin: 0.45rem 0; }
 .help-section ol { padding-left: 1.2rem; }
 .help-section ol li { margin: 0.35rem 0; }
+
+/* Figures line up under each other when they are right-aligned and tabular;
+   a column of money that does not is read one row at a time. */
+td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
+.nowrap { white-space: nowrap; }

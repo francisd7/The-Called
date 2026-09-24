@@ -25,6 +25,7 @@ const SETTER_SECTIONS = [
   ['leads', 'Working your leads'],
   ['booked', 'When a call gets booked'],
   ['after', 'After the call'],
+  ['calls', 'Every call, and how they went'],
   ['eod', 'End of day — every day'],
   ['clean', 'Keeping it clean'],
   ['short', 'The short version'],
@@ -202,6 +203,25 @@ export default async function HelpPage() {
         </p>
       </Section>
 
+      <Section id="calls" title="Every call, and how they went">
+        <p>
+          <strong>Calls</strong> is the record of every call that has ever been booked — who it was
+          with, who set it, who closed it, what happened and what came in. Filter by setter, closer
+          or dates.
+        </p>
+        <p>
+          The figures above the list are worked out from whatever is in it, so they change with the
+          filters. Two of them are worth reading carefully. The <strong>show rate</strong> only
+          counts calls somebody has recorded a result for — a call still waiting on its write-up is
+          unknown, not a no-show, and the line under the figures says how many of those there are.
+          The <strong>close rate</strong> is of the people who turned up, not of everything booked,
+          so a week of cancellations does not get counted against you twice.
+        </p>
+        <p>
+          Calls are counted on the day they were due, not the day anybody typed them in.
+        </p>
+      </Section>
+
       <Section id="eod" title="End of day — every day">
         <p>
           <strong>EOD Reports</strong>, fill it in, submit. Every day you work.
@@ -295,8 +315,9 @@ export default async function HelpPage() {
             is not on the same disk as the database.
           </p>
           <p>
-            <strong>Admin → Backups</strong> shows when the last one went and has{' '}
-            <strong>Back up now</strong>. Take one before anything big — an import, a run of merges.
+            <strong>Admin → Setup &amp; imports → Backups</strong> shows when the last one went
+            and has <strong>Back up now</strong>. Take one before anything big — an import, a run
+            of merges.
           </p>
           <p>
             <strong>Put a backup back</strong> reads those files straight in. It fills gaps and

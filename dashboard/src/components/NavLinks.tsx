@@ -2,12 +2,13 @@
 
 import { usePathname } from 'next/navigation';
 
-// Seven full labels don't fit a phone, and letting the nav scroll sideways hides
+// Eight full labels don't fit a phone, and letting the nav scroll sideways hides
 // the last one behind a gesture nobody knows is there. The short label is
 // swapped in by CSS below the breakpoint instead.
 const LINKS = [
   { href: '/', label: 'Dashboard', short: 'Home' },
   { href: '/leads', label: 'Lead Tracker', short: 'Leads' },
+  { href: '/calls', label: 'Calls', short: 'Calls' },
   { href: '/kpis', label: 'KPIs', short: 'KPIs' },
   { href: '/eod', label: 'EOD Reports', short: 'EOD' },
   { href: '/data', label: 'Data', short: 'Data' },
