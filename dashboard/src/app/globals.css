@@ -883,8 +883,15 @@ th { color: var(--muted); font-weight: 550; font-size: 0.78rem; }
 .tile.tone-warn .tile-n { color: var(--warn); }
 
 /* Stacked charts need air between them, and a little room above each heading
-   so a legend doesn't read as belonging to the chart below it. */
+   so a legend doesn't read as belonging to the chart below it.
+
+   Only where panels stack in the page flow. Inside a grid the gap already
+   spaces them, and this margin pushed every panel but the first down by its
+   own height - which is why Loui's card sat level with the others' headings
+   rather than with their tops. */
 .panel + .panel { margin-top: 0.9rem; }
+.week-board > .panel + .panel,
+.panel-grid > .panel + .panel { margin-top: 0; }
 
 /* Viewing as somebody else.
 
