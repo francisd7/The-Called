@@ -34,6 +34,9 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
           </a>
           <NavLinks role={me.role} openIssues={openIssues} />
           <div className="topbar-right">
+            <a className="topbar-link" href="/help">
+              Help
+            </a>
             <ReportProblem />
             <form
             action={async () => {

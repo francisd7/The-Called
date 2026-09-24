@@ -1,5 +1,6 @@
 import { and, asc, eq, gte, isNotNull, lte, sql } from 'drizzle-orm';
 import { db } from '@/db';
+import { colourOrder, toneFor } from './people.ts';
 import { eodReports, leads, users } from '@/db/schema';
 
 export type Range = { from: string; to: string };
@@ -85,14 +86,6 @@ export type Series = {
   tone?: number;
 };
 
-/**
- * A stable colour slot per person, from one ordering of everybody rather than
- * of whoever happens to appear in a given range.
- */
-export function toneFor(id: string, order: string[]): number {
-  const at = order.indexOf(id);
-  return at === -1 ? order.length + 1 : at + 1;
-}
 
 /** Calls booked per week, one series per setter (plus unassigned when present). */
 export async function callsBooked(range: Range, setterId?: string): Promise<Series[]> {
@@ -117,9 +110,7 @@ export async function callsBooked(range: Range, setterId?: string): Promise<Seri
   // whoever booked something in this range, or the colours would shift with the
   // date picker, and not the closers either, who would spend slots the chart
   // never draws.
-  const order = people
-    .filter((p) => p.active && (p.role === 'setter' || p.role === 'admin'))
-    .map((p) => p.id);
+  const order = colourOrder(people);
   const buckets = weekBuckets(range);
   const keys = [...new Set(rows.map((r) => r.setterId ?? 'none'))];
 

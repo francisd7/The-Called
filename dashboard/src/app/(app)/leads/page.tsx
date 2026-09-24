@@ -8,6 +8,7 @@ import {
   getLeadTotals,
   getSetters,
 } from '@/lib/queries';
+import { colourOrder, personColour } from '@/lib/people';
 import { getStreaks } from '@/lib/streaks';
 import { db } from '@/db';
 import { countDuplicateGroups } from '@/lib/duplicates';
@@ -49,6 +50,10 @@ export default async function LeadsPage({ searchParams }: { searchParams: Search
 
   const setters = await getSetters();
   const workers = setters.filter((s) => s.role === 'setter');
+  // Colour by person rather than by what the row means, so the two rows below
+  // do not paint both setters the same twice over.
+  const order = colourOrder(setters);
+  const tone = (s: { id: string; color?: string | null }) => `tone-${personColour(s, order)}`;
 
   const [convos, streaks, offers, duplicateCount, totals, followUpsBySetter, teamFollowUps] =
     await Promise.all([
@@ -122,7 +127,7 @@ export default async function LeadsPage({ searchParams }: { searchParams: Search
             n={convos.groups.find((g) => g.id === s.id)?.total ?? 0}
             label={s.name}
             href={`/leads/active?setterId=${s.id}`}
-            tone="tone-teal"
+            tone={tone(s)}
           />
         ))}
         {convos.unassigned.total > 0 && (
@@ -147,7 +152,7 @@ export default async function LeadsPage({ searchParams }: { searchParams: Search
             n={sumBands(followUpsBySetter[i])}
             label={s.name}
             href={`/leads/follow-ups?setterId=${s.id}`}
-            tone="tone-violet"
+            tone={tone(s)}
           />
         ))}
       </div>

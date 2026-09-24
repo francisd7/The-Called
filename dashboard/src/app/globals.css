@@ -1164,13 +1164,104 @@ main.has-viewas { padding-bottom: 5rem; }
   font-size: 0.84rem;
 }
 
+/* Cards rather than a run of paragraphs under hairlines: a manual is read by
+   the section somebody needs, so each one has to be findable as an object. */
 .help-section {
-  border-top: 1px solid var(--border);
-  padding-top: 0.2rem;
-  margin-top: 1.4rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 0.9rem 1rem 1rem;
+  margin-top: 0.9rem;
   /* The sticky header would otherwise cover a heading jumped to from above. */
-  scroll-margin-top: 4.5rem;
+  scroll-margin-top: 6rem;
 }
+.help-section h2 {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0 0 0.2rem;
+  font-size: 1.05rem;
+}
+/* Numbered only where the content really is a sequence - the way a day goes.
+   The reference sections carry no number, because they are not steps. */
+.help-step {
+  flex: none;
+  display: inline-grid;
+  place-items: center;
+  width: 1.5rem;
+  height: 1.5rem;
+  border-radius: 99px;
+  background: var(--accent);
+  color: var(--accent-fg);
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+.help-lead {
+  margin: 0 0 0.6rem;
+  color: var(--muted);
+  font-size: 0.9rem;
+  max-width: 44rem;
+}
+
+/* The instruction, lifted out of the paragraph that explains it, so somebody
+   who already knows why can find what to press without reading again. */
+.help-do {
+  display: flex;
+  gap: 0.55rem;
+  align-items: flex-start;
+  background: var(--ok-bg);
+  border-left: 3px solid var(--ok);
+  border-radius: 0 0.4rem 0.4rem 0;
+  padding: 0.5rem 0.7rem;
+  margin: 0.6rem 0;
+  max-width: 44rem;
+}
+.help-do-mark {
+  flex: none;
+  width: 0.5rem;
+  height: 0.5rem;
+  margin-top: 0.42rem;
+  border-radius: 99px;
+  background: var(--ok);
+}
+.help-watch {
+  background: var(--warn-bg);
+  border-left: 3px solid var(--warn);
+  border-radius: 0 0.4rem 0.4rem 0;
+  padding: 0.5rem 0.7rem;
+  margin: 0.6rem 0;
+  max-width: 44rem;
+}
+.help-watch strong { color: var(--warn); }
+
+/* The shape of a day, as a strip you can read in one glance. */
+.help-rhythm {
+  list-style: none;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr));
+  gap: 0.6rem;
+  margin: 1rem 0 0.2rem;
+  padding: 0;
+  counter-reset: rhythm;
+}
+.help-rhythm li {
+  position: relative;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-top: 3px solid var(--accent);
+  border-radius: var(--radius);
+  padding: 0.6rem 0.75rem 0.7rem;
+}
+.help-rhythm-when {
+  display: block;
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--accent);
+  margin-bottom: 0.2rem;
+}
+.help-rhythm-what { font-size: 0.86rem; line-height: 1.4; }
 .help-section h3 { margin: 1.1rem 0 0.3rem; font-size: 0.98rem; }
 /* Running text, not dashboard chrome: a measure that does not run the width of
    a laptop screen. */
@@ -1185,3 +1276,39 @@ main.has-viewas { padding-bottom: 5rem; }
    a column of money that does not is read one row at a time. */
 td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
 .nowrap { white-space: nowrap; }
+
+/* A person's colour, on the tiles that are about them. Same five hues as the
+   badges and the chart lines, so somebody is one colour across the whole app. */
+.tile.tone-blue   { border-left-color: #2a78d6; }
+.tile.tone-orange { border-left-color: #eb6834; }
+.tile.tone-green  { border-left-color: #1baf7a; }
+.tile.tone-purple { border-left-color: #8a4fd8; }
+.tile.tone-pink   { border-left-color: #c2185b; }
+.tile.tone-blue   .tile-n { color: #1f5ea8; }
+.tile.tone-orange .tile-n { color: #b34a1f; }
+.tile.tone-green  .tile-n { color: #15845c; }
+.tile.tone-purple .tile-n { color: #6b3cb0; }
+.tile.tone-pink   .tile-n { color: #a1144c; }
+@media (prefers-color-scheme: dark) {
+  .tile.tone-blue   { border-left-color: #3987e5; }
+  .tile.tone-orange { border-left-color: #d95926; }
+  .tile.tone-green  { border-left-color: #199e70; }
+  .tile.tone-purple { border-left-color: #9a63e8; }
+  .tile.tone-pink   { border-left-color: #e0457f; }
+  .tile.tone-blue   .tile-n { color: #7fb4f5; }
+  .tile.tone-orange .tile-n { color: #f0925f; }
+  .tile.tone-green  .tile-n { color: #5fcfa4; }
+  .tile.tone-purple .tile-n { color: #bb93f2; }
+  .tile.tone-pink   .tile-n { color: #f383ab; }
+}
+
+/* Help sits with Report a problem rather than in the nav: it is what you reach
+   for when stuck, not a place you go. Quieter than the button beside it. */
+.topbar-link {
+  font-size: 0.8rem;
+  color: var(--muted);
+  text-decoration: none;
+  white-space: nowrap;
+  padding: 0.25rem 0.1rem;
+}
+.topbar-link:hover { color: var(--fg); text-decoration: underline; }

@@ -10,12 +10,49 @@ export const dynamic = 'force-dynamic';
  * not everybody has, and a copy that goes stale the moment anything changes.
  * Here it ships with the thing it describes.
  */
-function Section({ id, title, children }: { id: string; title: string; children: ReactNode }) {
+function Section({
+  id,
+  title,
+  step,
+  lead,
+  children,
+}: {
+  id: string;
+  title: string;
+  /** Only on the sections that are genuinely a sequence through the day. */
+  step?: number;
+  /** The one sentence to take away if nothing else is read. */
+  lead?: string;
+  children: ReactNode;
+}) {
   return (
     <section className="help-section" id={id}>
-      <h2>{title}</h2>
+      <h2>
+        {step !== undefined && <span className="help-step">{step}</span>}
+        {title}
+      </h2>
+      {lead && <p className="help-lead">{lead}</p>}
       {children}
     </section>
+  );
+}
+
+/** The thing to actually do, pulled out of the paragraph explaining it. */
+function Do({ children }: { children: ReactNode }) {
+  return (
+    <p className="help-do">
+      <span className="help-do-mark" aria-hidden="true" />
+      <span>{children}</span>
+    </p>
+  );
+}
+
+/** A trap worth stopping at. Used sparingly, or it stops meaning anything. */
+function Watch({ children }: { children: ReactNode }) {
+  return (
+    <p className="help-watch">
+      <strong>Watch out</strong> {children}
+    </p>
   );
 }
 
@@ -44,6 +81,33 @@ export default async function HelpPage() {
         everything lives here now.
       </p>
 
+      {/* The shape of a day, before any of the detail. Somebody who reads
+          only this still knows what they are meant to be doing. */}
+      <ol className="help-rhythm">
+        <li>
+          <span className="help-rhythm-when">Morning</span>
+          <span className="help-rhythm-what">
+            Work the Dashboard down the page. Confirm and triage today&apos;s calls first.
+          </span>
+        </li>
+        <li>
+          <span className="help-rhythm-when">Through the day</span>
+          <span className="help-rhythm-what">
+            Message people, and press <strong>Sent</strong> every time you do.
+          </span>
+        </li>
+        <li>
+          <span className="help-rhythm-when">After a call</span>
+          <span className="help-rhythm-what">
+            Check nothing is waiting on an outcome or waiting to be linked.
+          </span>
+        </li>
+        <li>
+          <span className="help-rhythm-when">End of day</span>
+          <span className="help-rhythm-what">File your EOD. Every day you work.</span>
+        </li>
+      </ol>
+
       <nav className="help-toc" aria-label="Contents">
         {SETTER_SECTIONS.map(([id, title]) => (
           <a key={id} href={`#${id}`}>
@@ -53,25 +117,28 @@ export default async function HelpPage() {
         {isAdmin && <a href="#running">Running it</a>}
       </nav>
 
-      <Section id="getting-in" title="Getting in">
+      <Section id="getting-in" title="Getting in" lead="One sign-in, on an allowlist. It works on your phone.">
         <p>
           Sign in with <strong>the Google account on your work email</strong> — the same address
           Francis set up for you. It is an allowlist, so any other Google account gets turned away
           even if the password is right.
         </p>
-        <p>
-          If it will not let you in, do not keep trying. Message Francis — it is a one-line fix on
+        <Watch>
+          if it will not let you in, do not keep trying. Message Francis — it is a one-line fix on
           his side.
-        </p>
+        </Watch>
         <p>It works on your phone. Same link, same sign-in.</p>
       </Section>
 
-      <Section id="mornings" title="Start here every morning">
-        <p>
-          Open <strong>Dashboard</strong> and work down the page. It is in the order things need
-          doing, and a section disappears when there is nothing in it — so a short page means you
-          are on top of it.
-        </p>
+      <Section
+        id="mornings"
+        title="Start here every morning"
+        step={1}
+        lead="The Dashboard is in the order things need doing. A short page means you are on top of it."
+      >
+        <Do>
+          Open <strong>Dashboard</strong> and work down the page, in this order.
+        </Do>
         <ol>
           <li>
             <strong>Calls today</strong> — anything happening today. Confirm and triage these
@@ -99,28 +166,35 @@ export default async function HelpPage() {
         </p>
       </Section>
 
-      <Section id="leads" title="Working your leads">
+      <Section
+        id="leads"
+        title="Working your leads"
+        step={2}
+        lead="A lead is only yours, and only on your list, once you have said so."
+      >
         <p>
           <strong>Lead Tracker</strong> is the hub. Your tile under{' '}
           <strong>Active conversations</strong> opens everything you are working right now.
         </p>
 
         <h3>Mark a conversation live</h3>
-        <p>
-          A lead only shows in your list if it is marked live. Open the lead and press{' '}
-          <strong>This one is live</strong>. To do a batch at once: <strong>All leads</strong> →
-          filter to yourself → tick them → <strong>Mark live</strong>.
-        </p>
+        <Do>
+          Open the lead and press <strong>This one is live</strong>. For a batch:{' '}
+          <strong>All leads</strong> → filter to yourself → tick them → <strong>Mark live</strong>.
+        </Do>
+        <p>A lead only shows in your list once it is marked live.</p>
         <p>
           When a conversation is genuinely over, press <strong>Mark it finished</strong>. It comes
           off your list without deleting anything.
         </p>
 
         <h3>Press Sent when you message someone</h3>
+        <Do>
+          Press <strong>Sent</strong> on the row every time you actually reach out.
+        </Do>
         <p>
-          On your conversations list, each row has a <strong>Sent</strong> button. Press it when you
-          actually reach out. That is what the follow-up timers read — nothing else moves them, so a
-          conversation you worked but did not log will nag you a week later.
+          That is what the follow-up timers read, and nothing else moves them — so a conversation
+          you worked but did not log will nag you a week later.
         </p>
 
         <h3>Taking a lead</h3>
@@ -145,23 +219,31 @@ export default async function HelpPage() {
         </p>
       </Section>
 
-      <Section id="booked" title="When a call gets booked">
+      <Section
+        id="booked"
+        title="When a call gets booked"
+        step={3}
+        lead="Two things have to happen before it: confirm it, then triage it."
+      >
         <p>
           A booking posts to Discord on its own and appears on the Dashboard, with a link straight
           to the lead. Two things have to happen before the call.
         </p>
 
         <h3>1. Confirm it</h3>
-        <p>
-          Reach out, then open the lead and press <strong>Confirmed in DMs</strong> or{' '}
-          <strong>Confirmed by phone</strong>. Unconfirmed calls are the ones that no-show.
-        </p>
+        <Do>
+          Reach out, then press <strong>Confirmed in DMs</strong> or{' '}
+          <strong>Confirmed by phone</strong> on the lead.
+        </Do>
+        <p>Unconfirmed calls are the ones that no-show.</p>
 
         <h3>2. Triage it</h3>
+        <Do>
+          Write the brief, then press <strong>Mark triaged &amp; post to Discord</strong>.
+        </Do>
         <p>
-          Write the brief and press <strong>Mark triaged &amp; post to Discord</strong>. That post
-          is how Nigel and Andrew get it — they do not open the dashboard. No triage means someone
-          walks into the call cold.
+          That post is how Nigel and Andrew get it — they do not open the dashboard. No triage
+          means someone walks into the call cold.
         </p>
         <p>
           Answer the four questions on the form: what they actually want, what they have tried,
@@ -173,22 +255,24 @@ export default async function HelpPage() {
           Someone booked who was never in the tracker. The lead gets created automatically, but it
           has no owner and maybe no handle.
         </p>
-        <p>
-          Whoever sees it first: open it, set yourself as the setter, put the real Instagram handle
-          in, then confirm and triage as normal. Do not leave it — nobody is watching it until
-          someone claims it.
-        </p>
+        <Do>
+          Whoever sees it first: open it, set yourself as the setter, add the real Instagram
+          handle, then confirm and triage as normal.
+        </Do>
+        <Watch>nobody is watching that call until somebody claims it.</Watch>
       </Section>
 
-      <Section id="after" title="After the call">
+      <Section
+        id="after"
+        title="After the call"
+        step={4}
+        lead="You never type an outcome in. You only chase the ones that did not arrive."
+      >
         <p>
-          You never type an outcome in. Nigel and Andrew fill the post-call form in Airtable, the
-          dashboard pulls it across on its own, and most reports land on the right lead without
-          anyone doing anything.
-        </p>
-        <p>
-          Two things are left for you, both on <strong>Dashboard</strong>. Whoever booked the call
-          owns both of them for it.
+          Nigel and Andrew fill the post-call form in Airtable, the dashboard pulls it across on
+          its own, and most reports land on the right lead without anyone doing anything. Two
+          things are left for you, both on <strong>Dashboard</strong>, and whoever booked the call
+          owns both.
         </p>
         <p>
           <strong>Post-call reports to link.</strong> A report the dashboard could not place by
@@ -203,7 +287,11 @@ export default async function HelpPage() {
         </p>
       </Section>
 
-      <Section id="calls" title="Every call, and how they went">
+      <Section
+        id="calls"
+        title="Every call, and how they went"
+        lead="The whole record, filterable — and two rates worth reading carefully."
+      >
         <p>
           <strong>Calls</strong> is the record of every call that has ever been booked — who it was
           with, who set it, who closed it, what happened and what came in. Filter by setter, closer
@@ -222,20 +310,24 @@ export default async function HelpPage() {
         </p>
       </Section>
 
-      <Section id="eod" title="End of day — every day">
-        <p>
-          <strong>EOD Reports</strong>, fill it in, submit. Every day you work.
-        </p>
+      <Section
+        id="eod"
+        title="End of day — every day"
+        step={5}
+        lead="Every day you work, even if you are filling in a day you missed."
+      >
+        <Do>
+          <strong>EOD Reports</strong> → fill it in → submit.
+        </Do>
         <p>
           The numbers are yours to count — the dashboard only sees leads you logged, so it cannot
           fill them in for you.
         </p>
 
         <h3>If you miss a day, go back and do it</h3>
+        <Do>Change the date on the form and file it late.</Do>
         <p>
-          Do not skip it because the day has passed. Change the date on the form and file it late.
-          The number matters more than the timing, and getting in the habit of never leaving a gap
-          is the whole point.
+          The number matters more than the timing, and never leaving a gap is the whole point.
         </p>
 
         <h3>The streak</h3>
@@ -246,16 +338,20 @@ export default async function HelpPage() {
         </p>
       </Section>
 
-      <Section id="clean" title="Keeping it clean">
+      <Section
+        id="clean"
+        title="Keeping it clean"
+        lead="Three habits that stop the numbers drifting."
+      >
         <h3>Do not open a second row for someone</h3>
         <p>
           Search first. If they are already in there, work the row that exists. Two rows for one
           person splits the conversation in half and neither half tells the truth.
         </p>
-        <p>
-          If you spot a pair, the <strong>Possible duplicates</strong> badge on the Lead Tracker is
-          where they get merged — leave that to Francis, merging cannot be undone.
-        </p>
+        <Watch>
+          if you spot a pair, leave the merge to Francis. It is on the{' '}
+          <strong>Possible duplicates</strong> badge on the Lead Tracker, and it cannot be undone.
+        </Watch>
 
         <h3>A lead with no Instagram handle</h3>
         <p>
@@ -265,9 +361,12 @@ export default async function HelpPage() {
         </p>
 
         <h3>When something looks wrong</h3>
+        <Do>
+          <strong>Report a problem</strong>, top right on every page.
+        </Do>
         <p>
-          <strong>Report a problem</strong> — top right, on every page. It goes straight to Francis
-          with the page you were on. Use it rather than sitting on something odd.
+          It goes straight to Francis with the page you were on. Use it rather than sitting on
+          something odd.
         </p>
       </Section>
 
@@ -307,7 +406,11 @@ export default async function HelpPage() {
       {/* Only an admin can do any of this, and a setter reading it would just
           be told about buttons they cannot see. */}
       {isAdmin && (
-        <Section id="running" title="Running it">
+        <Section
+          id="running"
+          title="Running it"
+          lead="Admin only. Backups, merges, imports, and seeing what a setter sees."
+        >
           <h3>Backups</h3>
           <p>
             Every seven days the dashboard posts a full copy of every table to the COO chat on
@@ -349,7 +452,7 @@ export default async function HelpPage() {
 
           <h3>Boosted reels</h3>
           <p>
-            <strong>Data</strong> holds one tile per boosted reel with what it cost and what came
+            <strong>Ads</strong> holds one tile per boosted reel with what it cost and what came
             back. Everything is typed in — spend and views come from Ads Manager and Instagram, and
             the calls and closes only exist here. Cost per lead and the rest are worked out, so
             there is nothing to keep in step by hand.

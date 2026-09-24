@@ -88,7 +88,7 @@ export async function addReel(formData: FormData): Promise<Result> {
       createdById: me.id,
     });
 
-    revalidatePath('/data');
+    revalidatePath('/ads');
     return { ok: true, message: `Added ${title}` };
   } catch (err) {
     return { ok: false, error: err instanceof Error ? err.message : 'Could not add it' };
@@ -108,7 +108,7 @@ export async function updateReel(formData: FormData): Promise<Result> {
       .set({ ...fieldsFrom(formData), title, sortOrder: int(formData, 'sortOrder') ?? 0 })
       .where(eq(boostedReels.id, id));
 
-    revalidatePath('/data');
+    revalidatePath('/ads');
     return { ok: true, message: 'Saved' };
   } catch (err) {
     return { ok: false, error: err instanceof Error ? err.message : 'Could not save' };
@@ -122,7 +122,7 @@ export async function deleteReel(formData: FormData): Promise<Result> {
     if (!id) return { ok: false, error: 'Missing reel' };
 
     await db.delete(boostedReels).where(eq(boostedReels.id, id));
-    revalidatePath('/data');
+    revalidatePath('/ads');
     return { ok: true, message: 'Removed' };
   } catch (err) {
     return { ok: false, error: err instanceof Error ? err.message : 'Could not remove it' };

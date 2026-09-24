@@ -222,7 +222,7 @@ export default async function DataPage() {
 
   return (
     <>
-      <h1>Data</h1>
+      <h1>Ads</h1>
       <p className="sub">
         Boosted reels and what each one returned. Cost per lead, return and the
         rates below are worked out from the numbers on the right, so there is

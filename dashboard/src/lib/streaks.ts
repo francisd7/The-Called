@@ -2,6 +2,7 @@ import { and, eq, gte, sql } from 'drizzle-orm';
 import { db } from '@/db';
 import { eodReports, leadEvents, users } from '@/db/schema';
 import { streakFromDays } from './streakMath.ts';
+import { colourOrder, personColour } from './people.ts';
 
 export type StreakRow = {
   userId: string;
@@ -19,8 +20,11 @@ export type StreakRow = {
 export async function getStreaks(): Promise<StreakRow[]> {
   const since = new Date(Date.now() - 120 * 86_400_000);
 
-  const [setters, trackerDays, eodDays] = await Promise.all([
-    db.select().from(users).where(and(eq(users.active, true), eq(users.role, 'setter'))),
+  const [everyone, trackerDays, eodDays] = await Promise.all([
+    // Everyone, not just the setters on this strip: the colour order has to be
+    // the same one the tiles and the charts use, or the same person is two
+    // colours on one screen.
+    db.select().from(users),
     db
       .select({
         actorId: leadEvents.actorId,
@@ -36,10 +40,15 @@ export async function getStreaks(): Promise<StreakRow[]> {
       .where(gte(eodReports.reportDate, since.toISOString().slice(0, 10))),
   ]);
 
+  const order = colourOrder(everyone);
+  const setters = everyone
+    .filter((u) => u.active && u.role === 'setter')
+    .sort((a, b) => a.name.localeCompare(b.name));
+
   return setters.map((s) => ({
     userId: s.id,
     name: s.name,
-    color: s.color,
+    color: personColour(s, order),
     tracker: streakFromDays(
       new Set(trackerDays.filter((d) => d.actorId === s.id).map((d) => d.day))
     ),

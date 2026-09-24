@@ -1,8 +1,9 @@
-import { and, asc, count, desc, eq, gte, ilike, isNotNull, isNull, lt, lte, ne, or, sql } from 'drizzle-orm';
+import { and, asc, count, desc, eq, gte, ilike, isNotNull, isNull, lt, lte, ne, notInArray, or, sql } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/pg-core';
 import type { PgColumn } from 'drizzle-orm/pg-core';
 import { db } from '@/db';
 import { awaitingOutcome } from './outcomeRules.ts';
+import { colourOrder, personColour } from './people.ts';
 import {
   calendlyEventTypes,
   calendlyWebhookEvents,
@@ -195,14 +196,41 @@ export async function getSetters() {
 }
 
 /** Bookings that matched no lead - someone has to reconcile these by hand. */
+/**
+ * Bookings that really do still need somebody, which is narrower than "no lead
+ * was attached at the time".
+ *
+ * Two kinds were being listed as work that was not. A booking on a link that
+ * is not one of the sales calls was deliberately ignored - somebody's coaching
+ * call or their own meeting - and saying it "matched no lead" invites a person
+ * to go and file it. And a booking whose lead was created afterwards, by the
+ * backfill or by hand, never had the original delivery row updated, so it
+ * stayed on this list for good.
+ *
+ * The second is answered by looking for the lead now rather than trusting what
+ * was written at the time, so the list clears itself the moment one appears.
+ */
 export async function getUnmatchedBookings() {
+  const booked = db
+    .select({ uri: leads.calendlyInviteeUri })
+    .from(leads)
+    .where(isNotNull(leads.calendlyInviteeUri));
+
   return db
     .select()
     .from(calendlyWebhookEvents)
     .where(
       and(
         eq(calendlyWebhookEvents.eventType, 'invitee.created'),
-        sql`${calendlyWebhookEvents.matchedLeadId} IS NULL`
+        isNull(calendlyWebhookEvents.matchedLeadId),
+        or(
+          isNull(calendlyWebhookEvents.matchStrategy),
+          notInArray(calendlyWebhookEvents.matchStrategy, ['not_a_counted_link', 'no_links_counted'])
+        ),
+        or(
+          isNull(calendlyWebhookEvents.calendlyInviteeUri),
+          notInArray(calendlyWebhookEvents.calendlyInviteeUri, booked)
+        )
       )
     )
     .orderBy(desc(calendlyWebhookEvents.createdAt))
@@ -339,7 +367,12 @@ export async function getLeadCardLookups() {
   ]);
   return {
     setterNames: new Map(people.map((p) => [p.id, p.name])),
-    setterColors: new Map(people.map((p) => [p.id, p.color])),
+    // Derived rather than read straight off the row: a person added through
+    // Admin never gets a colour written, so the column alone leaves them grey
+    // for good. Their own value still wins when there is one.
+    setterColors: new Map(
+      people.map((p) => [p.id, personColour(p, colourOrder(people))] as const)
+    ),
     stageLabels: new Map(stages.map((s) => [s.value, s.label])),
     qualityLabels: new Map(qualities.map((s) => [s.value, s.label])),
   };
@@ -674,12 +707,13 @@ export type EodReport = typeof eodReports.$inferSelect;
 export { EOD_COUNTS, EOD_MONEY } from './eodMath';
 
 /** Everyone expected to file one. Closers don't do outreach, so they don't. */
-function eodPeople() {
-  return db
-    .select({ id: users.id, name: users.name, color: users.color })
-    .from(users)
-    .where(and(eq(users.active, true), eq(users.role, 'setter')))
-    .orderBy(users.name);
+async function eodPeople() {
+  const all = await db.select().from(users);
+  const order = colourOrder(all);
+  return all
+    .filter((u) => u.active && u.role === 'setter')
+    .sort((a, b) => a.name.localeCompare(b.name))
+    .map((u) => ({ id: u.id, name: u.name, color: personColour(u, order) }));
 }
 
 /** A week of EOD reports, per setter and per day. */
