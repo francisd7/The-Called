@@ -1338,3 +1338,114 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
 .chart-swatch.person-cyan    { background: var(--person-cyan); }
 .chart-swatch.person-lime    { background: var(--person-lime); }
 .chart-swatch.person-magenta { background: var(--person-magenta); }
+
+/* --- Mock-up only: sparklines, day strip, pace bars ---------------------- */
+
+.stat-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-top: 0.4rem;
+}
+.stat-foot-text { margin-top: 0.35rem; font-size: 0.75rem; color: var(--muted); }
+.stat-of { font-size: 0.9rem; font-weight: 500; color: var(--muted); }
+
+.spark { display: block; overflow: visible; }
+.spark-line { fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.spark-area { stroke: none; opacity: 0.14; }
+.spark-accent .spark-line, .spark-accent .spark-end { stroke: var(--accent); fill: none; }
+.spark-accent .spark-end { fill: var(--accent); }
+.spark-accent .spark-area { fill: var(--accent); }
+.spark-ok .spark-line { stroke: var(--ok); }
+.spark-ok .spark-end { fill: var(--ok); stroke: none; }
+.spark-ok .spark-area { fill: var(--ok); }
+
+/* The change, as a word rather than a colour alone. */
+.delta { font-size: 0.74rem; font-weight: 600; white-space: nowrap; }
+.delta-up { color: var(--ok); }
+.delta-down { color: var(--warn); }
+.delta-flat, .delta-new { color: var(--muted); }
+
+/* The day, 8am to 8pm, with each call where it falls. */
+/* Room above for the hour marks and below for two staggered rows of labels -
+   at four calls in a working day, one row collides the moment two are within
+   an hour of each other. */
+.daystrip { padding: 1.5rem 0 3.1rem; }
+.daystrip-track {
+  position: relative;
+  height: 0;
+  border-top: 2px solid var(--border);
+}
+.daystrip-tick {
+  position: absolute;
+  top: -1.25rem;
+  transform: translateX(-50%);
+  font-size: 0.7rem;
+  color: var(--muted);
+}
+.daystrip-empty {
+  position: absolute;
+  top: 0.9rem;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+.daystrip-call { position: absolute; top: -0.4rem; transform: translateX(-50%); }
+/* Every other one drops a row, so neighbouring names pass each other. */
+.daystrip-call:nth-of-type(even) .daystrip-label { top: 2.4rem; }
+.daystrip-call:nth-of-type(even) .daystrip-label::before {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: -1.05rem;
+  height: 1rem;
+  border-left: 1px dashed var(--border);
+}
+.daystrip-dot {
+  display: block;
+  width: 0.75rem;
+  height: 0.75rem;
+  margin: 0 auto;
+  border-radius: 99px;
+  border: 2px solid var(--accent);
+  background: var(--surface);
+}
+.is-confirmed .daystrip-dot { background: var(--accent); }
+.daystrip-label {
+  position: absolute;
+  top: 1.05rem;
+  left: 50%;
+  transform: translateX(-50%);
+  white-space: nowrap;
+  font-size: 0.72rem;
+  background: var(--surface);
+  padding: 0 0.2rem;
+}
+.is-unconfirmed .daystrip-label { color: var(--warn); }
+
+/* How far along, against where you should be by now. */
+.pace {
+  position: relative;
+  height: 0.5rem;
+  margin-top: 0.5rem;
+  border-radius: 99px;
+  background: var(--bg);
+  overflow: visible;
+}
+.pace-fill {
+  display: block;
+  height: 100%;
+  border-radius: 99px;
+  background: var(--accent);
+}
+.pace-fill.pace-ok { background: var(--ok); }
+.pace-mark {
+  position: absolute;
+  top: -0.2rem;
+  width: 2px;
+  height: 0.9rem;
+  background: var(--fg);
+  opacity: 0.55;
+}
