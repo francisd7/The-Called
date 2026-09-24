@@ -587,3 +587,17 @@ export const backupRuns = pgTable('backup_runs', {
   rows: integer('rows'),
   note: text('note'),
 });
+
+/**
+ * What the team is aiming at in a month.
+ *
+ * One row per thing measured. Absent means no target, and the dashboard shows
+ * no bar rather than a bar against zero - a goal nobody set is not a goal
+ * being missed.
+ */
+export const monthlyTargets = pgTable('monthly_targets', {
+  metric: text('metric').primaryKey(),
+  value: numeric('value', { precision: 12, scale: 2 }).notNull(),
+  setById: uuid('set_by_id').references(() => users.id),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+});

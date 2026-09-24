@@ -2,6 +2,7 @@ import { and, asc, eq, gte, isNotNull, lte, sql } from 'drizzle-orm';
 import type { PgColumn } from 'drizzle-orm/pg-core';
 import { db } from '@/db';
 import { teamDateString } from './dates.ts';
+import type { Period } from './queries.ts';
 import { colourOrder, personColour, type PersonColour } from './people.ts';
 import { eodReports, leads, users } from '@/db/schema';
 
@@ -186,49 +187,106 @@ export async function outreach(range: Range, setterId?: string): Promise<Series[
 }
 
 /**
- * The last N days of a handful of headline numbers, one point per day.
+ * The recent shape of the headline numbers, in the same units as the tiles.
  *
- * For the sparklines on the dashboard: enough shape to say which way something
- * is going, at the size of a line of text. Keyed on the day a thing happened -
- * the call's own day, the day cash was collected - rather than the day the row
- * was written, which is the same rule the rest of the page follows.
+ * The buttons above those tiles switch between today, this week and this
+ * month, so the line under them has to switch too - fourteen days against a
+ * monthly figure would be two different questions stacked on top of each other.
+ *
+ * The comparison is against the *same point* in the previous period, not the
+ * whole of it. On a Tuesday, "down 60% on last week" is otherwise just a
+ * statement that the week is two days old.
  */
-export async function dailyTrends(days = 14) {
-  // Inlined rather than bound: a bound parameter arrives untyped, and
-  // `date - $1` then compares as an integer. `days` is ours, not input.
-  const back = sql.raw(String(Math.max(0, Math.floor(days) - 1)));
-  const since = sql`((NOW() AT TIME ZONE 'America/New_York')::date - ${back})`;
-  const day = (col: PgColumn) => sql<string>`(${col} AT TIME ZONE 'America/New_York')::date`;
+export type PeriodTrend = { series: number[]; now: number; before: number };
 
-  const [calls, newLeads, cash] = await Promise.all([
-    db
-      .select({ d: day(leads.callScheduledFor), n: sql<number>`COUNT(*)::int` })
+const UNIT: Record<Period, 'day' | 'week' | 'month'> = {
+  today: 'day',
+  week: 'week',
+  month: 'month',
+};
+
+export async function periodTrends(
+  period: Period
+): Promise<{ calls: PeriodTrend; newLeads: PeriodTrend; cash: PeriodTrend; deals: PeriodTrend }> {
+  const unit = UNIT[period];
+  const buckets = unit === 'day' ? 14 : 12;
+  const tz = sql.raw("'America/New_York'");
+  const u = sql.raw(`'${unit}'`);
+  const back = sql.raw(String(buckets - 1));
+
+  // Local time throughout: a call at 8pm belongs to that evening, not to the
+  // next day in UTC.
+  const local = (col: PgColumn) => sql`(${col} AT TIME ZONE ${tz})`;
+  const bucketOf = (col: PgColumn) => sql`date_trunc(${u}, ${local(col)})`;
+  const thisBucket = sql`date_trunc(${u}, (NOW() AT TIME ZONE ${tz}))`;
+  const firstBucket = sql`${thisBucket} - (${back} * INTERVAL '1 ${sql.raw(unit)}')`;
+  // How far into the current period we are, to cut the previous one at the
+  // same place.
+  const elapsed = sql`((NOW() AT TIME ZONE ${tz}) - ${thisBucket})`;
+
+  async function trend(col: PgColumn, value: 'count' | 'cash', extra = sql`TRUE`): Promise<PeriodTrend> {
+    const agg =
+      value === 'count'
+        ? sql<number>`COUNT(*)::int`
+        : sql<number>`COALESCE(SUM(${leads.cashCollected}), 0)::float`;
+    const base = and(eq(leads.isTest, false), isNotNull(col), extra);
+
+    const rows = await db
+      .select({ b: sql<string>`${bucketOf(col)}`, n: agg })
       .from(leads)
-      .where(and(eq(leads.isTest, false), eq(leads.callBooked, true), sql`${day(leads.callScheduledFor)} >= ${since}`))
-      .groupBy(sql`1`),
-    db
-      .select({ d: day(leads.leadCreatedAt), n: sql<number>`COUNT(*)::int` })
+      .where(and(base, sql`${bucketOf(col)} >= ${firstBucket}`))
+      .groupBy(sql`1`);
+
+    const [{ n: before }] = await db
+      .select({ n: agg })
       .from(leads)
-      .where(and(eq(leads.isTest, false), sql`${day(leads.leadCreatedAt)} >= ${since}`))
-      .groupBy(sql`1`),
-    db
-      .select({ d: day(leads.closedDate), n: sql<number>`COALESCE(SUM(${leads.cashCollected}), 0)::float` })
-      .from(leads)
-      .where(and(eq(leads.isTest, false), sql`${leads.closed} IS TRUE`, sql`${day(leads.closedDate)} >= ${since}`))
-      .groupBy(sql`1`),
+      .where(
+        and(
+          base,
+          sql`${local(col)} >= ${thisBucket} - INTERVAL '1 ${sql.raw(unit)}'`,
+          sql`${local(col)} < ${thisBucket} - INTERVAL '1 ${sql.raw(unit)}' + ${elapsed}`
+        )
+      );
+
+    // Every bucket in the window, so a quiet week is a zero in the line rather
+    // than a gap that makes the shape lie.
+    const by = new Map(rows.map((r) => [new Date(r.b).getTime(), Number(r.n)]));
+    const series: number[] = [];
+    const anchor = new Date();
+    for (let i = buckets - 1; i >= 0; i--) {
+      const d = new Date(anchor);
+      if (unit === 'day') d.setDate(d.getDate() - i);
+      else if (unit === 'week') d.setDate(d.getDate() - i * 7);
+      else d.setMonth(d.getMonth() - i);
+      const key = [...by.keys()].find((k) => Math.abs(k - truncate(d, unit)) < 36e5);
+      series.push(key !== undefined ? by.get(key)! : 0);
+    }
+    const now = series[series.length - 1] ?? 0;
+    return { series, now, before: Number(before) };
+  }
+
+  const [calls, newLeads, cash, deals] = await Promise.all([
+    // callBookedAt, not callScheduledFor: the tile above this line counts the
+    // day a booking was made, and a line drawn on the day the call happens
+    // would quietly disagree with the number it sits under.
+    trend(leads.callBookedAt, 'count', eq(leads.callBooked, true)),
+    trend(leads.leadCreatedAt, 'count'),
+    trend(leads.closedDate, 'cash', sql`${leads.closed} IS TRUE`),
+    trend(leads.closedDate, 'count', sql`${leads.closed} IS TRUE`),
   ]);
+  return { calls, newLeads, cash, deals };
+}
 
-  // Every day in the window, so a quiet day is a zero in the line rather than a
-  // gap that makes the shape lie.
-  const window = Array.from({ length: days }, (_, i) => {
-    const d = new Date();
-    d.setUTCDate(d.getUTCDate() - (days - 1 - i));
-    return teamDateString(d);
-  });
-  const series = (rows: Array<{ d: string; n: number }>) => {
-    const by = new Map(rows.map((r) => [String(r.d).slice(0, 10), Number(r.n)]));
-    return window.map((d) => by.get(d) ?? 0);
-  };
-
-  return { days: window, calls: series(calls), newLeads: series(newLeads), cash: series(cash) };
+/** Start of the bucket a date falls in, in local terms, as epoch ms. */
+function truncate(d: Date, unit: 'day' | 'week' | 'month'): number {
+  const c = new Date(d);
+  c.setHours(0, 0, 0, 0);
+  if (unit === 'week') {
+    // Postgres date_trunc('week') starts on Monday.
+    const dow = (c.getDay() + 6) % 7;
+    c.setDate(c.getDate() - dow);
+  } else if (unit === 'month') {
+    c.setDate(1);
+  }
+  return c.getTime();
 }

@@ -11,6 +11,7 @@ import {
   focuses,
   leadNotes,
   leads,
+  monthlyTargets,
   offers,
   optionSets,
   postCallReports,
@@ -854,4 +855,29 @@ export async function getBookedCalls(f: CallFilters = {}, limit = 500) {
       r.closed === true ||
       r.showed === true,
   }));
+}
+
+/** The monthly targets, as a map. Absent means none set for that metric. */
+export async function getMonthlyTargets(): Promise<Map<string, number>> {
+  const rows = await db.select().from(monthlyTargets);
+  return new Map(rows.map((r) => [r.metric, Number(r.value)]));
+}
+
+/** Month-to-date actuals for the things a target can be set against. */
+export async function getMonthToDate() {
+  const start = sql`date_trunc('month', (NOW() AT TIME ZONE 'America/New_York'))`;
+  const local = (col: PgColumn) => sql`(${col} AT TIME ZONE 'America/New_York')`;
+
+  const [[calls], [cash]] = await Promise.all([
+    db
+      .select({ n: sql<number>`COUNT(*)::int` })
+      .from(leads)
+      .where(and(eq(leads.isTest, false), eq(leads.callBooked, true), sql`${local(leads.callScheduledFor)} >= ${start}`)),
+    db
+      .select({ n: sql<number>`COALESCE(SUM(${leads.cashCollected}), 0)::float` })
+      .from(leads)
+      .where(and(eq(leads.isTest, false), sql`${leads.closed} IS TRUE`, sql`${local(leads.closedDate)} >= ${start}`)),
+  ]);
+
+  return { calls: Number(calls.n), cash: Number(cash.n) };
 }

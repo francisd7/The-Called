@@ -7,6 +7,10 @@ import { formatCallTime } from '@/lib/dates';
 import { PersonPanel } from '@/components/PersonPanel';
 import { PostCallInbox } from '@/components/PostCallInbox';
 import { BackupWatch } from '@/components/BackupWatch';
+import { Sparkline, Delta } from '@/components/charts/Sparkline';
+import { DayStrip } from '@/components/DayStrip';
+import { periodTrends } from '@/lib/kpis';
+import { paceFor } from '@/lib/pace';
 import {
   getActiveOffers,
   getAssignableSetters,
@@ -19,6 +23,8 @@ import {
   getMoneyTotals,
   getPeriodSummary,
   getPipelineSummary,
+  getMonthToDate,
+  getMonthlyTargets,
   getPostCallInbox,
   getTodaysCalls,
   getUpcomingCalls,
@@ -98,6 +104,13 @@ export default async function TodayPage({ searchParams }: { searchParams: Search
   const offerById = new Map(offers.map((o) => [o.id, o]));
   const tileProps = { setters, closers };
   const backupDue = await backupIsDue(db);
+  const trends = await periodTrends(period);
+  const [targets, mtd] = await Promise.all([getMonthlyTargets(), getMonthToDate()]);
+  const now = new Date();
+  const pace = {
+    calls: paceFor(mtd.calls, targets.get('calls') ?? null, now),
+    cash: paceFor(mtd.cash, targets.get('cash') ?? null, now),
+  };
 
   return (
     <>
@@ -136,19 +149,40 @@ export default async function TodayPage({ searchParams }: { searchParams: Search
           above and five are always now. Without a word saying which is which,
           pressing "This week" changes half the numbers and leaves the rest,
           and the only way to find out which half is to remember. */}
-      <p className="stats-label">{PERIODS.find((p) => p.key === period)?.label ?? 'Today'}</p>
+      <p className="stats-label">
+        {PERIODS.find((p) => p.key === period)?.label ?? 'Today'}
+        <span className="stats-note">
+          {period === 'today'
+            ? 'line: last 14 days · against the same time yesterday'
+            : period === 'week'
+              ? 'line: last 12 weeks · against the same point last week'
+              : 'line: last 12 months · against the same point last month'}
+        </span>
+      </p>
       <div className="stats">
         <div className="stat tone-blue">
           <div className="stat-n">{periodStats.booked}</div>
           <div className="stat-l">calls booked</div>
+          <div className="stat-foot">
+            <Sparkline points={trends.calls.series} tone="accent" />
+            <Delta now={trends.calls.now} before={trends.calls.before} />
+          </div>
         </div>
         <div className="stat tone-violet">
           <div className="stat-n">{periodStats.newLeads}</div>
           <div className="stat-l">new leads</div>
+          <div className="stat-foot">
+            <Sparkline points={trends.newLeads.series} tone="accent" />
+            <Delta now={trends.newLeads.now} before={trends.newLeads.before} />
+          </div>
         </div>
         <div className="stat tone-green">
           <div className="stat-n">{money0(periodStats.cash)}</div>
           <div className="stat-l">cash collected</div>
+          <div className="stat-foot">
+            <Sparkline points={trends.cash.series} tone="ok" />
+            <Delta now={trends.cash.now} before={trends.cash.before} />
+          </div>
         </div>
         <div className="stat tone-green">
           <div className="stat-n">{money0(periodStats.contract)}</div>
@@ -157,8 +191,59 @@ export default async function TodayPage({ searchParams }: { searchParams: Search
         <div className="stat tone-teal">
           <div className="stat-n">{periodStats.deals}</div>
           <div className="stat-l">deals closed</div>
+          <div className="stat-foot">
+            <Sparkline points={trends.deals.series} tone="ok" />
+            <Delta now={trends.deals.now} before={trends.deals.before} />
+          </div>
         </div>
       </div>
+
+      {/* Only where a target has actually been set. A bar against nothing would
+          show every month as a miss from the first of it. */}
+      {(pace.calls || pace.cash) && (
+        <>
+          <p className="stats-label">
+            This month against target
+            <span className="stats-note">
+              the mark is where today sits in the month, counted in working days
+            </span>
+          </p>
+          <div className="stats">
+            {pace.calls && (
+              <div className="stat tone-blue">
+                <div className="stat-n">
+                  {mtd.calls}
+                  <span className="stat-of"> / {pace.calls.target}</span>
+                </div>
+                <div className="stat-l">calls booked</div>
+                <div className="pace">
+                  <span className="pace-fill" style={{ width: `${pace.calls.done * 100}%` }} />
+                  <span className="pace-mark" style={{ left: `${pace.calls.elapsed * 100}%` }} />
+                </div>
+                <div className="stat-foot-text">
+                  {pace.calls.ahead ? 'on pace' : `${Math.round(pace.calls.expected - mtd.calls)} behind pace`}
+                </div>
+              </div>
+            )}
+            {pace.cash && (
+              <div className="stat tone-green">
+                <div className="stat-n">
+                  {money0(mtd.cash)}
+                  <span className="stat-of"> / {money0(pace.cash.target)}</span>
+                </div>
+                <div className="stat-l">cash collected</div>
+                <div className="pace">
+                  <span className="pace-fill pace-ok" style={{ width: `${pace.cash.done * 100}%` }} />
+                  <span className="pace-mark" style={{ left: `${pace.cash.elapsed * 100}%` }} />
+                </div>
+                <div className="stat-foot-text">
+                  {pace.cash.ahead ? 'on pace' : `${money0(Math.round(pace.cash.expected - mtd.cash))} behind pace`}
+                </div>
+              </div>
+            )}
+          </div>
+        </>
+      )}
 
       {/* Always-now: what needs doing regardless of which period is selected. */}
       <p className="stats-label">Right now</p>
@@ -185,6 +270,7 @@ export default async function TodayPage({ searchParams }: { searchParams: Search
           calls happening today, then the week ahead, then the reports
           waiting to be put on a lead, then the calls still owed a result. */}
       <h2>Calls today</h2>
+      <DayStrip calls={todaysCalls} />
       {todaysCalls.length === 0 ? (
         <p className="empty">No calls booked for today.</p>
       ) : (

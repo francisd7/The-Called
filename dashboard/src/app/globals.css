@@ -1339,7 +1339,7 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
 .chart-swatch.person-lime    { background: var(--person-lime); }
 .chart-swatch.person-magenta { background: var(--person-magenta); }
 
-/* --- Mock-up only: sparklines, day strip, pace bars ---------------------- */
+/* --- Sparklines, the day strip, and pace bars ----------------------------- */
 
 .stat-foot {
   display: flex;
@@ -1371,10 +1371,12 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
 /* Room above for the hour marks and below for two staggered rows of labels -
    at four calls in a working day, one row collides the moment two are within
    an hour of each other. */
-.daystrip { padding: 1.5rem 0 3.1rem; }
+.daystrip { padding: 1.5rem 0 0.2rem; }
+/* Tall enough to hold both rows of labels. With a zero-height track they
+   overflow it, and the key line underneath renders straight through them. */
 .daystrip-track {
   position: relative;
-  height: 0;
+  height: 3.6rem;
   border-top: 2px solid var(--border);
 }
 .daystrip-tick {
@@ -1393,16 +1395,6 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
   color: var(--muted);
 }
 .daystrip-call { position: absolute; top: -0.4rem; transform: translateX(-50%); }
-/* Every other one drops a row, so neighbouring names pass each other. */
-.daystrip-call:nth-of-type(even) .daystrip-label { top: 2.4rem; }
-.daystrip-call:nth-of-type(even) .daystrip-label::before {
-  content: '';
-  position: absolute;
-  left: 50%;
-  top: -1.05rem;
-  height: 1rem;
-  border-left: 1px dashed var(--border);
-}
 .daystrip-dot {
   display: block;
   width: 0.75rem;
@@ -1448,4 +1440,29 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
   height: 0.9rem;
   background: var(--fg);
   opacity: 0.55;
+}
+
+/* The sticky header would otherwise cover a card jumped to from the strip. */
+.tile[id^='call-'] { scroll-margin-top: 6rem; }
+.stats-note {
+  display: block;
+  font-weight: 400;
+  text-transform: none;
+  letter-spacing: 0;
+  color: var(--muted);
+  font-size: 0.72rem;
+  margin-top: 0.1rem;
+}
+.daystrip-key { margin: 0.5rem 0 0; }
+.daystrip-call { text-decoration: none; color: inherit; }
+.daystrip-call:hover .daystrip-label { text-decoration: underline; }
+/* The lower row, for calls that would otherwise print over their neighbour. */
+.daystrip-call.is-low .daystrip-label { top: 2.4rem; }
+.daystrip-call.is-low .daystrip-label::before {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: -1.05rem;
+  height: 1rem;
+  border-left: 1px dashed var(--border);
 }

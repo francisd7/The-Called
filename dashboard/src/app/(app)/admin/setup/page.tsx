@@ -2,6 +2,9 @@ import { redirect } from 'next/navigation';
 import { count, desc, eq } from 'drizzle-orm';
 import { currentUser } from '@/lib/session';
 import { backupNow, restoreFromFiles } from '@/lib/backupActions';
+import { setTargets } from '@/lib/targetActions';
+import { TARGET_METRICS } from '@/lib/targets';
+import { getMonthlyTargets } from '@/lib/queries';
 import { daysSinceBackup, lastBackup } from '@/lib/backup';
 import { db } from '@/db';
 import { calendlyEventTypes, leads, offers, users } from '@/db/schema';
@@ -45,6 +48,7 @@ export default async function SetupPage() {
   const me = await currentUser();
   if (me?.role !== 'admin') redirect('/');
 
+  const targets = await getMonthlyTargets();
   const backup = await lastBackup(db);
   const backupAgeDays = await daysSinceBackup(db);
 
@@ -222,6 +226,38 @@ export default async function SetupPage() {
             <button className="btn-danger" type="submit" name="dryRun" value="0">
               Remove them
             </button>
+          </div>
+        </ActionForm>
+      </div>
+
+      <h2 id="targets">Monthly targets</h2>
+      <p className="sub">
+        What the team is aiming at in a month. Each one draws a bar on the
+        Dashboard with a mark for where today sits, counted in working days so
+        it does not drift every weekend. Leave a box empty for no target — the
+        bar disappears rather than showing the month as a miss.
+      </p>
+      <div className="card">
+        <ActionForm action={setTargets} successMessage="Saved">
+          <div className="grid2">
+            {TARGET_METRICS.map((m) => (
+              <div className="field" key={m.key}>
+                <label htmlFor={`target-${m.key}`}>
+                  {m.label}
+                  {m.money ? ' ($)' : ''}
+                </label>
+                <input
+                  id={`target-${m.key}`}
+                  name={m.key}
+                  inputMode="decimal"
+                  defaultValue={targets.get(m.key) ?? ''}
+                  placeholder="no target"
+                />
+              </div>
+            ))}
+            <div className="field field-wide">
+              <button type="submit">Save targets</button>
+            </div>
           </div>
         </ActionForm>
       </div>

@@ -37,7 +37,12 @@ export function CallTile({
   const ready = lead.confirmed && lead.triaged;
 
   return (
-    <article className={`tile tone-${offerTone(offerKey)}${unclaimed ? ' tile-unclaimed' : ''}`}>
+    <article
+      // The day strip above links to this card, so the dot and the detail are
+      // one tap apart rather than a scroll and a search.
+      id={`call-${lead.id}`}
+      className={`tile tone-${offerTone(offerKey)}${unclaimed ? ' tile-unclaimed' : ''}`}
+    >
       <header className="tile-top">
         <span className="tile-when">
           {showDate ? formatCallTime(lead.callScheduledFor) : formatTimeOnly(lead.callScheduledFor)}

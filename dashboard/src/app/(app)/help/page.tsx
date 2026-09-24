@@ -139,6 +139,18 @@ export default async function HelpPage() {
         <Do>
           Open <strong>Dashboard</strong> and work down the page, in this order.
         </Do>
+        <p>
+          The top row of numbers has a line under each one showing the last
+          fortnight, and how you compare with the same point in the period
+          before — so a figure says whether it is good, not just what it is.
+          The line follows the <strong>Today / This week / This month</strong>
+          buttons, and the grey note above the row says what it is measuring.
+        </p>
+        <p>
+          Under <strong>Calls today</strong> the day runs left to right from
+          8am. A filled dot is a confirmed call, a hollow one is not, and
+          tapping a dot jumps to that call&apos;s card.
+        </p>
         <ol>
           <li>
             <strong>Calls today</strong> — anything happening today. Confirm and triage these
@@ -448,6 +460,15 @@ export default async function HelpPage() {
             <strong>Admin → Setup</strong>. The Airtable tracker import fills gaps and never
             overwrites what Calendly or a post-call report has already established. The EOD import
             pulls the old Airtable form across. Both have a dry run.
+          </p>
+
+          <h3>Monthly targets</h3>
+          <p>
+            <strong>Admin → Setup &amp; imports → Monthly targets</strong>. Set one for calls
+            booked or cash collected and it draws a bar on the Dashboard with a mark for where
+            today sits in the month. The mark counts working days, so it does not drift every
+            weekend. Leave a box empty and the bar disappears — a target nobody set is not a
+            target being missed.
           </p>
 
           <h3>Boosted reels</h3>
