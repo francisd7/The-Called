@@ -3,6 +3,7 @@ import { count, desc, eq } from 'drizzle-orm';
 import { currentUser } from '@/lib/session';
 import { backupNow, restoreFromFiles } from '@/lib/backupActions';
 import { setTargets } from '@/lib/targetActions';
+import { reassignByDate } from '@/lib/reassignActions';
 import { TARGET_METRICS } from '@/lib/targets';
 import { getMonthlyTargets } from '@/lib/queries';
 import { daysSinceBackup, lastBackup } from '@/lib/backup';
@@ -226,6 +227,72 @@ export default async function SetupPage() {
             <button className="btn-danger" type="submit" name="dryRun" value="0">
               Remove them
             </button>
+          </div>
+        </ActionForm>
+      </div>
+
+      <h2 id="reassign">Move a pile of leads by date</h2>
+      <p className="sub">
+        Splits one pile of leads across two dates, by the day the lead was
+        created. Anything before the first date stays where it is; everything
+        from the first date to the second moves to the person you name; anything
+        after the second date goes unassigned. Both dates count as inside the
+        middle band. Leads with no created date are counted and never moved.
+      </p>
+      <p className="sub">
+        Cash follows whoever owns the lead, so this moves money between
+        people&apos;s figures. <strong>Dry run first</strong> — it reports the
+        counts and the cash in each band without writing anything.
+      </p>
+      <div className="card">
+        <ActionForm action={reassignByDate}>
+          <div className="grid2">
+            <div className="field">
+              <label htmlFor="fromSetterId">Whose leads</label>
+              {/* A blank Setter column in the old tracker imported as nobody,
+                  so the pile that needs splitting is usually Unassigned. */}
+              <select id="fromSetterId" name="fromSetterId" defaultValue="unassigned">
+                <option value="unassigned">Unassigned</option>
+                {people
+                  .filter((p) => p.active && p.role !== 'closer')
+                  .map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.name}
+                    </option>
+                  ))}
+              </select>
+            </div>
+            <div className="field">
+              <label htmlFor="toSetterId">Middle band goes to</label>
+              <select id="toSetterId" name="toSetterId" defaultValue="">
+                <option value="">Pick somebody</option>
+                {people
+                  .filter((p) => p.active && p.role !== 'closer')
+                  .map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.name}
+                    </option>
+                  ))}
+              </select>
+            </div>
+            <div className="field">
+              <label htmlFor="first">First date</label>
+              <input id="first" name="first" type="date" />
+            </div>
+            <div className="field">
+              <label htmlFor="last">Second date</label>
+              <input id="last" name="last" type="date" />
+            </div>
+            <div className="field field-wide">
+              <div className="btn-row">
+                <button type="submit" name="dryRun" value="1">
+                  Dry run
+                </button>
+                <button className="btn-danger" type="submit" name="dryRun" value="0">
+                  Move them
+                </button>
+              </div>
+            </div>
           </div>
         </ActionForm>
       </div>

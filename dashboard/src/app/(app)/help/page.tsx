@@ -463,6 +463,30 @@ export default async function HelpPage() {
             pulls the old Airtable form across. Both have a dry run.
           </p>
 
+          <h3>Moving a pile of leads by date</h3>
+          <p>
+            <strong>Admin → Setup &amp; imports → Move a pile of leads by date</strong>. For the
+            case where a stretch of the old tracker is under the wrong name — most often nobody
+            filled the Setter column at the time, so the whole run came across as Unassigned.
+          </p>
+          <p>
+            Pick the pile and two dates. Everything created before the first date stays where it
+            is, everything from the first date to the second moves to the person you name, and
+            everything after the second date goes back to unassigned. Both dates count as inside
+            the middle.
+          </p>
+          <p>
+            <strong>Dry run</strong> first. It reports how many leads and how much cash sit in
+            each of the three bands and writes nothing. Cash follows the lead, so this moves money
+            between people&rsquo;s figures — read those numbers before running it for real. A lead
+            with no created date is counted and never moved, because a date nobody recorded is not
+            one to guess at.
+          </p>
+          <p>
+            Every lead it moves gets a line in its own history saying when and why it changed
+            hands, so a figure that looks wrong later can be traced.
+          </p>
+
           <h3>Monthly targets</h3>
           <p>
             <strong>Admin → Setup &amp; imports → Monthly targets</strong>. Set one for calls
