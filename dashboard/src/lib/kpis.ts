@@ -1,6 +1,6 @@
 import { and, asc, eq, gte, isNotNull, lte, sql } from 'drizzle-orm';
 import { db } from '@/db';
-import { colourOrder, toneFor } from './people.ts';
+import { colourOrder, personColour, type PersonColour } from './people.ts';
 import { eodReports, leads, users } from '@/db/schema';
 
 export type Range = { from: string; to: string };
@@ -76,14 +76,15 @@ export type Series = {
   label: string;
   points: Array<{ x: string; y: number | null }>;
   /**
-   * Which of the chart's colours this series wears, 1-based.
+   * Set only where a series stands for a person, and then it is their own
+   * colour - the same one their tile and their name badge wear. Without it,
+   * filtering to one setter repainted whoever survived as series 1, and the
+   * tracker and the charts disagreed about who was what colour anyway.
    *
-   * Set where a series stands for a person, so the colour follows them rather
-   * than their position in the result. Without it, filtering to one setter
-   * repaints whoever survives as series 1 - Loui green on one chart and blue on
-   * the next, on a page that now shows all four at once.
+   * Series that are not people (cash against contract, outbounds against
+   * replies) leave it unset and take the generic series palette.
    */
-  tone?: number;
+  person?: PersonColour;
 };
 
 
@@ -117,7 +118,7 @@ export async function callsBooked(range: Range, setterId?: string): Promise<Seri
   return keys.map((key) => ({
     key,
     label: key === 'none' ? 'Unassigned' : (nameOf.get(key) ?? 'Unknown'),
-    tone: key === 'none' ? order.length + 1 : toneFor(key, order),
+    person: key === 'none' ? undefined : personColour({ id: key }, order),
     points: buckets.map((week) => ({
       x: week,
       y: rows.find((r) => r.week === week && (r.setterId ?? 'none') === key)?.n ?? 0,

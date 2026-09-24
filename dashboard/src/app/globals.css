@@ -568,29 +568,7 @@ th { color: var(--muted); font-weight: 550; font-size: 0.78rem; }
 .lead-table a:hover { text-decoration: underline; }
 .muted-cell { color: var(--muted); }
 
-/* --- setter badges ---
-   One colour per person, used everywhere their name appears. Each pairs a soft
-   tint with text from the same hue dark enough to read on it. */
-.setter-badge { border-color: transparent; font-weight: 600; }
-.setter-badge[data-color='blue']   { background: #d6e8fb; color: #1d5c96; }
-.setter-badge[data-color='orange'] { background: #fce3cc; color: #9a5316; }
-.setter-badge[data-color='green']  { background: #d6f0e2; color: #1a6b46; }
-.setter-badge[data-color='purple'] { background: #e4dcfa; color: #513a9e; }
-.setter-badge[data-color='pink']   { background: #fbdde8; color: #9c3560; }
-.setter-badge[data-color='grey']   { background: var(--bg); color: var(--muted); }
-
-@media (prefers-color-scheme: dark) {
-  /* Deeper tints so the pill still reads as a tint rather than glowing on a
-     dark surface, with text lifted to stay legible. */
-  /* Lifted well clear of the surface: at the previous depth these read as grey
-     chips rather than as anybody's colour. */
-  .setter-badge[data-color='blue']   { background: #2c5f92; color: #dceaf9; }
-  .setter-badge[data-color='orange'] { background: #8a4f1c; color: #fbe3cd; }
-  .setter-badge[data-color='green']  { background: #1e6b47; color: #d8f2e5; }
-  .setter-badge[data-color='purple'] { background: #4c3a92; color: #e4dcfa; }
-  .setter-badge[data-color='pink']   { background: #8c3459; color: #fbdde8; }
-  .setter-badge[data-color='grey']   { background: #2f343d; color: #c6cbd4; }
-}
+/* Setter badges are defined with the rest of a person's colour, further down. */
 
 .bucket-tabs { display: flex; gap: 0.4rem; flex-wrap: wrap; margin-bottom: 0.8rem; }
 .bucket-tabs .btn { gap: 0.4rem; }
@@ -1277,30 +1255,6 @@ main.has-viewas { padding-bottom: 5rem; }
 td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
 .nowrap { white-space: nowrap; }
 
-/* A person's colour, on the tiles that are about them. Same five hues as the
-   badges and the chart lines, so somebody is one colour across the whole app. */
-.tile.tone-blue   { border-left-color: #2a78d6; }
-.tile.tone-orange { border-left-color: #eb6834; }
-.tile.tone-green  { border-left-color: #1baf7a; }
-.tile.tone-purple { border-left-color: #8a4fd8; }
-.tile.tone-pink   { border-left-color: #c2185b; }
-.tile.tone-blue   .tile-n { color: #1f5ea8; }
-.tile.tone-orange .tile-n { color: #b34a1f; }
-.tile.tone-green  .tile-n { color: #15845c; }
-.tile.tone-purple .tile-n { color: #6b3cb0; }
-.tile.tone-pink   .tile-n { color: #a1144c; }
-@media (prefers-color-scheme: dark) {
-  .tile.tone-blue   { border-left-color: #3987e5; }
-  .tile.tone-orange { border-left-color: #d95926; }
-  .tile.tone-green  { border-left-color: #199e70; }
-  .tile.tone-purple { border-left-color: #9a63e8; }
-  .tile.tone-pink   { border-left-color: #e0457f; }
-  .tile.tone-blue   .tile-n { color: #7fb4f5; }
-  .tile.tone-orange .tile-n { color: #f0925f; }
-  .tile.tone-green  .tile-n { color: #5fcfa4; }
-  .tile.tone-purple .tile-n { color: #bb93f2; }
-  .tile.tone-pink   .tile-n { color: #f383ab; }
-}
 
 /* Help sits with Report a problem rather than in the nav: it is what you reach
    for when stuck, not a place you go. Quieter than the button beside it. */
@@ -1312,3 +1266,68 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
   padding: 0.25rem 0.1rem;
 }
 .topbar-link:hover { color: var(--fg); text-decoration: underline; }
+
+/* --- A person's colour --------------------------------------------------- 
+
+   Three hues kept for people alone. Every other colour here means a state -
+   blue is the accent, green good, amber attention, red broken - and the chart
+   series own orange, purple and pink, so a person in any of those reads as a
+   condition rather than as themselves.
+
+   Both sets are validated against their own surface, all pairs, for contrast
+   and for red-green and blue-yellow colour blindness. The dark steps sit in
+   the 6-8 separation band, which is only allowed because a person's name is
+   always printed beside their colour and never replaced by it. */
+:root {
+  --person-cyan: #0aa2c0;
+  --person-lime: #5f8f1a;
+  --person-magenta: #b81fa0;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --person-cyan: #0c92ab;
+    --person-lime: #76a423;
+    --person-magenta: #d95fc0;
+  }
+}
+
+/* The tile a person owns. */
+.tile.tone-cyan    { border-left-color: var(--person-cyan); }
+.tile.tone-lime    { border-left-color: var(--person-lime); }
+.tile.tone-magenta { border-left-color: var(--person-magenta); }
+.tile.tone-cyan    .tile-n { color: var(--person-cyan); }
+.tile.tone-lime    .tile-n { color: var(--person-lime); }
+.tile.tone-magenta .tile-n { color: var(--person-magenta); }
+
+/* Their name, as a pill. The tint is mixed from the one token rather than
+   hand-picked, so a badge can never drift from the tile beside it. Browsers
+   without color-mix fall back to the flat surface and keep the coloured text,
+   which is still legible. */
+.setter-badge { border-color: transparent; font-weight: 600; }
+.setter-badge[data-color='cyan']    { background: var(--surface); color: var(--person-cyan); }
+.setter-badge[data-color='lime']    { background: var(--surface); color: var(--person-lime); }
+.setter-badge[data-color='magenta'] { background: var(--surface); color: var(--person-magenta); }
+@supports (background: color-mix(in srgb, red 10%, white)) {
+  .setter-badge[data-color='cyan'] {
+    background: color-mix(in srgb, var(--person-cyan) 16%, var(--surface));
+  }
+  .setter-badge[data-color='lime'] {
+    background: color-mix(in srgb, var(--person-lime) 16%, var(--surface));
+  }
+  .setter-badge[data-color='magenta'] {
+    background: color-mix(in srgb, var(--person-magenta) 16%, var(--surface));
+  }
+}
+.setter-badge[data-color='grey'] { background: var(--bg); color: var(--muted); }
+
+/* And their line on a chart that is about people, so the tracker and the KPIs
+   agree rather than each having their own idea of who is what colour. */
+.chart-line.person-cyan    { stroke: var(--person-cyan); }
+.chart-line.person-lime    { stroke: var(--person-lime); }
+.chart-line.person-magenta { stroke: var(--person-magenta); }
+.chart-dot.person-cyan     { fill: var(--person-cyan); }
+.chart-dot.person-lime     { fill: var(--person-lime); }
+.chart-dot.person-magenta  { fill: var(--person-magenta); }
+.chart-swatch.person-cyan    { background: var(--person-cyan); }
+.chart-swatch.person-lime    { background: var(--person-lime); }
+.chart-swatch.person-magenta { background: var(--person-magenta); }

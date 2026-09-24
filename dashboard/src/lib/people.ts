@@ -9,7 +9,22 @@
  * Same five hues the charts use, so somebody is the same colour on the tracker
  * as in the KPI lines.
  */
-export const PERSON_COLOURS = ['blue', 'orange', 'green', 'purple', 'pink'] as const;
+/**
+ * Three hues, none of them used anywhere else in the dashboard.
+ *
+ * Blue is the accent, green means good, amber means look at this, red means
+ * broken, and orange, purple and pink are the chart's own series - so a person
+ * wearing any of those reads as a state rather than as themselves. Cyan, lime
+ * and magenta were free.
+ *
+ * Three rather than five: the validator could not separate a fourth from these
+ * under red-green colour blindness inside the dark theme's lightness band, and
+ * shipping two people nobody can tell apart is worse than wrapping. Validated
+ * against both surfaces, all pairs, in scripts/validate_palette.js - the dark
+ * steps land in the 6-8 floor band, which is legal because a person's name is
+ * always printed next to their colour and never replaced by it.
+ */
+export const PERSON_COLOURS = ['cyan', 'lime', 'magenta'] as const;
 export type PersonColour = (typeof PERSON_COLOURS)[number];
 
 type Person = { id: string; name: string; role: string; active: boolean };
@@ -25,7 +40,14 @@ export function colourOrder(people: Person[]): string[] {
   return people
     .filter((p) => p.active && (p.role === 'setter' || p.role === 'admin'))
     .slice()
-    .sort((a, b) => a.name.localeCompare(b.name))
+    .sort(
+      (a, b) =>
+        // Setters take the first slots. They are the ones on a tile and a chart
+        // line every day, and with fewer colours than people it is their pair
+        // that has to stay distinct - an admin is the one who can afford to
+        // share. Alphabetical within each group so the order never moves.
+        Number(a.role === 'admin') - Number(b.role === 'admin') || a.name.localeCompare(b.name)
+    )
     .map((p) => p.id);
 }
 

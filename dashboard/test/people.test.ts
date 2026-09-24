@@ -37,7 +37,7 @@ test('a deactivated person is out of the order', () => {
 
 test('a colour set on the record wins, so it can be corrected without a deploy', () => {
   const order = colourOrder([p('a', 'Alexis'), p('b', 'Loui')]);
-  assert.equal(personColour({ id: 'a', color: 'pink' }, order), 'pink');
+  assert.equal(personColour({ id: 'a', color: 'magenta' }, order), 'magenta');
 });
 
 test('a colour nobody recognises is ignored rather than rendered', () => {
@@ -50,10 +50,36 @@ test('somebody outside the order still gets a colour', () => {
 });
 
 test('more people than colours wraps rather than running out', () => {
-  const many = Array.from({ length: 7 }, (_, i) => p(`p${i}`, `Person ${i}`));
+  // Three hues is what the validator could separate honestly. A fourth person
+  // wraps to the first colour rather than getting one nobody can distinguish.
+  const many = Array.from({ length: 5 }, (_, i) => p(`p${i}`, `Person ${i}`));
   const order = colourOrder(many);
   const all = order.map((id) => personColour({ id }, order));
-  assert.equal(all.length, 7);
+  assert.equal(all.length, 5);
   assert.ok(all.every((c) => PERSON_COLOURS.includes(c)));
-  assert.equal(all[0], all[5], 'the sixth wraps back to the first');
+  assert.equal(all[0], all[3], 'the fourth wraps back to the first');
+});
+
+test('setters get the first colours, before any admin', () => {
+  // With fewer colours than people it is the setters' pair that has to stay
+  // distinct: they are the ones on a tile and a chart line every day.
+  const order = colourOrder([
+    p('f', 'Francis', { role: 'admin' }),
+    p('b', 'Loui'),
+    p('a', 'Alexis'),
+  ]);
+  assert.deepEqual(order, ['a', 'b', 'f']);
+});
+
+test('two setters stay apart even with several admins about', () => {
+  // The real bug: a second admin row pushed Loui to the fourth slot, which
+  // wrapped onto Alexis's colour and made the whole thing pointless.
+  const people = [
+    p('a', 'Alexis'),
+    p('b', 'Loui'),
+    p('f1', 'Francis', { role: 'admin' }),
+    p('f2', 'Francis', { role: 'admin' }),
+  ];
+  const order = colourOrder(people);
+  assert.notEqual(personColour({ id: 'a' }, order), personColour({ id: 'b' }, order));
 });
