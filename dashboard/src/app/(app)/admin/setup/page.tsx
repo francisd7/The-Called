@@ -1,5 +1,5 @@
 import { redirect } from 'next/navigation';
-import { count, desc, eq } from 'drizzle-orm';
+import { count, desc, eq, sum } from 'drizzle-orm';
 import { currentUser } from '@/lib/session';
 import { backupNow, restoreFromFiles } from '@/lib/backupActions';
 import { setTargets } from '@/lib/targetActions';
@@ -66,6 +66,22 @@ export default async function SetupPage() {
     .select({ testCount: count() })
     .from(leads)
     .where(eq(leads.isTest, true));
+
+  // Whose pile holds what, so "Move a pile of leads by date" can say it on the
+  // dropdown rather than reporting three zeroes when the wrong one is picked.
+  const pileRows = await db
+    .select({ setterId: leads.setterId, leads: count(), cash: sum(leads.cashCollected) })
+    .from(leads)
+    .where(eq(leads.isTest, false))
+    .groupBy(leads.setterId);
+  const pile = new Map(
+    pileRows.map((r) => [r.setterId ?? 'unassigned', { leads: r.leads, cash: Number(r.cash ?? 0) }])
+  );
+  const pileLabel = (key: string) => {
+    const row = pile.get(key);
+    if (!row || row.leads === 0) return 'none';
+    return row.cash > 0 ? `${row.leads}, $${row.cash.toLocaleString('en-US')}` : `${row.leads}`;
+  };
 
   const placeholderPeople = people.filter((p) => p.active && p.email.startsWith('CHANGEME'));
   const linkedOffers = offerRows.filter((o) => o.eventTypeUri).length;
@@ -252,12 +268,12 @@ export default async function SetupPage() {
               {/* A blank Setter column in the old tracker imported as nobody,
                   so the pile that needs splitting is usually Unassigned. */}
               <select id="fromSetterId" name="fromSetterId" defaultValue="unassigned">
-                <option value="unassigned">Unassigned</option>
+                <option value="unassigned">Unassigned ({pileLabel('unassigned')})</option>
                 {people
                   .filter((p) => p.active && p.role !== 'closer')
                   .map((p) => (
                     <option key={p.id} value={p.id}>
-                      {p.name}
+                      {p.name} ({pileLabel(p.id)})
                     </option>
                   ))}
               </select>

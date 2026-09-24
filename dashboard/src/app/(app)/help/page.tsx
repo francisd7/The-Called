@@ -476,6 +476,12 @@ export default async function HelpPage() {
             the middle.
           </p>
           <p>
+            <strong>Whose leads</strong> shows how many leads and how much cash each pile holds, so
+            the right one is visible before you pick. Choose an empty pile and it says where the
+            leads actually are rather than reporting three zeroes, which looks like a date problem
+            and is not one.
+          </p>
+          <p>
             <strong>Dry run</strong> first. It reports how many leads and how much cash sit in
             each of the three bands and writes nothing. Cash follows the lead, so this moves money
             between people&rsquo;s figures — read those numbers before running it for real. A lead

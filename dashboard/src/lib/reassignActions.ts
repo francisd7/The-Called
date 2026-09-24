@@ -69,8 +69,35 @@ export async function reassignByDate(formData: FormData): Promise<Result> {
 
     // Named rather than implied: the message says where the money went, and
     // "moved to Loui" is checkable in a way that "moved" is not.
-    const toPerson = await db.query.users.findFirst({ where: eq(users.id, toSetterId) });
-    const toName = toPerson?.name ?? 'the other person';
+    const everyone = await db.select({ id: users.id, name: users.name }).from(users);
+    const nameById = new Map(everyone.map((u) => [u.id, u.name]));
+    const toName = nameById.get(toSetterId) ?? 'the other person';
+
+    // Every dated row lands in exactly one band and every undated one is
+    // counted, so all four being zero means the pile itself is empty. Three
+    // zeroes look like a date problem, which is the one thing it is not - so
+    // say where the leads actually are instead.
+    const matched =
+      plan.band.before.leads + plan.band.middle.leads + plan.band.after.leads + plan.undated;
+    if (matched === 0) {
+      const fromName = fromSetterId ? (nameById.get(fromSetterId) ?? 'that person') : 'Unassigned';
+      if (rows.length === 0) {
+        return { ok: false, error: 'There are no leads to move.' };
+      }
+      const tally = new Map<string, number>();
+      for (const row of rows) {
+        const key = row.setterId ?? 'unassigned';
+        tally.set(key, (tally.get(key) ?? 0) + 1);
+      }
+      const where = [...tally.entries()]
+        .sort((a, b) => b[1] - a[1])
+        .map(([key, n]) => `${key === 'unassigned' ? 'Unassigned' : (nameById.get(key) ?? key)} ${n}`)
+        .join(' · ');
+      return {
+        ok: false,
+        error: `${fromName} has no leads, so there is nothing to split. They are on: ${where}. Pick the right one under "Whose leads".`,
+      };
+    }
 
     // Stated as noun phrases so the counts read for one lead and for many.
     const summary =
