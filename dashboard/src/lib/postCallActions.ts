@@ -2,7 +2,7 @@
 
 import { revalidatePath } from 'next/cache';
 import { and, desc, eq, ne, or, sql } from 'drizzle-orm';
-import { requireUser } from './session';
+import { backgroundUser, requireUser } from './session';
 import { db } from '@/db';
 import { leadEvents, leadNotes, leads, postCallReports, users } from '@/db/schema';
 import { applyToLead, slug, syncPostCallReports } from './postCall';
@@ -25,10 +25,18 @@ function refresh() {
   revalidatePath('/admin');
 }
 
-/** Pulls anything new out of the Airtable form. Safe to run as often as you like. */
+/**
+ * Pulls anything new out of the Airtable form. Safe to run as often as you
+ * like.
+ *
+ * Fired by the dashboard when the data is stale rather than by anybody
+ * choosing to, so viewing as somebody is a reason to do nothing rather than a
+ * failure - it used to report itself as a broken Airtable token three times an
+ * evening while the read-only preview was open.
+ */
 export async function syncPostCall(): Promise<Result> {
   try {
-    await requireUser();
+    if (!(await backgroundUser())) return { ok: true };
     const pat = process.env.AIRTABLE_PAT;
     if (!pat) {
       return {
@@ -54,7 +62,12 @@ export async function syncPostCall(): Promise<Result> {
     await recordIssue({
       title: 'Post-call sync failed',
       detail: error,
-      remedy: 'Check AIRTABLE_PAT is set and still has access to the Post Call table.',
+      // Named off what actually went wrong. A remedy that points at the
+      // Airtable token whatever the failure sends whoever reads it to check
+      // something that was never broken.
+      remedy: /airtable|token|401|403/i.test(error)
+        ? 'Check AIRTABLE_PAT is set and still has access to the Post Call table.'
+        : 'Open Admin → Setup and press Sync now to see the same error with more around it.',
     });
     return { ok: false, error };
   }

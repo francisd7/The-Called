@@ -60,6 +60,24 @@ export async function requireUser() {
   return { id: user.id, name: user.name, role: user.role };
 }
 
+/**
+ * For housekeeping that runs on its own rather than because somebody pressed
+ * something - the post-call sync, the weekly backup.
+ *
+ * Returns null when there is nobody signed in, or when an admin is viewing as
+ * somebody else. The caller stops there: a background task has no business
+ * writing inside a read-only preview, and it loses nothing by waiting for the
+ * next ordinary page load moments later.
+ *
+ * Separate from requireUser because that one throws, and a background task
+ * that throws where a person did nothing wrong reports itself as a fault.
+ */
+export async function backgroundUser() {
+  const user = await currentUser();
+  if (!user || user.viewingAs) return null;
+  return { id: user.id, name: user.name, role: user.role };
+}
+
 export async function requireAdmin() {
   const user = await requireUser();
   if (user.role !== 'admin') throw new Error('Admins only');

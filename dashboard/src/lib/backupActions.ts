@@ -2,7 +2,7 @@
 
 import { revalidatePath } from 'next/cache';
 import { db } from '@/db';
-import { requireAdmin, requireUser } from './session';
+import { backgroundUser, requireAdmin } from './session';
 import { backupIsDue, runBackup } from './backup';
 import { EXPORT_ORDER, isExportKey, type ExportKey } from './exports';
 import { restoreTable, type RestoreStats } from './restore';
@@ -19,7 +19,9 @@ type Result = { ok: true; message?: string } | { ok: false; error: string };
  */
 export async function backupIfDue(): Promise<Result> {
   try {
-    await requireUser();
+    // Same as the post-call sync: nobody pressed this, so a read-only preview
+    // is a reason to wait rather than to fail.
+    if (!(await backgroundUser())) return { ok: true };
     if (!(await backupIsDue(db))) return { ok: true };
 
     const { ok, note } = await runBackup(db);
