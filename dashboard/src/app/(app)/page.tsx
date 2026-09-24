@@ -3,7 +3,7 @@ import { db } from '@/db';
 import { backupIsDue } from '@/lib/backup';
 import { CallTile } from '@/components/CallTile';
 import { MiniLeadTile } from '@/components/MiniLeadTile';
-import { formatCallTime } from '@/lib/dates';
+import { formatCallTime, teamDateString } from '@/lib/dates';
 import { PersonPanel } from '@/components/PersonPanel';
 import { PostCallInbox } from '@/components/PostCallInbox';
 import { BackupWatch } from '@/components/BackupWatch';
@@ -11,6 +11,8 @@ import { Sparkline, Delta } from '@/components/charts/Sparkline';
 import { DayStrip } from '@/components/DayStrip';
 import { periodTrends } from '@/lib/kpis';
 import { paceFor } from '@/lib/pace';
+import { snoozeNotice } from '@/lib/noticeActions';
+import { ActionForm } from '@/components/ActionForm';
 import {
   getActiveOffers,
   getAssignableSetters,
@@ -23,6 +25,8 @@ import {
   getMoneyTotals,
   getPeriodSummary,
   getPipelineSummary,
+  periodStart,
+  noticeIsSnoozed,
   getMonthToDate,
   getMonthlyTargets,
   getPostCallInbox,
@@ -105,6 +109,13 @@ export default async function TodayPage({ searchParams }: { searchParams: Search
   const tileProps = { setters, closers };
   const backupDue = await backupIsDue(db);
   const trends = await periodTrends(period);
+  // Each headline number links to the page the number came from, over the same
+  // dates the tile is counting, so a figure that looks wrong can be opened
+  // rather than just doubted.
+  const from = teamDateString(periodStart(period));
+  const to = teamDateString();
+  const callsLink = `/calls?from=${from}&to=${to}`;
+  const calendlySnoozed = await noticeIsSnoozed('calendly-quiet');
   const [targets, mtd] = await Promise.all([getMonthlyTargets(), getMonthToDate()]);
   const now = new Date();
   const pace = {
@@ -134,15 +145,31 @@ export default async function TodayPage({ searchParams }: { searchParams: Search
         </div>
       </div>
 
-      {calendlyQuiet && (
-        <p className="banner-warn">
-          <strong>Calendly has gone quiet.</strong>{' '}
-          {calendlyQuiet.everDelivered
-            ? `Nothing delivered in ${calendlyQuiet.daysQuiet} days.`
-            : 'Nothing has ever been delivered.'}{' '}
-          Either nobody has booked, or the webhook has stopped — those look identical from here.{' '}
-          <a href="/admin">Check Calendly deliveries</a>.
-        </p>
+      {calendlyQuiet && !calendlySnoozed && (
+        <div className="notice">
+          <span className="notice-mark" aria-hidden="true" />
+          <div className="notice-body">
+            <strong>Calendly has gone quiet.</strong>{' '}
+            {calendlyQuiet.everDelivered
+              ? `Nothing delivered in ${calendlyQuiet.daysQuiet} days.`
+              : 'Nothing has ever been delivered.'}{' '}
+            Either nobody has booked or the webhook has stopped — those look the same from here.
+          </div>
+          <div className="notice-actions">
+            <a className="btn" href="/admin">
+              Check deliveries
+            </a>
+            {/* It cannot be resolved by doing anything when the answer is
+                "nobody booked", and a warning that can never be put down stops
+                being read. Seven days, then it asks again. */}
+            <ActionForm action={snoozeNotice}>
+              <input type="hidden" name="key" value="calendly-quiet" />
+              <button type="submit" className="btn-quiet">
+                Looks right
+              </button>
+            </ActionForm>
+          </div>
+        </div>
       )}
 
       {/* Ten tiles in two rows that look identical, where five follow the tab
@@ -160,42 +187,42 @@ export default async function TodayPage({ searchParams }: { searchParams: Search
         </span>
       </p>
       <div className="stats">
-        <div className="stat tone-blue">
+        <a className="stat tone-blue" href={callsLink}>
           <div className="stat-n">{periodStats.booked}</div>
           <div className="stat-l">calls booked</div>
           <div className="stat-foot">
             <Sparkline points={trends.calls.series} tone="accent" />
             <Delta now={trends.calls.now} before={trends.calls.before} />
           </div>
-        </div>
-        <div className="stat tone-violet">
+        </a>
+        <a className="stat tone-violet" href="/leads/all">
           <div className="stat-n">{periodStats.newLeads}</div>
           <div className="stat-l">new leads</div>
           <div className="stat-foot">
             <Sparkline points={trends.newLeads.series} tone="accent" />
             <Delta now={trends.newLeads.now} before={trends.newLeads.before} />
           </div>
-        </div>
-        <div className="stat tone-green">
+        </a>
+        <a className="stat tone-green" href={callsLink}>
           <div className="stat-n">{money0(periodStats.cash)}</div>
           <div className="stat-l">cash collected</div>
           <div className="stat-foot">
             <Sparkline points={trends.cash.series} tone="ok" />
             <Delta now={trends.cash.now} before={trends.cash.before} />
           </div>
-        </div>
-        <div className="stat tone-green">
+        </a>
+        <a className="stat tone-green" href={callsLink}>
           <div className="stat-n">{money0(periodStats.contract)}</div>
           <div className="stat-l">revenue generated</div>
-        </div>
-        <div className="stat tone-teal">
+        </a>
+        <a className="stat tone-teal" href={callsLink}>
           <div className="stat-n">{periodStats.deals}</div>
           <div className="stat-l">deals closed</div>
           <div className="stat-foot">
             <Sparkline points={trends.deals.series} tone="ok" />
             <Delta now={trends.deals.now} before={trends.deals.before} />
           </div>
-        </div>
+        </a>
       </div>
 
       {/* Only where a target has actually been set. A bar against nothing would

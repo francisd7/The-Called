@@ -140,9 +140,10 @@ export default async function HelpPage() {
           Open <strong>Dashboard</strong> and work down the page, in this order.
         </Do>
         <p>
-          The top row of numbers has a line under each one showing the last
-          fortnight, and how you compare with the same point in the period
-          before — so a figure says whether it is good, not just what it is.
+          The top row of numbers is clickable — each one opens the page it was
+          counted from, over the same dates. Each has a line under it showing
+          the last fortnight, and how you compare with the same point in the
+          period before — so a figure says whether it is good, not just what it is.
           The line follows the <strong>Today / This week / This month</strong>
           buttons, and the grey note above the row says what it is measuring.
         </p>
@@ -185,7 +186,7 @@ export default async function HelpPage() {
         lead="A lead is only yours, and only on your list, once you have said so."
       >
         <p>
-          <strong>Lead Tracker</strong> is the hub. Your tile under{' '}
+          <strong>Leads</strong> is the hub. Your tile under{' '}
           <strong>Active conversations</strong> opens everything you are working right now.
         </p>
 
@@ -226,7 +227,7 @@ export default async function HelpPage() {
 
         <h3>Starting a new conversation</h3>
         <p>
-          <strong>+ New lead</strong> on the Lead Tracker. Only the handle is required — it defaults
+          <strong>+ New lead</strong> on the Leads page. Only the handle is required — it defaults
           to you as the setter, and a lead you create starts live.
         </p>
       </Section>
@@ -329,7 +330,7 @@ export default async function HelpPage() {
         lead="Every day you work, even if you are filling in a day you missed."
       >
         <Do>
-          <strong>EOD Reports</strong> → fill it in → submit.
+          <strong>EOD</strong> → fill it in → submit.
         </Do>
         <p>
           The numbers are yours to count — the dashboard only sees leads you logged, so it cannot
@@ -344,7 +345,7 @@ export default async function HelpPage() {
 
         <h3>The streak</h3>
         <p>
-          Both of your streaks show at the top of the EOD page and on the Lead Tracker — you can
+          Both of your streaks show at the top of the EOD page and on the Leads page — you can
           each see the other&apos;s. It counts days in a row, and yesterday still counts as alive so
           you are not punished first thing in the morning.
         </p>
@@ -362,7 +363,7 @@ export default async function HelpPage() {
         </p>
         <Watch>
           if you spot a pair, leave the merge to Francis. It is on the{' '}
-          <strong>Possible duplicates</strong> badge on the Lead Tracker, and it cannot be undone.
+          <strong>Possible duplicates</strong> badge on the Leads page, and it cannot be undone.
         </Watch>
 
         <h3>A lead with no Instagram handle</h3>
@@ -442,7 +443,7 @@ export default async function HelpPage() {
 
           <h3>Merging duplicates</h3>
           <p>
-            The <strong>Possible duplicates</strong> badge on the Lead Tracker. Each pair sits side
+            The <strong>Possible duplicates</strong> badge on the Leads page. Each pair sits side
             by side and the page says what merging brings across. A merge cannot be undone, so back
             up first.
           </p>

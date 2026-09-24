@@ -601,3 +601,17 @@ export const monthlyTargets = pgTable('monthly_targets', {
   setById: uuid('set_by_id').references(() => users.id),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 });
+
+/**
+ * A warning somebody has looked at and does not want to see for a while.
+ *
+ * The Calendly banner cannot be resolved by doing anything - it says "either
+ * nobody booked or the plumbing broke", and when it is the first of those
+ * there is nothing to fix. Without a way to put it down it sits on the
+ * dashboard permanently, which is how a warning stops being read at all.
+ */
+export const noticeSnoozes = pgTable('notice_snoozes', {
+  key: text('key').primaryKey(),
+  until: timestamp('until', { withTimezone: true }).notNull(),
+  byId: uuid('by_id').references(() => users.id),
+});

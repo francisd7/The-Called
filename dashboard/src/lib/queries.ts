@@ -1,4 +1,4 @@
-import { and, asc, count, desc, eq, gte, ilike, isNotNull, isNull, lt, lte, ne, notInArray, or, sql } from 'drizzle-orm';
+import { and, asc, count, desc, eq, gt, gte, ilike, isNotNull, isNull, lt, lte, ne, notInArray, or, sql } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/pg-core';
 import type { PgColumn } from 'drizzle-orm/pg-core';
 import { db } from '@/db';
@@ -12,6 +12,7 @@ import {
   leadNotes,
   leads,
   monthlyTargets,
+  noticeSnoozes,
   offers,
   optionSets,
   postCallReports,
@@ -268,7 +269,7 @@ export async function getDayStats(setterId: string, dayOffset = 0) {
 export type Period = 'today' | 'week' | 'month';
 
 /** The window a period covers, anchored to the team's calendar. */
-function periodStart(period: Period): Date {
+export function periodStart(period: Period): Date {
   const { start } = teamDayRange(0);
   if (period === 'today') return start;
   if (period === 'week') {
@@ -880,4 +881,14 @@ export async function getMonthToDate() {
   ]);
 
   return { calls: Number(calls.n), cash: Number(cash.n) };
+}
+
+/** Whether a warning is currently put down. */
+export async function noticeIsSnoozed(key: string): Promise<boolean> {
+  const [row] = await db
+    .select({ key: noticeSnoozes.key })
+    .from(noticeSnoozes)
+    .where(and(eq(noticeSnoozes.key, key), gt(noticeSnoozes.until, new Date())))
+    .limit(1);
+  return Boolean(row);
 }

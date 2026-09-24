@@ -32,8 +32,17 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
             />
             <span className="brand-sub">Setter Dashboard</span>
           </a>
-          <NavLinks role={me.role} openIssues={openIssues} />
+          <NavLinks />
           <div className="topbar-right">
+            {me.role === 'admin' && (
+              <a className="topbar-link" href="/admin">
+                Admin
+                {/* Never the only signal - the Admin page lists what it refers to. */}
+                {openIssues > 0 && (
+                  <span className="topbar-dot" aria-label={`${openIssues} open problems`} />
+                )}
+              </a>
+            )}
             <a className="topbar-link" href="/help">
               Help
             </a>

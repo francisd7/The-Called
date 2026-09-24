@@ -169,6 +169,13 @@
       "when": 1790221264015,
       "tag": "0023_monthly_targets",
       "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "7",
+      "when": 1790224325621,
+      "tag": "0024_notice_snoozes",
+      "breakpoints": true
     }
   ]
 }
