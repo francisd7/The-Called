@@ -1123,3 +1123,40 @@ main.has-viewas { padding-bottom: 5rem; }
 }
 .check input { margin-top: 0.15rem; flex: none; }
 .btn-row { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+
+/* --- Help ---------------------------------------------------------------- */
+
+/* Jump links, so a phone does not mean scrolling past four sections to reach
+   the one you are stuck on. */
+.help-toc {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin: 0.9rem 0 0.4rem;
+}
+.help-toc a {
+  display: inline-block;
+  padding: 0.3rem 0.65rem;
+  border: 1px solid var(--border);
+  border-radius: 99px;
+  background: var(--surface);
+  text-decoration: none;
+  font-size: 0.84rem;
+}
+
+.help-section {
+  border-top: 1px solid var(--border);
+  padding-top: 0.2rem;
+  margin-top: 1.4rem;
+  /* The sticky header would otherwise cover a heading jumped to from above. */
+  scroll-margin-top: 4.5rem;
+}
+.help-section h3 { margin: 1.1rem 0 0.3rem; font-size: 0.98rem; }
+/* Running text, not dashboard chrome: a measure that does not run the width of
+   a laptop screen. */
+.help-section p,
+.help-section ol,
+.help-section ul { max-width: 44rem; }
+.help-section p { margin: 0.45rem 0; }
+.help-section ol { padding-left: 1.2rem; }
+.help-section ol li { margin: 0.35rem 0; }
