@@ -10,6 +10,8 @@ import { countDuplicateGroups } from '@/lib/duplicates';
 import { getIssues } from '@/lib/issues';
 import { resolveIssue } from '@/lib/issueActions';
 import { startViewingAs } from '@/lib/viewAsActions';
+import { backupNow, restoreFromFiles } from '@/lib/backupActions';
+import { daysSinceBackup, lastBackup } from '@/lib/backup';
 
 export const dynamic = 'force-dynamic';
 
@@ -49,6 +51,9 @@ export default async function AdminPage() {
 
   // Same definition the lead tracker uses for its own unassigned count, so the
   // two screens can't disagree about how much there is to hand out.
+  const backup = await lastBackup(db);
+  const backupAgeDays = await daysSinceBackup(db);
+
   const [{ unassigned }] = await db
     .select({ unassigned: count() })
     .from(leads)
@@ -247,12 +252,37 @@ export default async function AdminPage() {
         </div>
       )}
 
-      <h2>Take a copy</h2>
+      <h2>Backups</h2>
       <p className="sub">
-        Everything the dashboard holds, as CSV. The Airtable tracker stopped
-        being the record of anything weeks ago, so this database is the only
-        copy of the pipeline — keep one of these somewhere else, and take a
-        fresh one before any big import.
+        Every week the dashboard posts a full copy to the COO chat on Discord,
+        the first time anybody opens it after seven days. Nobody has to
+        remember, and the copy is not on the same disk as the database.
+      </p>
+      <p className={backupAgeDays !== null && backupAgeDays < 8 ? 'msg ok' : 'banner-warn'}>
+        {backup === null ? (
+          <>
+            <strong>No backup yet.</strong> Press Back up now to take the first one.
+          </>
+        ) : backupAgeDays !== null && backupAgeDays < 8 ? (
+          <>
+            Last copy {backupAgeDays < 1 ? 'today' : `${Math.floor(backupAgeDays)} days ago`} —{' '}
+            {backup.rows?.toLocaleString('en-US')} rows, {Math.round((backup.bytes ?? 0) / 1024)} KB.
+          </>
+        ) : (
+          <>
+            <strong>The last copy is {Math.floor(backupAgeDays ?? 0)} days old.</strong> Press Back
+            up now, and check the bot can still post to the COO chat.
+          </>
+        )}
+      </p>
+      <ActionForm action={backupNow} successMessage="Posted">
+        <button type="submit">Back up now</button>
+      </ActionForm>
+
+      <h3>Download a copy</h3>
+      <p className="sub">
+        The same files, straight to this device — for analysis, or before any
+        big import.
       </p>
       <p className="export-row">
         <a href="/api/export/leads">Leads</a>
@@ -261,6 +291,31 @@ export default async function AdminPage() {
         <a href="/api/export/reels">Boosted reels</a>
         <a href="/api/export/people">People</a>
       </p>
+
+      <h3>Put a backup back</h3>
+      <p className="sub">
+        Pick the CSV files from a backup post — all of them at once is fine, and
+        the order does not matter. Existing rows are left alone, so this fills
+        gaps rather than undoing anything newer. Always dry run first.
+      </p>
+      <div className="card">
+        <ActionForm action={restoreFromFiles} successMessage="Done">
+          <div className="field">
+            <label htmlFor="files">Backup files</label>
+            <input id="files" name="files" type="file" accept=".csv,text/csv" multiple />
+          </div>
+          <label className="check">
+            <input type="checkbox" name="overwrite" value="1" /> Overwrite rows that are already
+            here (only for an empty database)
+          </label>
+          <div className="btn-row">
+            <button type="submit" name="dryRun" value="1">
+              Dry run
+            </button>
+            <button type="submit">Restore</button>
+          </div>
+        </ActionForm>
+      </div>
 
       <h2>Setup &amp; imports</h2>
       <p className="sub">

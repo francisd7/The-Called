@@ -42,6 +42,45 @@ async function postToChannel(channelId: string | undefined, content: string): Pr
   }
 }
 
+/**
+ * Posts files rather than text. Discord takes these as multipart, with the
+ * message itself as a payload_json part alongside them.
+ *
+ * Used by the weekly backup: the point is that the copy ends up somewhere that
+ * is not the database it came from, and Discord is already wired up here, so
+ * it costs nothing and needs no new account to keep working.
+ */
+export async function postFilesToChannel(
+  channelId: string | undefined,
+  content: string,
+  files: Array<{ name: string; body: string }>
+): Promise<boolean> {
+  const token = process.env.DISCORD_BOT_TOKEN;
+  if (!token || !channelId) return false;
+
+  try {
+    const form = new FormData();
+    form.append('payload_json', JSON.stringify({ content: content.slice(0, 1990) }));
+    files.forEach((f, i) => {
+      form.append(`files[${i}]`, new Blob([f.body], { type: 'text/csv' }), f.name);
+    });
+
+    const res = await fetch(`${discordApiBase()}/channels/${channelId}/messages`, {
+      method: 'POST',
+      headers: { Authorization: `Bot ${token}` },
+      body: form,
+    });
+    if (!res.ok) {
+      console.error(`Discord file post failed (${res.status}):`, await res.text());
+      return false;
+    }
+    return true;
+  } catch (err) {
+    console.error('Discord file post threw:', err);
+    return false;
+  }
+}
+
 function formatCallTime(date: Date | null): string {
   if (!date) return 'time TBC';
   // Everyone on the team works ET, and a closer reading this on their phone

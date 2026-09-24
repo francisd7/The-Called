@@ -570,3 +570,20 @@ export const boostedReels = pgTable('boosted_reels', {
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 });
+
+/**
+ * Every run of the weekly backup, successful or not.
+ *
+ * Kept so the dashboard can tell whether one is due without asking Discord,
+ * and so a run that has been failing quietly for a month is visible on the
+ * Admin page rather than discovered on the day it was needed.
+ */
+export const backupRuns = pgTable('backup_runs', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  ranAt: timestamp('ran_at', { withTimezone: true }).notNull().defaultNow(),
+  ok: boolean('ok').notNull(),
+  /** Total size of the files sent, so a copy that shrank is noticeable. */
+  bytes: integer('bytes'),
+  rows: integer('rows'),
+  note: text('note'),
+});

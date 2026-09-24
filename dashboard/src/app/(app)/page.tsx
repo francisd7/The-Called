@@ -1,9 +1,12 @@
 import { currentUser } from '@/lib/session';
+import { db } from '@/db';
+import { backupIsDue } from '@/lib/backup';
 import { CallTile } from '@/components/CallTile';
 import { MiniLeadTile } from '@/components/MiniLeadTile';
 import { formatCallTime } from '@/lib/dates';
 import { PersonPanel } from '@/components/PersonPanel';
 import { PostCallInbox } from '@/components/PostCallInbox';
+import { BackupWatch } from '@/components/BackupWatch';
 import {
   getActiveOffers,
   getAssignableSetters,
@@ -94,6 +97,7 @@ export default async function TodayPage({ searchParams }: { searchParams: Search
 
   const offerById = new Map(offers.map((o) => [o.id, o]));
   const tileProps = { setters, closers };
+  const backupDue = await backupIsDue(db);
 
   return (
     <>
@@ -215,6 +219,7 @@ export default async function TodayPage({ searchParams }: { searchParams: Search
         </div>
       )}
 
+      <BackupWatch due={backupDue} />
       <PostCallInbox reports={postCall.pending} staleMinutes={postCall.staleMinutes} />
 
       {awaitingOutcome.total > 0 && (

@@ -34,13 +34,17 @@ settle when he does:
   came from, that column and the two after it would fill themselves. That is
   a behaviour change for the team, so it is not assumed.
 
-## Waiting on Francis, off the dashboard
+## Backups — done, and not the way we planned
 
-- **Turn on Railway's Postgres backups.** Admin → Take a copy gives a manual
-  CSV export of everything, which is the escape hatch, but it is not a
-  schedule. This database is now the only copy of the pipeline: the Airtable
-  tracker stopped being the record of anything weeks ago. Railway's own
-  backup setting is the missing half, and it can only be set there.
+Railway only offers them on the Pro plan ($20/mo against Hobby's $5), so the
+dashboard does it itself. A full CSV copy of every table posts to the COO
+chat on Discord every seven days, triggered the first time anybody opens the
+dashboard after that — nobody has to remember, and the copy is not on the
+same disk as the database it protects. Admin → Put a backup back reads those
+files straight in, filling gaps without overwriting anything newer.
+
+At the current size a copy is 224 KB against Discord's 10 MB limit, and the
+backup refuses rather than posting a partial set if it ever outgrows it.
 
 ## Open items Francis is handling himself
 

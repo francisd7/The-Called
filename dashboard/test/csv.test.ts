@@ -73,3 +73,41 @@ test('every row ends with CRLF including the last', () => {
   const out = toCsv(['a'], [{ a: '1' }, { a: '2' }]);
   assert.equal(out, 'a\r\n1\r\n2\r\n');
 });
+
+// --- reading it back --------------------------------------------------------
+import { parseCsv, unguard } from '../src/lib/csv.ts';
+
+test('what we write, we can read', () => {
+  const rows = [
+    { a: 'plain', b: 'has, comma', c: 'has "quotes"', d: 'two\nlines' },
+    { a: '', b: null, c: 0, d: false },
+  ];
+  const back = parseCsv(toCsv(['a', 'b', 'c', 'd'], rows));
+  assert.deepEqual(back[0], ['a', 'b', 'c', 'd']);
+  assert.deepEqual(back[1], ['plain', 'has, comma', 'has "quotes"', 'two\nlines']);
+  assert.deepEqual(back[2], ['', '', '0', 'false']);
+});
+
+test('a file a spreadsheet saved still parses', () => {
+  // Excel writes a byte order mark and sometimes bare LF endings.
+  const rows = parseCsv('﻿a,b\n1,2\n');
+  assert.deepEqual(rows[0], ['a', 'b'], 'the mark must not stick to the first column name');
+  assert.deepEqual(rows[1], ['1', '2']);
+});
+
+test('a last row with no trailing newline is not dropped', () => {
+  assert.deepEqual(parseCsv('a,b\r\n1,2'), [['a', 'b'], ['1', '2']]);
+});
+
+test('the formula guard comes back off', () => {
+  assert.equal(unguard("'=1+1"), '=1+1');
+  assert.equal(unguard("'@handle"), '@handle');
+  // An apostrophe that was always part of the text stays put.
+  assert.equal(unguard("'tis a note"), "'tis a note");
+  assert.equal(unguard('plain'), 'plain');
+});
+
+test('a guarded value survives a full round trip unchanged', () => {
+  const out = toCsv(['x'], [{ x: '=SUM(A1)' }]);
+  assert.equal(unguard(parseCsv(out)[1][0]), '=SUM(A1)');
+});
