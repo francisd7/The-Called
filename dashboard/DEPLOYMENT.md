@@ -121,6 +121,33 @@ Book a real test call through one of the three links and watch it appear under
 form is missing its Instagram question and the link used wasn't one the
 dashboard generated.
 
+## Changing the address later
+
+Four things carry the URL and they have to move together. The order matters:
+done the other way round, nobody can sign in while you finish.
+
+1. **Railway → Settings → Networking.** Generate a new domain, or add a custom
+   one and point a CNAME at the target Railway gives you. Wait for it to go
+   green before the next step.
+2. **Google Cloud Console → Credentials → your OAuth client.** Add
+   `https://<new-domain>/api/auth/callback/google` to the authorized redirect
+   URIs. Add rather than replace, so the old address keeps working until you
+   are done. Without this, sign-in fails for everyone.
+3. **Railway → Variables.** Set `AUTH_URL` to `https://<new-domain>`, no
+   trailing slash. The service redeploys itself.
+4. **The dashboard → Admin → Setup & imports → Connect Calendly.** This is the
+   one that is easy to miss and costs the most. The webhook subscription holds
+   the old address, so until it is re-registered Calendly still posts bookings
+   to a URL that no longer answers — and nothing on the dashboard says so for
+   a week, because no booking arriving looks exactly like nobody booking.
+
+Then: send the team the new link, and take the old redirect URI out of Google
+once everybody is on the new one. The old Calendly subscription can be left —
+it fires into nothing — or deleted from the Calendly integrations page.
+
+The Discord booking messages build their link from `AUTH_URL`, so they follow
+step 3 on their own.
+
 ## What this does *not* touch
 
 The automation hub keeps running as it does now, still reading Airtable. Airtable
