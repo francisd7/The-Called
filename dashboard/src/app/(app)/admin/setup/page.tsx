@@ -1,17 +1,21 @@
-import { redirect } from 'next/navigation';
-import { count, desc, eq, sum } from 'drizzle-orm';
-import { currentUser } from '@/lib/session';
-import { backupNow, restoreFromFiles } from '@/lib/backupActions';
-import { setTargets } from '@/lib/targetActions';
-import { reassignByDate } from '@/lib/reassignActions';
-import { TARGET_METRICS } from '@/lib/targets';
-import { getMonthlyTargets } from '@/lib/queries';
-import { daysSinceBackup, lastBackup } from '@/lib/backup';
-import { db } from '@/db';
-import { calendlyEventTypes, leads, offers, users } from '@/db/schema';
-import { ActionForm } from '@/components/ActionForm';
-import { formatCallTime, formatDay } from '@/lib/dates';
-import { getAllPostCallReports, getRecentCalendlyActivity } from '@/lib/queries';
+import { redirect } from "next/navigation";
+import { count, desc, eq, sum } from "drizzle-orm";
+import { currentUser } from "@/lib/session";
+import { backupNow, restoreFromFiles } from "@/lib/backupActions";
+import { setTargets } from "@/lib/targetActions";
+import { reassignByDate } from "@/lib/reassignActions";
+import { TARGET_METRICS } from "@/lib/targets";
+import { getMonthlyTargets } from "@/lib/queries";
+import { daysSinceBackup, lastBackup } from "@/lib/backup";
+import { db } from "@/db";
+import { calendlyEventTypes, leads, offers, users } from "@/db/schema";
+import { ActionForm } from "@/components/ActionForm";
+import { ReassignFields } from "@/components/ReassignFields";
+import { formatCallTime, formatDay } from "@/lib/dates";
+import {
+  getAllPostCallReports,
+  getRecentCalendlyActivity,
+} from "@/lib/queries";
 import {
   clearActiveConvos,
   clearTestData,
@@ -23,19 +27,27 @@ import {
   runCalendlySetup,
   runEodImport,
   saveCountedLinks,
-} from '@/lib/setupActions';
-import { syncPostCall, unlinkReport } from '@/lib/postCallActions';
+} from "@/lib/setupActions";
+import { syncPostCall, unlinkReport } from "@/lib/postCallActions";
 
-function Check({ done, children }: { done: boolean; children: React.ReactNode }) {
+function Check({
+  done,
+  children,
+}: {
+  done: boolean;
+  children: React.ReactNode;
+}) {
   return (
-    <li style={{ marginBottom: '0.3rem' }}>
-      <span className={`pill ${done ? 'ok' : 'warn'}`}>{done ? '\u2713' : '\u2014'}</span>{' '}
+    <li style={{ marginBottom: "0.3rem" }}>
+      <span className={`pill ${done ? "ok" : "warn"}`}>
+        {done ? "\u2713" : "\u2014"}
+      </span>{" "}
       {children}
     </li>
   );
 }
 
-export const dynamic = 'force-dynamic';
+export const dynamic = "force-dynamic";
 
 /**
  * Everything that wires the dashboard up or pulls data into it, kept off the
@@ -47,20 +59,24 @@ export const dynamic = 'force-dynamic';
  */
 export default async function SetupPage() {
   const me = await currentUser();
-  if (me?.role !== 'admin') redirect('/');
+  if (me?.role !== "admin") redirect("/");
 
   const targets = await getMonthlyTargets();
   const backup = await lastBackup(db);
   const backupAgeDays = await daysSinceBackup(db);
 
-  const [people, offerRows, [{ leadCount }], reports, activity, links] = await Promise.all([
-    db.select().from(users).orderBy(users.name),
-    db.select().from(offers).orderBy(offers.sortOrder),
-    db.select({ leadCount: count() }).from(leads),
-    getAllPostCallReports(),
-    getRecentCalendlyActivity(),
-    db.select().from(calendlyEventTypes).orderBy(desc(calendlyEventTypes.bookingCount)),
-  ]);
+  const [people, offerRows, [{ leadCount }], reports, activity, links] =
+    await Promise.all([
+      db.select().from(users).orderBy(users.name),
+      db.select().from(offers).orderBy(offers.sortOrder),
+      db.select({ leadCount: count() }).from(leads),
+      getAllPostCallReports(),
+      getRecentCalendlyActivity(),
+      db
+        .select()
+        .from(calendlyEventTypes)
+        .orderBy(desc(calendlyEventTypes.bookingCount)),
+    ]);
 
   const [{ testCount }] = await db
     .select({ testCount: count() })
@@ -70,23 +86,37 @@ export default async function SetupPage() {
   // Whose pile holds what, so "Move a pile of leads by date" can say it on the
   // dropdown rather than reporting three zeroes when the wrong one is picked.
   const pileRows = await db
-    .select({ setterId: leads.setterId, leads: count(), cash: sum(leads.cashCollected) })
+    .select({
+      setterId: leads.setterId,
+      leads: count(),
+      cash: sum(leads.cashCollected),
+    })
     .from(leads)
     .where(eq(leads.isTest, false))
     .groupBy(leads.setterId);
   const pile = new Map(
-    pileRows.map((r) => [r.setterId ?? 'unassigned', { leads: r.leads, cash: Number(r.cash ?? 0) }])
+    pileRows.map((r) => [
+      r.setterId ?? "unassigned",
+      { leads: r.leads, cash: Number(r.cash ?? 0) },
+    ]),
   );
+  const movers = people.filter((p) => p.active && p.role !== "closer");
   const pileLabel = (key: string) => {
     const row = pile.get(key);
-    if (!row || row.leads === 0) return 'none';
-    return row.cash > 0 ? `${row.leads}, $${row.cash.toLocaleString('en-US')}` : `${row.leads}`;
+    if (!row || row.leads === 0) return "none";
+    return row.cash > 0
+      ? `${row.leads}, $${row.cash.toLocaleString("en-US")}`
+      : `${row.leads}`;
   };
 
-  const placeholderPeople = people.filter((p) => p.active && p.email.startsWith('CHANGEME'));
+  const placeholderPeople = people.filter(
+    (p) => p.active && p.email.startsWith("CHANGEME"),
+  );
   const linkedOffers = offerRows.filter((o) => o.eventTypeUri).length;
   const setupComplete =
-    placeholderPeople.length === 0 && linkedOffers === offerRows.length && leadCount > 0;
+    placeholderPeople.length === 0 &&
+    linkedOffers === offerRows.length &&
+    leadCount > 0;
 
   return (
     <>
@@ -94,8 +124,8 @@ export default async function SetupPage() {
         <div>
           <h1>Setup &amp; imports</h1>
           <p className="sub">
-            Connecting Calendly, pulling data across, and trying the flow without telling anyone.
-            Nothing here runs on its own.
+            Connecting Calendly, pulling data across, and trying the flow
+            without telling anyone. Nothing here runs on its own.
           </p>
         </div>
         <a className="btn" href="/admin">
@@ -107,30 +137,37 @@ export default async function SetupPage() {
         <>
           <h2>Setup</h2>
           <div className="card">
-            <ul style={{ listStyle: 'none', padding: 0, margin: '0 0 0.9rem' }}>
+            <ul style={{ listStyle: "none", padding: 0, margin: "0 0 0.9rem" }}>
               <Check done>Database tables created</Check>
               <Check done={placeholderPeople.length === 0}>
-                <a href="/admin/people">Real email addresses for everyone who signs in</a>
+                <a href="/admin/people">
+                  Real email addresses for everyone who signs in
+                </a>
                 {placeholderPeople.length > 0 && (
                   <span className="card-meta">
-                    {' '}
-                    — still placeholders: {placeholderPeople.map((p) => p.name).join(', ')}
+                    {" "}
+                    — still placeholders:{" "}
+                    {placeholderPeople.map((p) => p.name).join(", ")}
                   </span>
                 )}
               </Check>
               <Check done={leadCount > 0}>
                 Leads imported from Airtable
-                {leadCount > 0 && <span className="card-meta"> — {leadCount.toLocaleString()} in</span>}
+                {leadCount > 0 && (
+                  <span className="card-meta">
+                    {" "}
+                    — {leadCount.toLocaleString()} in
+                  </span>
+                )}
               </Check>
               <Check done={linkedOffers === offerRows.length}>
                 Calendly connected
                 <span className="card-meta">
-                  {' '}
+                  {" "}
                   — {linkedOffers}/{offerRows.length} offers linked
                 </span>
               </Check>
             </ul>
-
 
             <div className="card-row">
               <ActionForm action={runCalendlySetup}>
@@ -139,10 +176,10 @@ export default async function SetupPage() {
                 </button>
               </ActionForm>
             </div>
-            <p className="sub" style={{ marginTop: '0.4rem' }}>
-              Links the three offers to their Calendly event types and registers the booking
-              webhook. Needs <code>CALENDLY_PAT</code> set on this service. Won&apos;t create a
-              duplicate webhook.
+            <p className="sub" style={{ marginTop: "0.4rem" }}>
+              Links the three offers to their Calendly event types and registers
+              the booking webhook. Needs <code>CALENDLY_PAT</code> set on this
+              service. Won&apos;t create a duplicate webhook.
             </p>
           </div>
         </>
@@ -150,11 +187,12 @@ export default async function SetupPage() {
 
       <h2>Which Calendly links are sales calls</h2>
       <p className="sub">
-        A Calendly webhook covers the whole account, so something has to say which links are sales
-        calls and which are coaching calls or personal appointments. Most of the booking history
-        sits on links that have since been retired — those still count, and they&apos;re listed here
-        because the bookings are read from Calendly&apos;s history, not from its current link list.
-        Nothing is counted until you tick it.
+        A Calendly webhook covers the whole account, so something has to say
+        which links are sales calls and which are coaching calls or personal
+        appointments. Most of the booking history sits on links that have since
+        been retired — those still count, and they&apos;re listed here because
+        the bookings are read from Calendly&apos;s history, not from its current
+        link list. Nothing is counted until you tick it.
       </p>
       <div className="card">
         <ActionForm action={findCalendlyLinks}>
@@ -164,7 +202,8 @@ export default async function SetupPage() {
       </div>
       {links.length === 0 ? (
         <p className="empty">
-          Nothing found yet — press Find Calendly links to read them off the booking history.
+          Nothing found yet — press Find Calendly links to read them off the
+          booking history.
         </p>
       ) : (
         <div className="card">
@@ -178,13 +217,14 @@ export default async function SetupPage() {
                     value={l.uri}
                     defaultChecked={l.counted}
                     id={`link-${l.id}`}
-                    style={{ marginTop: '0.2rem' }}
+                    style={{ marginTop: "0.2rem" }}
                   />
                   <label className="todo-body" htmlFor={`link-${l.id}`}>
                     <span className="todo-title">{l.name}</span>
                     <span className="todo-meta">
                       <span className="pill">
-                        {l.bookingCount} booking{l.bookingCount === 1 ? '' : 's'}
+                        {l.bookingCount} booking
+                        {l.bookingCount === 1 ? "" : "s"}
                       </span>
                     </span>
                   </label>
@@ -200,9 +240,10 @@ export default async function SetupPage() {
 
       <h2>Calendly history</h2>
       <p className="sub">
-        The webhook only hears about bookings made after it was registered. This pulls every booking
-        Calendly has taken since the date below — cancellations included — which is the only record
-        anywhere of the calls that never made it into the tracker. A booking with no lead behind it
+        The webhook only hears about bookings made after it was registered. This
+        pulls every booking Calendly has taken since the date below —
+        cancellations included — which is the only record anywhere of the calls
+        that never made it into the tracker. A booking with no lead behind it
         gets one created rather than dropped. Safe to re-run.
       </p>
       <div className="card">
@@ -212,13 +253,23 @@ export default async function SetupPage() {
         <ActionForm action={runCalendlyBackfill}>
           <div className="field">
             <label htmlFor="since">From</label>
-            <input id="since" name="since" type="date" defaultValue="2026-06-01" />
+            <input
+              id="since"
+              name="since"
+              type="date"
+              defaultValue="2026-06-01"
+            />
           </div>
           <div className="card-row">
             <button type="submit" name="dryRun" value="1">
               Test Calendly backfill
             </button>
-            <button className="btn-primary" type="submit" name="dryRun" value="0">
+            <button
+              className="btn-primary"
+              type="submit"
+              name="dryRun"
+              value="0"
+            >
               Pull Calendly history
             </button>
           </div>
@@ -227,11 +278,12 @@ export default async function SetupPage() {
 
       <h2>Take back bookings that shouldn&apos;t be here</h2>
       <p className="sub">
-        An earlier version of the import took every link on the Calendly account, so bookings from
-        coaching calls and personal appointments were written onto leads — and some of those leads
-        were invented for the occasion. This removes them and nothing else: it never imports.
-        A lead that already existed keeps everything except the booking, because somebody has been
-        working that conversation.
+        An earlier version of the import took every link on the Calendly
+        account, so bookings from coaching calls and personal appointments were
+        written onto leads — and some of those leads were invented for the
+        occasion. This removes them and nothing else: it never imports. A lead
+        that already existed keeps everything except the booking, because
+        somebody has been working that conversation.
       </p>
       <div className="card">
         <ActionForm action={runCalendlyCleanup}>
@@ -240,7 +292,12 @@ export default async function SetupPage() {
             <button type="submit" name="dryRun" value="1">
               Test clean-up
             </button>
-            <button className="btn-danger" type="submit" name="dryRun" value="0">
+            <button
+              className="btn-danger"
+              type="submit"
+              name="dryRun"
+              value="0"
+            >
               Remove them
             </button>
           </div>
@@ -262,54 +319,21 @@ export default async function SetupPage() {
       </p>
       <div className="card">
         <ActionForm action={reassignByDate}>
-          <div className="grid2">
-            <div className="field">
-              <label htmlFor="fromSetterId">Whose leads</label>
-              {/* A blank Setter column in the old tracker imported as nobody,
-                  so the pile that needs splitting is usually Unassigned. */}
-              <select id="fromSetterId" name="fromSetterId" defaultValue="unassigned">
-                <option value="unassigned">Unassigned ({pileLabel('unassigned')})</option>
-                {people
-                  .filter((p) => p.active && p.role !== 'closer')
-                  .map((p) => (
-                    <option key={p.id} value={p.id}>
-                      {p.name} ({pileLabel(p.id)})
-                    </option>
-                  ))}
-              </select>
-            </div>
-            <div className="field">
-              <label htmlFor="toSetterId">Middle band goes to</label>
-              <select id="toSetterId" name="toSetterId" defaultValue="">
-                <option value="">Pick somebody</option>
-                {people
-                  .filter((p) => p.active && p.role !== 'closer')
-                  .map((p) => (
-                    <option key={p.id} value={p.id}>
-                      {p.name}
-                    </option>
-                  ))}
-              </select>
-            </div>
-            <div className="field">
-              <label htmlFor="first">First date</label>
-              <input id="first" name="first" type="date" />
-            </div>
-            <div className="field">
-              <label htmlFor="last">Second date</label>
-              <input id="last" name="last" type="date" />
-            </div>
-            <div className="field field-wide">
-              <div className="btn-row">
-                <button type="submit" name="dryRun" value="1">
-                  Dry run
-                </button>
-                <button className="btn-danger" type="submit" name="dryRun" value="0">
-                  Move them
-                </button>
-              </div>
-            </div>
-          </div>
+          <ReassignFields
+            sources={[
+              // A blank Setter column in the old tracker imported as nobody,
+              // so Unassigned is where a mislabelled run usually sits.
+              {
+                value: "unassigned",
+                label: `Unassigned (${pileLabel("unassigned")})`,
+              },
+              ...movers.map((p) => ({
+                value: p.id,
+                label: `${p.name} (${pileLabel(p.id)})`,
+              })),
+            ]}
+            destinations={movers.map((p) => ({ value: p.id, label: p.name }))}
+          />
         </ActionForm>
       </div>
 
@@ -327,13 +351,13 @@ export default async function SetupPage() {
               <div className="field" key={m.key}>
                 <label htmlFor={`target-${m.key}`}>
                   {m.label}
-                  {m.money ? ' ($)' : ''}
+                  {m.money ? " ($)" : ""}
                 </label>
                 <input
                   id={`target-${m.key}`}
                   name={m.key}
                   inputMode="decimal"
-                  defaultValue={targets.get(m.key) ?? ''}
+                  defaultValue={targets.get(m.key) ?? ""}
                   placeholder="no target"
                 />
               </div>
@@ -351,20 +375,31 @@ export default async function SetupPage() {
         the first time anybody opens it after seven days. Nobody has to
         remember, and the copy is not on the same disk as the database.
       </p>
-      <p className={backupAgeDays !== null && backupAgeDays < 8 ? 'msg ok' : 'banner-warn'}>
+      <p
+        className={
+          backupAgeDays !== null && backupAgeDays < 8 ? "msg ok" : "banner-warn"
+        }
+      >
         {backup === null ? (
           <>
-            <strong>No backup yet.</strong> Press Back up now to take the first one.
+            <strong>No backup yet.</strong> Press Back up now to take the first
+            one.
           </>
         ) : backupAgeDays !== null && backupAgeDays < 8 ? (
           <>
-            Last copy {backupAgeDays < 1 ? 'today' : `${Math.floor(backupAgeDays)} days ago`} —{' '}
-            {backup.rows?.toLocaleString('en-US')} rows, {Math.round((backup.bytes ?? 0) / 1024)} KB.
+            Last copy{" "}
+            {backupAgeDays < 1
+              ? "today"
+              : `${Math.floor(backupAgeDays)} days ago`}{" "}
+            — {backup.rows?.toLocaleString("en-US")} rows,{" "}
+            {Math.round((backup.bytes ?? 0) / 1024)} KB.
           </>
         ) : (
           <>
-            <strong>The last copy is {Math.floor(backupAgeDays ?? 0)} days old.</strong> Press Back
-            up now, and check the bot can still post to the COO chat.
+            <strong>
+              The last copy is {Math.floor(backupAgeDays ?? 0)} days old.
+            </strong>{" "}
+            Press Back up now, and check the bot can still post to the COO chat.
           </>
         )}
       </p>
@@ -395,11 +430,17 @@ export default async function SetupPage() {
         <ActionForm action={restoreFromFiles} successMessage="Done">
           <div className="field">
             <label htmlFor="files">Backup files</label>
-            <input id="files" name="files" type="file" accept=".csv,text/csv" multiple />
+            <input
+              id="files"
+              name="files"
+              type="file"
+              accept=".csv,text/csv"
+              multiple
+            />
           </div>
           <label className="check">
-            <input type="checkbox" name="overwrite" value="1" /> Overwrite rows that are already
-            here (only for an empty database)
+            <input type="checkbox" name="overwrite" value="1" /> Overwrite rows
+            that are already here (only for an empty database)
           </label>
           <div className="btn-row">
             <button type="submit" name="dryRun" value="1">
@@ -412,10 +453,11 @@ export default async function SetupPage() {
 
       <h2>Lead tracker</h2>
       <p className="sub">
-        Pulls the Airtable lead tracker across. It fills gaps and never overwrites: a blank row
-        won&apos;t clear a booking Calendly made or an outcome a post-call report recorded, and a row
-        for somebody Calendly already created joins that lead instead of making a second copy of
-        them. Safe to re-run.
+        Pulls the Airtable lead tracker across. It fills gaps and never
+        overwrites: a blank row won&apos;t clear a booking Calendly made or an
+        outcome a post-call report recorded, and a row for somebody Calendly
+        already created joins that lead instead of making a second copy of them.
+        Safe to re-run.
       </p>
       <div className="card">
         <div className="card-row">
@@ -430,19 +472,21 @@ export default async function SetupPage() {
             </button>
           </ActionForm>
         </div>
-        <p className="sub" style={{ marginTop: '0.6rem' }}>
-          {leadCount.toLocaleString()} leads here now. Needs <code>AIRTABLE_PAT</code> set on this
-          service.
+        <p className="sub" style={{ marginTop: "0.6rem" }}>
+          {leadCount.toLocaleString()} leads here now. Needs{" "}
+          <code>AIRTABLE_PAT</code> set on this service.
         </p>
       </div>
 
       <h2>Start everyone from a blank slate</h2>
       <p className="sub">
-        Clears the active-conversation tick on every lead so the setters mark their own. The flag
-        the import set was guessed from whatever stage each Airtable row carried, and that guess is
-        months old — but it drives the counts, the Going quiet list and each setter&apos;s column, so
-        it is better empty than wrong. Nothing else is touched: the stage, the notes and the history
-        all stay, and a setter turns theirs back on from the lead itself.
+        Clears the active-conversation tick on every lead so the setters mark
+        their own. The flag the import set was guessed from whatever stage each
+        Airtable row carried, and that guess is months old — but it drives the
+        counts, the Going quiet list and each setter&apos;s column, so it is
+        better empty than wrong. Nothing else is touched: the stage, the notes
+        and the history all stay, and a setter turns theirs back on from the
+        lead itself.
       </p>
       <div className="card">
         <ActionForm action={clearActiveConvos}>
@@ -450,7 +494,12 @@ export default async function SetupPage() {
             <button type="submit" name="dryRun" value="1">
               Test it
             </button>
-            <button className="btn-danger" type="submit" name="dryRun" value="0">
+            <button
+              className="btn-danger"
+              type="submit"
+              name="dryRun"
+              value="0"
+            >
               Clear every active tick
             </button>
           </div>
@@ -459,9 +508,9 @@ export default async function SetupPage() {
 
       <h2>Setter EOD reports</h2>
       <p className="sub">
-        Pulls the Airtable Setter EOD form across. Anything already brought over is updated rather
-        than duplicated, and a report somebody filed in the dashboard for the same day is left
-        exactly as it is. Safe to re-run.
+        Pulls the Airtable Setter EOD form across. Anything already brought over
+        is updated rather than duplicated, and a report somebody filed in the
+        dashboard for the same day is left exactly as it is. Safe to re-run.
       </p>
       <div className="card">
         <div className="card-row">
@@ -480,9 +529,10 @@ export default async function SetupPage() {
 
       <h2>Post-call reports</h2>
       <p className="sub">
-        Every submission of the closers&apos; Airtable form, and which lead it ended up on. New ones
-        show up on the dashboard waiting to be linked; the dashboard also checks for them on its
-        own, so this button is only needed when you don&apos;t want to wait.
+        Every submission of the closers&apos; Airtable form, and which lead it
+        ended up on. New ones show up on the dashboard waiting to be linked; the
+        dashboard also checks for them on its own, so this button is only needed
+        when you don&apos;t want to wait.
       </p>
       <div className="card">
         <div className="card-row">
@@ -513,21 +563,29 @@ export default async function SetupPage() {
                 <tr key={report.id}>
                   <td>{formatDay(report.callDate)}</td>
                   <td>{report.leadName}</td>
-                  <td>{report.outcome ?? '—'}</td>
-                  <td>{report.cashCollected ? `$${report.cashCollected}` : '—'}</td>
+                  <td>{report.outcome ?? "—"}</td>
                   <td>
-                    {report.status === 'linked' && report.leadId ? (
+                    {report.cashCollected ? `$${report.cashCollected}` : "—"}
+                  </td>
+                  <td>
+                    {report.status === "linked" && report.leadId ? (
                       <a href={`/leads/${report.leadId}`}>@{leadHandle}</a>
                     ) : (
-                      <span className={`pill ${report.status === 'pending' ? 'warn' : ''}`}>
-                        {report.status === 'pending' ? 'waiting' : 'set aside'}
+                      <span
+                        className={`pill ${report.status === "pending" ? "warn" : ""}`}
+                      >
+                        {report.status === "pending" ? "waiting" : "set aside"}
                       </span>
                     )}
                   </td>
                   <td>
-                    {report.status === 'linked' && (
+                    {report.status === "linked" && (
                       <ActionForm action={unlinkReport}>
-                        <input type="hidden" name="reportId" value={report.id} />
+                        <input
+                          type="hidden"
+                          name="reportId"
+                          value={report.id}
+                        />
                         <button type="submit">Unlink</button>
                       </ActionForm>
                     )}
@@ -541,12 +599,14 @@ export default async function SetupPage() {
 
       <h2>Calendly deliveries</h2>
       <p className="sub">
-        Every booking Calendly has sent, and what happened to it. A registered webhook that never
-        delivers looks exactly like nobody booking — this is how you tell the difference.
+        Every booking Calendly has sent, and what happened to it. A registered
+        webhook that never delivers looks exactly like nobody booking — this is
+        how you tell the difference.
       </p>
       {activity.length === 0 ? (
         <p className="empty">
-          Nothing received yet. Expected until the first real booking comes through.
+          Nothing received yet. Expected until the first real booking comes
+          through.
         </p>
       ) : (
         <div className="table-wrap">
@@ -560,24 +620,37 @@ export default async function SetupPage() {
             </thead>
             <tbody>
               {activity.map((row) => {
-                const rejected = row.eventType === 'rejected';
-                const invitee = (
-                  row.payload as { payload?: { name?: string; email?: string }; reason?: string }
-                );
+                const rejected = row.eventType === "rejected";
+                const invitee = row.payload as {
+                  payload?: { name?: string; email?: string };
+                  reason?: string;
+                };
                 return (
                   <tr key={row.id}>
                     <td>{formatCallTime(row.createdAt)}</td>
-                    <td>{rejected ? 'rejected' : row.eventType.replace('invitee.', '')}</td>
+                    <td>
+                      {rejected
+                        ? "rejected"
+                        : row.eventType.replace("invitee.", "")}
+                    </td>
                     <td>
                       {rejected ? (
-                        <span className="pill danger">{invitee?.reason ?? 'bad signature'}</span>
+                        <span className="pill danger">
+                          {invitee?.reason ?? "bad signature"}
+                        </span>
                       ) : row.matchedLeadId ? (
-                        <a className="pill ok" href={`/leads/${row.matchedLeadId}`}>
+                        <a
+                          className="pill ok"
+                          href={`/leads/${row.matchedLeadId}`}
+                        >
                           matched · {row.matchStrategy}
                         </a>
                       ) : (
                         <span className="pill warn">
-                          no lead matched{invitee?.payload?.email ? ` · ${invitee.payload.email}` : ''}
+                          no lead matched
+                          {invitee?.payload?.email
+                            ? ` · ${invitee.payload.email}`
+                            : ""}
                         </span>
                       )}
                     </td>
@@ -592,9 +665,10 @@ export default async function SetupPage() {
       <h2>Try it without telling anyone</h2>
       <div className="card">
         <p className="sub" style={{ marginTop: 0 }}>
-          Creates a fake booking two hours from now so you can walk the whole flow — confirm it,
-          triage it, add notes. It&apos;s labelled TEST everywhere it appears and it never posts to
-          Discord, so nobody gets pinged about a call that isn&apos;t real.
+          Creates a fake booking two hours from now so you can walk the whole
+          flow — confirm it, triage it, add notes. It&apos;s labelled TEST
+          everywhere it appears and it never posts to Discord, so nobody gets
+          pinged about a call that isn&apos;t real.
         </p>
         <div className="card-row">
           <ActionForm action={createTestBooking}>
@@ -604,9 +678,7 @@ export default async function SetupPage() {
           </ActionForm>
           {testCount > 0 && (
             <ActionForm action={clearTestData}>
-              <button type="submit">
-                Delete test data ({testCount})
-              </button>
+              <button type="submit">Delete test data ({testCount})</button>
             </ActionForm>
           )}
         </div>

@@ -1,7 +1,7 @@
-import type { ReactNode } from 'react';
-import { currentUser } from '@/lib/session';
+import type { ReactNode } from "react";
+import { currentUser } from "@/lib/session";
 
-export const dynamic = 'force-dynamic';
+export const dynamic = "force-dynamic";
 
 /**
  * The manual, in the place the team already is.
@@ -57,25 +57,25 @@ function Watch({ children }: { children: ReactNode }) {
 }
 
 const SETTER_SECTIONS = [
-  ['getting-in', 'Getting in'],
-  ['mornings', 'Start here every morning'],
-  ['leads', 'Working your leads'],
-  ['booked', 'When a call gets booked'],
-  ['after', 'After the call'],
-  ['calls', 'Every call, and how they went'],
-  ['eod', 'End of day — every day'],
-  ['clean', 'Keeping it clean'],
-  ['short', 'The short version'],
+  ["getting-in", "Getting in"],
+  ["mornings", "Start here every morning"],
+  ["leads", "Working your leads"],
+  ["booked", "When a call gets booked"],
+  ["after", "After the call"],
+  ["calls", "Every call, and how they went"],
+  ["eod", "End of day — every day"],
+  ["clean", "Keeping it clean"],
+  ["short", "The short version"],
 ] as const;
 
 export default async function HelpPage() {
   const me = await currentUser();
-  const isAdmin = me?.role === 'admin';
+  const isAdmin = me?.role === "admin";
 
   return (
     <>
       <h1>Help</h1>
-      <p className="sub" style={{ maxWidth: '44rem' }}>
+      <p className="sub" style={{ maxWidth: "44rem" }}>
         How this dashboard works, and what you are expected to do in it. It
         replaces the Airtable lead tracker and the Airtable EOD form —
         everything lives here now.
@@ -87,7 +87,8 @@ export default async function HelpPage() {
         <li>
           <span className="help-rhythm-when">Morning</span>
           <span className="help-rhythm-what">
-            Work the Dashboard down the page. Confirm and triage today&apos;s calls first.
+            Work the Dashboard down the page. Confirm and triage today&apos;s
+            calls first.
           </span>
         </li>
         <li>
@@ -104,7 +105,9 @@ export default async function HelpPage() {
         </li>
         <li>
           <span className="help-rhythm-when">End of day</span>
-          <span className="help-rhythm-what">File your EOD. Every day you work.</span>
+          <span className="help-rhythm-what">
+            File your EOD. Every day you work.
+          </span>
         </li>
       </ol>
 
@@ -117,15 +120,19 @@ export default async function HelpPage() {
         {isAdmin && <a href="#running">Running it</a>}
       </nav>
 
-      <Section id="getting-in" title="Getting in" lead="One sign-in, on an allowlist. It works on your phone.">
+      <Section
+        id="getting-in"
+        title="Getting in"
+        lead="One sign-in, on an allowlist. It works on your phone."
+      >
         <p>
-          Sign in with <strong>the Google account on your work email</strong> — the same address
-          Francis set up for you. It is an allowlist, so any other Google account gets turned away
-          even if the password is right.
+          Sign in with <strong>the Google account on your work email</strong> —
+          the same address Francis set up for you. It is an allowlist, so any
+          other Google account gets turned away even if the password is right.
         </p>
         <Watch>
-          if it will not let you in, do not keep trying. Message Francis — it is a one-line fix on
-          his side.
+          if it will not let you in, do not keep trying. Message Francis — it is
+          a one-line fix on his side.
         </Watch>
         <p>It works on your phone. Same link, same sign-in.</p>
       </Section>
@@ -143,8 +150,9 @@ export default async function HelpPage() {
           The top row of numbers is clickable — each one opens the page it was
           counted from, over the same dates. Each has a line under it showing
           the last fortnight, and how you compare with the same point in the
-          period before — so a figure says whether it is good, not just what it is.
-          The line follows the <strong>Today / This week / This month</strong>
+          period before — so a figure says whether it is good, not just what it
+          is. The line follows the{" "}
+          <strong>Today / This week / This month</strong>
           buttons, and the grey note above the row says what it is measuring.
         </p>
         <p>
@@ -154,28 +162,31 @@ export default async function HelpPage() {
         </p>
         <ol>
           <li>
-            <strong>Calls today</strong> — anything happening today. Confirm and triage these
-            first.
+            <strong>Calls today</strong> — anything happening today. Confirm and
+            triage these first.
           </li>
           <li>
             <strong>Next 7 days</strong> — the week ahead, so nothing sneaks up.
           </li>
           <li>
-            <strong>Post-call reports to link</strong> — a report the dashboard could not place by
-            itself. Most place themselves, so anything here needs you.
+            <strong>Post-call reports to link</strong> — a report the dashboard
+            could not place by itself. Most place themselves, so anything here
+            needs you.
           </li>
           <li>
-            <strong>Waiting on an outcome</strong> — calls that have been and gone with no result
-            recorded. These hold up the whole funnel.
+            <strong>Waiting on an outcome</strong> — calls that have been and
+            gone with no result recorded. These hold up the whole funnel.
           </li>
         </ol>
         <p>
-          Below that: <strong>This week</strong> for your focus and tasks, and{' '}
-          <strong>Going quiet</strong> for live conversations nobody has touched in over a week.
+          Below that: <strong>This week</strong> for your focus and tasks, and{" "}
+          <strong>Going quiet</strong> for live conversations nobody has touched
+          in over a week.
         </p>
         <p>
-          The <strong>Today / This week / This month</strong> buttons at the top only change the
-          first row of numbers. The <strong>Right now</strong> row is always live.
+          The <strong>Today / This week / This month</strong> buttons at the top
+          only change the first row of numbers. The <strong>Right now</strong>{" "}
+          row is always live.
         </p>
       </Section>
 
@@ -186,49 +197,57 @@ export default async function HelpPage() {
         lead="A lead is only yours, and only on your list, once you have said so."
       >
         <p>
-          <strong>Leads</strong> is the hub. Your tile under{' '}
-          <strong>Active conversations</strong> opens everything you are working right now.
+          <strong>Leads</strong> is the hub. Your tile under{" "}
+          <strong>Active conversations</strong> opens everything you are working
+          right now.
         </p>
 
         <h3>Mark a conversation live</h3>
         <Do>
-          Open the lead and press <strong>This one is live</strong>. For a batch:{' '}
-          <strong>All leads</strong> → filter to yourself → tick them → <strong>Mark live</strong>.
+          Open the lead and press <strong>This one is live</strong>. For a
+          batch: <strong>All leads</strong> → filter to yourself → tick them →{" "}
+          <strong>Mark live</strong>.
         </Do>
         <p>A lead only shows in your list once it is marked live.</p>
         <p>
-          When a conversation is genuinely over, press <strong>Mark it finished</strong>. It comes
-          off your list without deleting anything.
+          When a conversation is genuinely over, press{" "}
+          <strong>Mark it finished</strong>. It comes off your list without
+          deleting anything.
         </p>
 
         <h3>Press Sent when you message someone</h3>
         <Do>
-          Press <strong>Sent</strong> on the row every time you actually reach out.
+          Press <strong>Sent</strong> on the row every time you actually reach
+          out.
         </Do>
         <p>
-          That is what the follow-up timers read, and nothing else moves them — so a conversation
-          you worked but did not log will nag you a week later.
+          That is what the follow-up timers read, and nothing else moves them —
+          so a conversation you worked but did not log will nag you a week
+          later.
         </p>
 
         <h3>Taking a lead</h3>
         <p>
-          Every lead that was not already claimed sits with <strong>Francis</strong>. That is
-          deliberate — it is a pile to pull from, not his work.
+          Every lead that was not already claimed sits with{" "}
+          <strong>Francis</strong>. That is deliberate — it is a pile to pull
+          from, not his work.
         </p>
         <p>
-          When one of those conversations comes back to life, take it: open the lead and set{' '}
-          <strong>Setter</strong> to yourself, or tick a batch on <strong>All leads</strong> and
-          press <strong>Take these</strong>.
+          When one of those conversations comes back to life, take it: open the
+          lead and set <strong>Setter</strong> to yourself, or tick a batch on{" "}
+          <strong>All leads</strong> and press <strong>Take these</strong>.
         </p>
         <p>
-          You cannot take a lead someone else is working. If you tick a batch that includes one of
-          theirs, it is left alone and the message tells you how many.
+          You cannot take a lead someone else is working. If you tick a batch
+          that includes one of theirs, it is left alone and the message tells
+          you how many.
         </p>
 
         <h3>Starting a new conversation</h3>
         <p>
-          <strong>+ New lead</strong> on the Leads page. Only the handle is required — it defaults
-          to you as the setter, and a lead you create starts live.
+          <strong>+ New lead</strong> on the Leads page. Only the handle is
+          required — it defaults to you as the setter, and a lead you create
+          starts live.
         </p>
       </Section>
 
@@ -239,38 +258,41 @@ export default async function HelpPage() {
         lead="Two things have to happen before it: confirm it, then triage it."
       >
         <p>
-          A booking posts to Discord on its own and appears on the Dashboard, with a link straight
-          to the lead. Two things have to happen before the call.
+          A booking posts to Discord on its own and appears on the Dashboard,
+          with a link straight to the lead. Two things have to happen before the
+          call.
         </p>
 
         <h3>1. Confirm it</h3>
         <Do>
-          Reach out, then press <strong>Confirmed in DMs</strong> or{' '}
+          Reach out, then press <strong>Confirmed in DMs</strong> or{" "}
           <strong>Confirmed by phone</strong> on the lead.
         </Do>
         <p>Unconfirmed calls are the ones that no-show.</p>
 
         <h3>2. Triage it</h3>
         <Do>
-          Write the brief, then press <strong>Mark triaged &amp; post to Discord</strong>.
+          Write the brief, then press{" "}
+          <strong>Mark triaged &amp; post to Discord</strong>.
         </Do>
         <p>
-          That post is how Nigel and Andrew get it — they do not open the dashboard. No triage
-          means someone walks into the call cold.
+          That post is how Nigel and Andrew get it — they do not open the
+          dashboard. No triage means someone walks into the call cold.
         </p>
         <p>
-          Answer the four questions on the form: what they actually want, what they have tried,
-          their budget situation, and anything the closer should not step on.
+          Answer the four questions on the form: what they actually want, what
+          they have tried, their budget situation, and anything the closer
+          should not step on.
         </p>
 
         <h3>If Discord says &ldquo;Nobody is on this one&rdquo;</h3>
         <p>
-          Someone booked who was never in the tracker. The lead gets created automatically, but it
-          has no owner and maybe no handle.
+          Someone booked who was never in the tracker. The lead gets created
+          automatically, but it has no owner and maybe no handle.
         </p>
         <Do>
-          Whoever sees it first: open it, set yourself as the setter, add the real Instagram
-          handle, then confirm and triage as normal.
+          Whoever sees it first: open it, set yourself as the setter, add the
+          real Instagram handle, then confirm and triage as normal.
         </Do>
         <Watch>nobody is watching that call until somebody claims it.</Watch>
       </Section>
@@ -282,21 +304,23 @@ export default async function HelpPage() {
         lead="You never type an outcome in. You only chase the ones that did not arrive."
       >
         <p>
-          Nigel and Andrew fill the post-call form in Airtable, the dashboard pulls it across on
-          its own, and most reports land on the right lead without anyone doing anything. Two
-          things are left for you, both on <strong>Dashboard</strong>, and whoever booked the call
-          owns both.
+          Nigel and Andrew fill the post-call form in Airtable, the dashboard
+          pulls it across on its own, and most reports land on the right lead
+          without anyone doing anything. Two things are left for you, both on{" "}
+          <strong>Dashboard</strong>, and whoever booked the call owns both.
         </p>
         <p>
-          <strong>Post-call reports to link.</strong> A report the dashboard could not place by
-          itself — usually two calls the same day with the same first name, or a name that does not
-          match how the lead is saved. Search the handle and pick the person. The outcome, the cash
-          and the booking all land on that lead.
+          <strong>Post-call reports to link.</strong> A report the dashboard
+          could not place by itself — usually two calls the same day with the
+          same first name, or a name that does not match how the lead is saved.
+          Search the handle and pick the person. The outcome, the cash and the
+          booking all land on that lead.
         </p>
         <p>
-          <strong>Waiting on an outcome.</strong> A call that has been and gone with no report
-          against it. That means the form has not been filled — chase the closer in Discord. Until
-          it is, the funnel and the cash are short.
+          <strong>Waiting on an outcome.</strong> A call that has been and gone
+          with no report against it. That means the form has not been filled —
+          chase the closer in Discord. Until it is, the funnel and the cash are
+          short.
         </p>
       </Section>
 
@@ -306,20 +330,23 @@ export default async function HelpPage() {
         lead="The whole record, filterable — and two rates worth reading carefully."
       >
         <p>
-          <strong>Calls</strong> is the record of every call that has ever been booked — who it was
-          with, who set it, who closed it, what happened and what came in. Filter by setter, closer
-          or dates.
+          <strong>Calls</strong> is the record of every call that has ever been
+          booked — who it was with, who set it, who closed it, what happened and
+          what came in. Filter by setter, closer or dates.
         </p>
         <p>
-          The figures above the list are worked out from whatever is in it, so they change with the
-          filters. Two of them are worth reading carefully. The <strong>show rate</strong> only
-          counts calls somebody has recorded a result for — a call still waiting on its write-up is
-          unknown, not a no-show, and the line under the figures says how many of those there are.
-          The <strong>close rate</strong> is of the people who turned up, not of everything booked,
-          so a week of cancellations does not get counted against you twice.
+          The figures above the list are worked out from whatever is in it, so
+          they change with the filters. Two of them are worth reading carefully.
+          The <strong>show rate</strong> only counts calls somebody has recorded
+          a result for — a call still waiting on its write-up is unknown, not a
+          no-show, and the line under the figures says how many of those there
+          are. The <strong>close rate</strong> is of the people who turned up,
+          not of everything booked, so a week of cancellations does not get
+          counted against you twice.
         </p>
         <p>
-          Calls are counted on the day they were due, not the day anybody typed them in.
+          Calls are counted on the day they were due, not the day anybody typed
+          them in.
         </p>
       </Section>
 
@@ -333,21 +360,23 @@ export default async function HelpPage() {
           <strong>EOD</strong> → fill it in → submit.
         </Do>
         <p>
-          The numbers are yours to count — the dashboard only sees leads you logged, so it cannot
-          fill them in for you.
+          The numbers are yours to count — the dashboard only sees leads you
+          logged, so it cannot fill them in for you.
         </p>
 
         <h3>If you miss a day, go back and do it</h3>
         <Do>Change the date on the form and file it late.</Do>
         <p>
-          The number matters more than the timing, and never leaving a gap is the whole point.
+          The number matters more than the timing, and never leaving a gap is
+          the whole point.
         </p>
 
         <h3>The streak</h3>
         <p>
-          Both of your streaks show at the top of the EOD page and on the Leads page — you can
-          each see the other&apos;s. It counts days in a row, and yesterday still counts as alive so
-          you are not punished first thing in the morning.
+          Both of your streaks show at the top of the EOD page and on the Leads
+          page — you can each see the other&apos;s. It counts days in a row, and
+          yesterday still counts as alive so you are not punished first thing in
+          the morning.
         </p>
       </Section>
 
@@ -358,19 +387,21 @@ export default async function HelpPage() {
       >
         <h3>Do not open a second row for someone</h3>
         <p>
-          Search first. If they are already in there, work the row that exists. Two rows for one
-          person splits the conversation in half and neither half tells the truth.
+          Search first. If they are already in there, work the row that exists.
+          Two rows for one person splits the conversation in half and neither
+          half tells the truth.
         </p>
         <Watch>
-          if you spot a pair, leave the merge to Francis. It is on the{' '}
-          <strong>Possible duplicates</strong> badge on the Leads page, and it cannot be undone.
+          if you spot a pair, leave the merge to Francis. It is on the{" "}
+          <strong>Possible duplicates</strong> badge on the Leads page, and it
+          cannot be undone.
         </Watch>
 
         <h3>A lead with no Instagram handle</h3>
         <p>
-          Some leads come from a booking where nobody typed a handle. The lead page says so at the
-          top. If you know who they are, put the real handle in — without it the call cannot be tied
-          back to a conversation.
+          Some leads come from a booking where nobody typed a handle. The lead
+          page says so at the top. If you know who they are, put the real handle
+          in — without it the call cannot be tied back to a conversation.
         </p>
 
         <h3>When something looks wrong</h3>
@@ -378,8 +409,8 @@ export default async function HelpPage() {
           <strong>Report a problem</strong>, top right on every page.
         </Do>
         <p>
-          It goes straight to Francis with the page you were on. Use it rather than sitting on
-          something odd.
+          It goes straight to Francis with the page you were on. Use it rather
+          than sitting on something odd.
         </p>
       </Section>
 
@@ -426,88 +457,113 @@ export default async function HelpPage() {
         >
           <h3>Backups</h3>
           <p>
-            Every seven days the dashboard posts a full copy of every table to the COO chat on
-            Discord, the first time anybody opens it after that. Nobody has to remember, and the copy
-            is not on the same disk as the database.
+            Every seven days the dashboard posts a full copy of every table to
+            the COO chat on Discord, the first time anybody opens it after that.
+            Nobody has to remember, and the copy is not on the same disk as the
+            database.
           </p>
           <p>
-            <strong>Admin → Setup &amp; imports → Backups</strong> shows when the last one went
-            and has <strong>Back up now</strong>. Take one before anything big — an import, a run
-            of merges.
+            <strong>Admin → Setup &amp; imports → Backups</strong> shows when
+            the last one went and has <strong>Back up now</strong>. Take one
+            before anything big — an import, a run of merges.
           </p>
           <p>
-            <strong>Put a backup back</strong> reads those files straight in. It fills gaps and
-            never overwrites, so an old file cannot undo newer work. Overwrite is a separate tick
-            for the case where the database is actually empty. Dry run first.
+            <strong>Put a backup back</strong> reads those files straight in. It
+            fills gaps and never overwrites, so an old file cannot undo newer
+            work. Overwrite is a separate tick for the case where the database
+            is actually empty. Dry run first.
           </p>
 
           <h3>Merging duplicates</h3>
           <p>
-            The <strong>Possible duplicates</strong> badge on the Leads page. Each pair sits side
-            by side and the page says what merging brings across. A merge cannot be undone, so back
-            up first.
+            The <strong>Possible duplicates</strong> badge on the Leads page.
+            Each pair sits side by side and the page says what merging brings
+            across. A merge cannot be undone, so back up first.
           </p>
 
           <h3>Seeing what a setter sees</h3>
           <p>
-            <strong>Admin → People → View as</strong>. It swaps the whole app to their identity —
-            their leads, their numbers, their menu — so a problem someone reports can be looked at
-            rather than reconstructed. Read-only while it is on, and the bar at the bottom of the
-            screen gets you back.
+            <strong>Admin → People → View as</strong>. It swaps the whole app to
+            their identity — their leads, their numbers, their menu — so a
+            problem someone reports can be looked at rather than reconstructed.
+            Read-only while it is on, and the bar at the bottom of the screen
+            gets you back.
           </p>
 
           <h3>Imports</h3>
           <p>
-            <strong>Admin → Setup</strong>. The Airtable tracker import fills gaps and never
-            overwrites what Calendly or a post-call report has already established. The EOD import
-            pulls the old Airtable form across. Both have a dry run.
+            <strong>Admin → Setup</strong>. The Airtable tracker import fills
+            gaps and never overwrites what Calendly or a post-call report has
+            already established. The EOD import pulls the old Airtable form
+            across. Both have a dry run.
           </p>
 
           <h3>Moving a pile of leads by date</h3>
           <p>
-            <strong>Admin → Setup &amp; imports → Move a pile of leads by date</strong>. For the
-            case where a stretch of the old tracker is under the wrong name — most often nobody
-            filled the Setter column at the time, so the whole run came across as Unassigned.
+            <strong>
+              Admin → Setup &amp; imports → Move a pile of leads by date
+            </strong>
+            . For the case where a stretch of the old tracker is under the wrong
+            name — most often nobody filled the Setter column at the time, so
+            the whole run came across as Unassigned.
           </p>
           <p>
-            Pick the pile and two dates. Everything created before the first date stays where it
-            is, everything from the first date to the second moves to the person you name, and
-            everything after the second date goes back to unassigned. Both dates count as inside
-            the middle.
+            Pick the pile and two dates. Everything created before the first
+            date stays where it is, everything from the first date to the second
+            moves to the person you name, and everything after the second date
+            goes back to unassigned. Both dates count as inside the middle.
           </p>
           <p>
-            <strong>Whose leads</strong> shows how many leads and how much cash each pile holds, so
-            the right one is visible before you pick. Choose an empty pile and it says where the
-            leads actually are rather than reporting three zeroes, which looks like a date problem
-            and is not one.
+            <strong>Whose leads</strong> shows how many leads and how much cash
+            each pile holds, so the right one is visible before you pick. Choose
+            an empty pile and it says where the leads actually are rather than
+            reporting three zeroes, which looks like a date problem and is not
+            one.
           </p>
           <p>
-            <strong>Dry run</strong> first. It reports how many leads and how much cash sit in
-            each of the three bands and writes nothing. Cash follows the lead, so this moves money
-            between people&rsquo;s figures — read those numbers before running it for real. A lead
-            with no created date is counted and never moved, because a date nobody recorded is not
-            one to guess at.
+            The result names the pile it is about, and the boxes keep what you
+            put in them, so
+            <strong> Move them</strong> can follow a dry run without typing
+            anything twice.
           </p>
           <p>
-            Every lead it moves gets a line in its own history saying when and why it changed
-            hands, so a figure that looks wrong later can be traced.
+            <strong>To check whether a split already ran</strong>, set it up
+            again the same way and press Dry run. It writes nothing, and a
+            middle band of nothing to move means it is already done — those
+            leads belong to the other person now, so they are no longer in the
+            pile being split.
+          </p>
+          <p>
+            <strong>Dry run</strong> first. It reports how many leads and how
+            much cash sit in each of the three bands and writes nothing. Cash
+            follows the lead, so this moves money between people&rsquo;s figures
+            — read those numbers before running it for real. A lead with no
+            created date is counted and never moved, because a date nobody
+            recorded is not one to guess at.
+          </p>
+          <p>
+            Every lead it moves gets a line in its own history saying when and
+            why it changed hands, so a figure that looks wrong later can be
+            traced.
           </p>
 
           <h3>Monthly targets</h3>
           <p>
-            <strong>Admin → Setup &amp; imports → Monthly targets</strong>. Set one for calls
-            booked or cash collected and it draws a bar on the Dashboard with a mark for where
-            today sits in the month. The mark counts working days, so it does not drift every
-            weekend. Leave a box empty and the bar disappears — a target nobody set is not a
-            target being missed.
+            <strong>Admin → Setup &amp; imports → Monthly targets</strong>. Set
+            one for calls booked or cash collected and it draws a bar on the
+            Dashboard with a mark for where today sits in the month. The mark
+            counts working days, so it does not drift every weekend. Leave a box
+            empty and the bar disappears — a target nobody set is not a target
+            being missed.
           </p>
 
           <h3>Boosted reels</h3>
           <p>
-            <strong>Ads</strong> holds one tile per boosted reel with what it cost and what came
-            back. Everything is typed in — spend and views come from Ads Manager and Instagram, and
-            the calls and closes only exist here. Cost per lead and the rest are worked out, so
-            there is nothing to keep in step by hand.
+            <strong>Ads</strong> holds one tile per boosted reel with what it
+            cost and what came back. Everything is typed in — spend and views
+            come from Ads Manager and Instagram, and the calls and closes only
+            exist here. Cost per lead and the rest are worked out, so there is
+            nothing to keep in step by hand.
           </p>
         </Section>
       )}
