@@ -33,19 +33,28 @@
   }
 }
 
-* { box-sizing: border-box; }
+* {
+  box-sizing: border-box;
+}
 
 body {
   margin: 0;
   background: var(--bg);
   color: var(--fg);
-  font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  font-family:
+    ui-sans-serif,
+    system-ui,
+    -apple-system,
+    "Segoe UI",
+    sans-serif;
   font-size: 15px;
   line-height: 1.5;
   -webkit-text-size-adjust: 100%;
 }
 
-a { color: var(--accent); }
+a {
+  color: var(--accent);
+}
 
 /* --- shell --- */
 .topbar {
@@ -93,12 +102,22 @@ a { color: var(--accent); }
 @media (min-width: 66rem) {
   /* Measured: brand + six links + the right-hand controls come to about
      840px of the container's 1152px. */
-  .topbar-inner { flex-wrap: nowrap; }
-  .topbar-inner .nav { order: 1; flex-basis: auto; margin-right: auto; }
-  .topbar-inner .topbar-right { order: 2; }
+  .topbar-inner {
+    flex-wrap: nowrap;
+  }
+  .topbar-inner .nav {
+    order: 1;
+    flex-basis: auto;
+    margin-right: auto;
+  }
+  .topbar-inner .topbar-right {
+    order: 2;
+  }
 }
 @media (max-width: 34rem) {
-  .topbar-inner .nav a { padding: 0.3rem 0.75rem; }
+  .topbar-inner .nav a {
+    padding: 0.3rem 0.75rem;
+  }
 }
 .brand {
   display: flex;
@@ -119,7 +138,9 @@ a { color: var(--accent); }
   padding: 0.2rem 0.45rem;
 }
 @media (max-width: 34rem) {
-  .brand-logo { height: 1.8rem; }
+  .brand-logo {
+    height: 1.8rem;
+  }
 }
 /* "Setter Dashboard" beside a logo that says THE CALLED is 132px of repetition,
    and the nav was nine pixels short of fitting on the same line as the brand.
@@ -143,7 +164,9 @@ a { color: var(--accent); }
   scrollbar-width: none;
   -ms-overflow-style: none;
 }
-.nav::-webkit-scrollbar { display: none; }
+.nav::-webkit-scrollbar {
+  display: none;
+}
 .nav a {
   padding: 0.35rem 0.6rem;
   border-radius: 99px;
@@ -152,21 +175,52 @@ a { color: var(--accent); }
   font-size: 0.875rem;
   white-space: nowrap;
 }
-.nav a:hover { background: var(--bg); }
-.nav a[aria-current="page"] { background: var(--accent); color: var(--accent-fg); }
-.nav-short { display: none; }
-@media (max-width: 44rem) {
-  .nav-long { display: none; }
-  .nav-short { display: inline; }
+.nav a:hover {
+  background: var(--bg);
 }
-.whoami { font-size: 0.8rem; color: var(--muted); white-space: nowrap; }
+.nav a[aria-current="page"] {
+  background: var(--accent);
+  color: var(--accent-fg);
+}
+.nav-short {
+  display: none;
+}
+@media (max-width: 44rem) {
+  .nav-long {
+    display: none;
+  }
+  .nav-short {
+    display: inline;
+  }
+}
+.whoami {
+  font-size: 0.8rem;
+  color: var(--muted);
+  white-space: nowrap;
+}
 
-main { max-width: 72rem; margin: 0 auto; padding: 1.25rem 1rem 4rem; }
+main {
+  max-width: 72rem;
+  margin: 0 auto;
+  padding: 1.25rem 1rem 4rem;
+}
 
-h1 { font-size: 1.35rem; margin: 0 0 0.25rem; }
-h2 { font-size: 1.02rem; margin: 1.75rem 0 0.6rem; }
-h2:first-of-type { margin-top: 1rem; }
-.sub { color: var(--muted); font-size: 0.875rem; margin: 0 0 0.5rem; }
+h1 {
+  font-size: 1.35rem;
+  margin: 0 0 0.25rem;
+}
+h2 {
+  font-size: 1.02rem;
+  margin: 1.75rem 0 0.6rem;
+}
+h2:first-of-type {
+  margin-top: 1rem;
+}
+.sub {
+  color: var(--muted);
+  font-size: 0.875rem;
+  margin: 0 0 0.5rem;
+}
 
 /* --- cards --- */
 .card {
@@ -176,18 +230,59 @@ h2:first-of-type { margin-top: 1rem; }
   padding: 0.85rem;
   margin-bottom: 0.6rem;
 }
-.card-head { display: flex; justify-content: space-between; gap: 0.75rem; align-items: baseline; flex-wrap: wrap; }
-.card-title { font-weight: 600; text-decoration: none; color: var(--fg); }
-.card-title:hover { text-decoration: underline; }
-.card-meta { color: var(--muted); font-size: 0.82rem; }
-.card-row { display: flex; gap: 0.4rem; flex-wrap: wrap; margin-top: 0.55rem; align-items: center; }
+.card-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.75rem;
+  align-items: baseline;
+  flex-wrap: wrap;
+}
+.card-title {
+  font-weight: 600;
+  text-decoration: none;
+  color: var(--fg);
+}
+.card-title:hover {
+  text-decoration: underline;
+}
+.card-meta {
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+.card-row {
+  display: flex;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+  margin-top: 0.55rem;
+  align-items: center;
+}
 
 /* --- stats --- */
-.stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(8.5rem, 1fr)); gap: 0.6rem; margin: 0.9rem 0 0.25rem; }
-.stat { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 0.7rem 0.8rem; }
-.stat-n { font-size: 1.5rem; font-weight: 650; font-variant-numeric: tabular-nums; line-height: 1.15; }
-.stat-l { color: var(--muted); font-size: 0.78rem; }
-.stat.alert .stat-n { color: var(--warn); }
+.stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(8.5rem, 1fr));
+  gap: 0.6rem;
+  margin: 0.9rem 0 0.25rem;
+}
+.stat {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 0.7rem 0.8rem;
+}
+.stat-n {
+  font-size: 1.5rem;
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.15;
+}
+.stat-l {
+  color: var(--muted);
+  font-size: 0.78rem;
+}
+.stat.alert .stat-n {
+  color: var(--warn);
+}
 
 /* --- pills --- */
 .pill {
@@ -200,13 +295,32 @@ h2:first-of-type { margin-top: 1rem; }
   color: var(--muted);
   white-space: nowrap;
 }
-.pill.ok { background: var(--ok-bg); color: var(--ok); border-color: transparent; }
-.pill.warn { background: var(--warn-bg); color: var(--warn); border-color: transparent; }
-.pill.danger { background: var(--danger-bg); color: var(--danger); border-color: transparent; }
+.pill.ok {
+  background: var(--ok-bg);
+  color: var(--ok);
+  border-color: transparent;
+}
+.pill.warn {
+  background: var(--warn-bg);
+  color: var(--warn);
+  border-color: transparent;
+}
+.pill.danger {
+  background: var(--danger-bg);
+  color: var(--danger);
+  border-color: transparent;
+}
 
 /* --- forms --- */
-label { display: block; font-size: 0.8rem; color: var(--muted); margin-bottom: 0.2rem; }
-input, select, textarea {
+label {
+  display: block;
+  font-size: 0.8rem;
+  color: var(--muted);
+  margin-bottom: 0.2rem;
+}
+input,
+select,
+textarea {
   width: 100%;
   padding: 0.5rem 0.6rem;
   border: 1px solid var(--border);
@@ -221,7 +335,8 @@ input, select, textarea {
 /* The rule above is written for text fields. Applied to a checkbox it
    stretches the box across the whole row and squeezes its label down to one
    character per line, which is exactly what it did. */
-input[type="checkbox"], input[type="radio"] {
+input[type="checkbox"],
+input[type="radio"] {
   width: 1.05rem;
   height: 1.05rem;
   min-width: 0;
@@ -230,12 +345,25 @@ input[type="checkbox"], input[type="radio"] {
   accent-color: var(--accent);
   cursor: pointer;
 }
-input[type="checkbox"] + label, label:has(> input[type="checkbox"]) { cursor: pointer; }
-textarea { min-height: 6rem; resize: vertical; }
-.field { margin-bottom: 0.7rem; }
-.grid2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr)); gap: 0.7rem; }
+input[type="checkbox"] + label,
+label:has(> input[type="checkbox"]) {
+  cursor: pointer;
+}
+textarea {
+  min-height: 6rem;
+  resize: vertical;
+}
+.field {
+  margin-bottom: 0.7rem;
+}
+.grid2 {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr));
+  gap: 0.7rem;
+}
 
-button, .btn {
+button,
+.btn {
   display: inline-flex;
   align-items: center;
   gap: 0.35rem;
@@ -252,10 +380,22 @@ button, .btn {
   /* Comfortable to hit on a phone, which is where setters work IG DMs. */
   min-height: 2.35rem;
 }
-button:hover, .btn:hover { border-color: var(--accent); }
-button:disabled { opacity: 0.55; cursor: progress; }
-.btn-primary { background: var(--accent); color: var(--accent-fg); border-color: transparent; }
-.btn-primary:hover { filter: brightness(1.08); }
+button:hover,
+.btn:hover {
+  border-color: var(--accent);
+}
+button:disabled {
+  opacity: 0.55;
+  cursor: progress;
+}
+.btn-primary {
+  background: var(--accent);
+  color: var(--accent-fg);
+  border-color: transparent;
+}
+.btn-primary:hover {
+  filter: brightness(1.08);
+}
 
 .msg {
   font-size: 0.82rem;
@@ -265,24 +405,78 @@ button:disabled { opacity: 0.55; cursor: progress; }
   white-space: pre-line;
   line-height: 1.5;
 }
-.msg.ok { color: var(--ok); }
-.msg.err { color: var(--danger); }
+.msg.ok {
+  color: var(--ok);
+}
+.msg.err {
+  color: var(--danger);
+}
 
-.empty { color: var(--muted); font-size: 0.875rem; padding: 1.1rem; text-align: center; background: var(--surface); border: 1px dashed var(--border); border-radius: var(--radius); }
+.empty {
+  color: var(--muted);
+  font-size: 0.875rem;
+  padding: 1.1rem;
+  text-align: center;
+  background: var(--surface);
+  border: 1px dashed var(--border);
+  border-radius: var(--radius);
+}
 
-.note { border-left: 2px solid var(--border); padding: 0 0 0 0.7rem; margin-bottom: 0.9rem; }
-.note-meta { color: var(--muted); font-size: 0.76rem; margin-bottom: 0.15rem; }
-.note-body { white-space: pre-wrap; font-size: 0.9rem; }
+.note {
+  border-left: 2px solid var(--border);
+  padding: 0 0 0 0.7rem;
+  margin-bottom: 0.9rem;
+}
+.note-meta {
+  color: var(--muted);
+  font-size: 0.76rem;
+  margin-bottom: 0.15rem;
+}
+.note-body {
+  white-space: pre-wrap;
+  font-size: 0.9rem;
+}
 
-.toolbar { display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: flex-end; margin-bottom: 0.9rem; }
-.toolbar .field { margin-bottom: 0; flex: 1 1 8rem; }
+.toolbar {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  margin-bottom: 0.9rem;
+}
+.toolbar .field {
+  margin-bottom: 0;
+  flex: 1 1 8rem;
+}
 
-table { width: 100%; border-collapse: collapse; font-size: 0.875rem; }
-th, td { text-align: left; padding: 0.5rem 0.6rem; border-bottom: 1px solid var(--border); }
-th { color: var(--muted); font-weight: 550; font-size: 0.78rem; }
-.table-wrap { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); overflow-x: auto; }
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.875rem;
+}
+th,
+td {
+  text-align: left;
+  padding: 0.5rem 0.6rem;
+  border-bottom: 1px solid var(--border);
+}
+th {
+  color: var(--muted);
+  font-weight: 550;
+  font-size: 0.78rem;
+}
+.table-wrap {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow-x: auto;
+}
 
-.signin { max-width: 22rem; margin: 15vh auto; text-align: center; }
+.signin {
+  max-width: 22rem;
+  margin: 15vh auto;
+  text-align: center;
+}
 
 /* --- call tiles --- */
 .tile-grid {
@@ -304,24 +498,77 @@ th { color: var(--muted); font-weight: 550; font-size: 0.78rem; }
   flex-direction: column;
   gap: 0.3rem;
 }
-.tile.tone-amber  { border-top-color: #eda100; }
-.tile.tone-orange { border-top-color: #eb6834; }
-.tile.tone-blue   { border-top-color: #2a78d6; }
-.tile.tone-grey   { border-top-color: var(--border); }
-.tile.tone-violet { border-top-color: #7a5af0; }
+.tile.tone-amber {
+  border-top-color: #eda100;
+}
+.tile.tone-orange {
+  border-top-color: #eb6834;
+}
+.tile.tone-blue {
+  border-top-color: #2a78d6;
+}
+.tile.tone-grey {
+  border-top-color: var(--border);
+}
+.tile.tone-violet {
+  border-top-color: #7a5af0;
+}
 /* An unowned booking is the one thing here needing a decision before anything
    else can happen to it. */
-.tile-unclaimed { border-color: var(--warn); }
+.tile-unclaimed {
+  border-color: var(--warn);
+}
 
-.tile-top { display: flex; justify-content: space-between; align-items: center; gap: 0.5rem; }
-.tile-when { color: var(--muted); font-size: 0.76rem; font-weight: 600; letter-spacing: 0.02em; }
-.tile-title { font-size: 1rem; font-weight: 650; text-decoration: none; color: var(--fg); line-height: 1.25; }
-.tile-title:hover { text-decoration: underline; }
-.tile-sub { color: var(--muted); font-size: 0.79rem; line-height: 1.35; }
-.tile-offer { color: var(--muted); font-size: 0.76rem; }
-.tile-state { display: flex; gap: 0.3rem; flex-wrap: wrap; margin-top: 0.15rem; }
-.tile-actions { display: flex; gap: 0.3rem; flex-wrap: wrap; margin-top: auto; padding-top: 0.55rem; }
-.tile-actions button, .tile-actions .btn { font-size: 0.78rem; padding: 0.28rem 0.6rem; min-height: 1.95rem; }
+.tile-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.5rem;
+}
+.tile-when {
+  color: var(--muted);
+  font-size: 0.76rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+.tile-title {
+  font-size: 1rem;
+  font-weight: 650;
+  text-decoration: none;
+  color: var(--fg);
+  line-height: 1.25;
+}
+.tile-title:hover {
+  text-decoration: underline;
+}
+.tile-sub {
+  color: var(--muted);
+  font-size: 0.79rem;
+  line-height: 1.35;
+}
+.tile-offer {
+  color: var(--muted);
+  font-size: 0.76rem;
+}
+.tile-state {
+  display: flex;
+  gap: 0.3rem;
+  flex-wrap: wrap;
+  margin-top: 0.15rem;
+}
+.tile-actions {
+  display: flex;
+  gap: 0.3rem;
+  flex-wrap: wrap;
+  margin-top: auto;
+  padding-top: 0.55rem;
+}
+.tile-actions button,
+.tile-actions .btn {
+  font-size: 0.78rem;
+  padding: 0.28rem 0.6rem;
+  min-height: 1.95rem;
+}
 
 .tile-assign {
   display: grid;
@@ -331,10 +578,23 @@ th { color: var(--muted); font-weight: 550; font-size: 0.78rem; }
   padding-top: 0.55rem;
   border-top: 1px solid var(--border);
 }
-.tile-assign label { font-size: 0.68rem; margin-bottom: 0.12rem; text-transform: uppercase; letter-spacing: 0.04em; }
-.tile-assign select { padding: 0.28rem 0.4rem; font-size: 0.8rem; }
-.tile-assign button { width: 100%; justify-content: center; }
-.tile-assign > form:only-child { grid-column: 1 / -1; }
+.tile-assign label {
+  font-size: 0.68rem;
+  margin-bottom: 0.12rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.tile-assign select {
+  padding: 0.28rem 0.4rem;
+  font-size: 0.8rem;
+}
+.tile-assign button {
+  width: 100%;
+  justify-content: center;
+}
+.tile-assign > form:only-child {
+  grid-column: 1 / -1;
+}
 
 /* --- the week board: a column per person, team in the middle --- */
 .week-board {
@@ -353,7 +613,9 @@ th { color: var(--muted); font-weight: 550; font-size: 0.78rem; }
   }
   /* min-width:0 stops a long task title from forcing the column wider than its
      share and pushing the others off. */
-  .week-board > .panel { min-width: 0; }
+  .week-board > .panel {
+    min-width: 0;
+  }
 }
 
 .panel-grid {
@@ -367,22 +629,69 @@ th { color: var(--muted); font-weight: 550; font-size: 0.78rem; }
   border-radius: var(--radius);
   padding: 0.85rem;
 }
-.panel-head { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 0.5rem; }
-.panel-head h3 { margin: 0; font-size: 0.92rem; }
-.panel-empty { color: var(--muted); font-size: 0.85rem; margin: 0.3rem 0 0.7rem; }
-.panel-divider { border-top: 1px solid var(--border); margin: 0.75rem 0 0.5rem; }
+.panel-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: 0.5rem;
+}
+.panel-head h3 {
+  margin: 0;
+  font-size: 0.92rem;
+}
+.panel-empty {
+  color: var(--muted);
+  font-size: 0.85rem;
+  margin: 0.3rem 0 0.7rem;
+}
+.panel-divider {
+  border-top: 1px solid var(--border);
+  margin: 0.75rem 0 0.5rem;
+}
 /* Tall enough that a two-line focus isn't clipped in a narrow column. */
-.panel textarea { min-height: 6.2rem; }
+.panel textarea {
+  min-height: 6.2rem;
+}
 
-.todos { list-style: none; margin: 0 0 0.7rem; padding: 0; }
-.todo { display: flex; align-items: flex-start; gap: 0.4rem; padding: 0.3rem 0; border-bottom: 1px solid var(--border); }
-.todo:last-child { border-bottom: 0; }
-.todo-done .todo-title { text-decoration: line-through; color: var(--muted); }
-.todo-body { flex: 1; min-width: 0; }
-.todo-title { font-size: 0.88rem; overflow-wrap: anywhere; }
-.todo-meta { display: flex; gap: 0.25rem; flex-wrap: wrap; margin-top: 0.15rem; }
-.todo-meta .pill { font-size: 0.68rem; text-decoration: none; }
-.todo-check, .todo-x {
+.todos {
+  list-style: none;
+  margin: 0 0 0.7rem;
+  padding: 0;
+}
+.todo {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.4rem;
+  padding: 0.3rem 0;
+  border-bottom: 1px solid var(--border);
+}
+.todo:last-child {
+  border-bottom: 0;
+}
+.todo-done .todo-title {
+  text-decoration: line-through;
+  color: var(--muted);
+}
+.todo-body {
+  flex: 1;
+  min-width: 0;
+}
+.todo-title {
+  font-size: 0.88rem;
+  overflow-wrap: anywhere;
+}
+.todo-meta {
+  display: flex;
+  gap: 0.25rem;
+  flex-wrap: wrap;
+  margin-top: 0.15rem;
+}
+.todo-meta .pill {
+  font-size: 0.68rem;
+  text-decoration: none;
+}
+.todo-check,
+.todo-x {
   border: 0;
   background: none;
   padding: 0 0.15rem;
@@ -391,16 +700,38 @@ th { color: var(--muted); font-weight: 550; font-size: 0.78rem; }
   line-height: 1.3;
   color: var(--muted);
 }
-.todo-check:hover, .todo-x:hover { color: var(--fg); border: 0; }
-.todo-x { font-size: 1.1rem; }
+.todo-check:hover,
+.todo-x:hover {
+  color: var(--fg);
+  border: 0;
+}
+.todo-x {
+  font-size: 1.1rem;
+}
 
-.todo-add { display: flex; gap: 0.35rem; flex-wrap: wrap; }
-.todo-add input[name="title"] { flex: 2 1 9rem; }
-.todo-add input[type="date"] { flex: 1 1 8rem; }
+.todo-add {
+  display: flex;
+  gap: 0.35rem;
+  flex-wrap: wrap;
+}
+.todo-add input[name="title"] {
+  flex: 2 1 9rem;
+}
+.todo-add input[type="date"] {
+  flex: 1 1 8rem;
+}
 
-.focus-others { margin-top: 0.8rem; padding-top: 0.6rem; border-top: 1px solid var(--border); }
-.focus-other { margin-bottom: 0.6rem; }
-.focus-other:last-child { margin-bottom: 0; }
+.focus-others {
+  margin-top: 0.8rem;
+  padding-top: 0.6rem;
+  border-top: 1px solid var(--border);
+}
+.focus-other {
+  margin-bottom: 0.6rem;
+}
+.focus-other:last-child {
+  margin-bottom: 0;
+}
 
 /* --- active conversation columns --- */
 .convo-board {
@@ -409,10 +740,16 @@ th { color: var(--muted); font-weight: 550; font-size: 0.78rem; }
   gap: 0.7rem;
 }
 @media (min-width: 52rem) {
-  .convo-board { grid-template-columns: repeat(auto-fit, minmax(20rem, 1fr)); }
+  .convo-board {
+    grid-template-columns: repeat(auto-fit, minmax(20rem, 1fr));
+  }
 }
 
-.convos { list-style: none; margin: 0 0 0.6rem; padding: 0; }
+.convos {
+  list-style: none;
+  margin: 0 0 0.6rem;
+  padding: 0;
+}
 .convo {
   display: flex;
   align-items: flex-start;
@@ -420,8 +757,13 @@ th { color: var(--muted); font-weight: 550; font-size: 0.78rem; }
   padding: 0.4rem 0;
   border-bottom: 1px solid var(--border);
 }
-.convo:last-child { border-bottom: 0; }
-.convo-main { flex: 1; min-width: 0; }
+.convo:last-child {
+  border-bottom: 0;
+}
+.convo-main {
+  flex: 1;
+  min-width: 0;
+}
 .convo-handle {
   display: block;
   font-size: 0.88rem;
@@ -430,9 +772,18 @@ th { color: var(--muted); font-weight: 550; font-size: 0.78rem; }
   text-decoration: none;
   overflow-wrap: anywhere;
 }
-.convo-handle:hover { text-decoration: underline; }
-.convo-meta { display: flex; gap: 0.25rem; flex-wrap: wrap; margin-top: 0.15rem; }
-.convo-meta .pill { font-size: 0.68rem; }
+.convo-handle:hover {
+  text-decoration: underline;
+}
+.convo-meta {
+  display: flex;
+  gap: 0.25rem;
+  flex-wrap: wrap;
+  margin-top: 0.15rem;
+}
+.convo-meta .pill {
+  font-size: 0.68rem;
+}
 
 /* --- filter dialog --- */
 .filter-dialog {
@@ -444,8 +795,12 @@ th { color: var(--muted); font-weight: 550; font-size: 0.78rem; }
   width: min(34rem, calc(100vw - 2rem));
   max-height: calc(100vh - 4rem);
 }
-.filter-dialog::backdrop { background: rgb(0 0 0 / 0.45); }
-.filter-dialog-inner { padding: 1rem; }
+.filter-dialog::backdrop {
+  background: rgb(0 0 0 / 0.45);
+}
+.filter-dialog-inner {
+  padding: 1rem;
+}
 .filter-dialog .panel-head button {
   border: 0;
   background: none;
@@ -472,7 +827,9 @@ th { color: var(--muted); font-weight: 550; font-size: 0.78rem; }
   color: var(--fg);
   display: block;
 }
-.mini:hover { border-color: var(--accent); }
+.mini:hover {
+  border-color: var(--accent);
+}
 .mini-handle {
   font-size: 0.84rem;
   font-weight: 550;
@@ -481,11 +838,20 @@ th { color: var(--muted); font-weight: 550; font-size: 0.78rem; }
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.mini-meta { display: flex; gap: 0.25rem; flex-wrap: wrap; margin-top: 0.3rem; }
-.mini-meta .pill { font-size: 0.66rem; }
+.mini-meta {
+  display: flex;
+  gap: 0.25rem;
+  flex-wrap: wrap;
+  margin-top: 0.3rem;
+}
+.mini-meta .pill {
+  font-size: 0.66rem;
+}
 
 /* --- money tiles --- */
-.stat-money .stat-n { font-size: 1.35rem; }
+.stat-money .stat-n {
+  font-size: 1.35rem;
+}
 
 /* --- charts ---
    Categorical slots 1-3 from the validated palette. Adjacent-pair CVD ΔE 9.2
@@ -515,23 +881,65 @@ th { color: var(--muted); font-weight: 550; font-size: 0.78rem; }
   }
 }
 
-.chart-svg { width: 100%; height: auto; display: block; }
-.chart-grid { stroke: var(--border); stroke-width: 1; }
-.chart-tick { fill: var(--muted); font-size: 11px; }
-.chart-crosshair { stroke: var(--muted); stroke-width: 1; stroke-dasharray: 3 3; }
-.chart-line { fill: none; stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
+.chart-svg {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+.chart-grid {
+  stroke: var(--border);
+  stroke-width: 1;
+}
+.chart-tick {
+  fill: var(--muted);
+  font-size: 11px;
+}
+.chart-crosshair {
+  stroke: var(--muted);
+  stroke-width: 1;
+  stroke-dasharray: 3 3;
+}
+.chart-line {
+  fill: none;
+  stroke-width: 2;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+}
 /* A surface-coloured ring keeps overlapping markers readable. */
-.chart-dot { stroke: var(--surface); stroke-width: 2; }
-.chart-line.series-1 { stroke: var(--series-1); }
-.chart-line.series-2 { stroke: var(--series-2); }
-.chart-line.series-3 { stroke: var(--series-3); }
-.chart-line.series-5 { stroke: var(--series-5); }
-.chart-line.series-4 { stroke: var(--series-4); }
-.chart-dot.series-1 { fill: var(--series-1); }
-.chart-dot.series-2 { fill: var(--series-2); }
-.chart-dot.series-3 { fill: var(--series-3); }
-.chart-dot.series-5 { fill: var(--series-5); }
-.chart-dot.series-4 { fill: var(--series-4); }
+.chart-dot {
+  stroke: var(--surface);
+  stroke-width: 2;
+}
+.chart-line.series-1 {
+  stroke: var(--series-1);
+}
+.chart-line.series-2 {
+  stroke: var(--series-2);
+}
+.chart-line.series-3 {
+  stroke: var(--series-3);
+}
+.chart-line.series-5 {
+  stroke: var(--series-5);
+}
+.chart-line.series-4 {
+  stroke: var(--series-4);
+}
+.chart-dot.series-1 {
+  fill: var(--series-1);
+}
+.chart-dot.series-2 {
+  fill: var(--series-2);
+}
+.chart-dot.series-3 {
+  fill: var(--series-3);
+}
+.chart-dot.series-5 {
+  fill: var(--series-5);
+}
+.chart-dot.series-4 {
+  fill: var(--series-4);
+}
 
 .chart-legend {
   display: flex;
@@ -542,23 +950,68 @@ th { color: var(--muted); font-weight: 550; font-size: 0.78rem; }
   font-size: 0.8rem;
   color: var(--muted);
 }
-.chart-legend-item { display: inline-flex; align-items: center; gap: 0.35rem; }
+.chart-legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
 /* Values wear text tokens, never the series colour. */
-.chart-legend-item strong { color: var(--fg); font-variant-numeric: tabular-nums; }
-.chart-swatch { width: 10px; height: 10px; border-radius: 2px; display: inline-block; }
-.chart-swatch.series-1 { background: var(--series-1); }
-.chart-swatch.series-2 { background: var(--series-2); }
-.chart-swatch.series-3 { background: var(--series-3); }
-.chart-swatch.series-5 { background: var(--series-5); }
-.chart-swatch.series-4 { background: var(--series-4); }
-.chart-legend-when { margin-left: auto; }
-.chart-table-toggle { margin-top: 0.6rem; font-size: 0.8rem; }
+.chart-legend-item strong {
+  color: var(--fg);
+  font-variant-numeric: tabular-nums;
+}
+.chart-swatch {
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+  display: inline-block;
+}
+.chart-swatch.series-1 {
+  background: var(--series-1);
+}
+.chart-swatch.series-2 {
+  background: var(--series-2);
+}
+.chart-swatch.series-3 {
+  background: var(--series-3);
+}
+.chart-swatch.series-5 {
+  background: var(--series-5);
+}
+.chart-swatch.series-4 {
+  background: var(--series-4);
+}
+.chart-legend-when {
+  margin-left: auto;
+}
+.chart-table-toggle {
+  margin-top: 0.6rem;
+  font-size: 0.8rem;
+}
 
 /* --- funnel --- */
-.funnel { display: flex; flex-direction: column; gap: 0.45rem; }
-.funnel-row { display: grid; grid-template-columns: 6.5rem 1fr 3rem; gap: 0.6rem; align-items: center; }
-.funnel-label { font-size: 0.83rem; color: var(--muted); }
-.funnel-track { position: relative; display: flex; align-items: center; gap: 0.5rem; min-width: 0; }
+.funnel {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+.funnel-row {
+  display: grid;
+  grid-template-columns: 6.5rem 1fr 3rem;
+  gap: 0.6rem;
+  align-items: center;
+}
+.funnel-label {
+  font-size: 0.83rem;
+  color: var(--muted);
+}
+.funnel-track {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-width: 0;
+}
 .funnel-bar {
   height: 1.6rem;
   background: var(--accent);
@@ -566,27 +1019,75 @@ th { color: var(--muted); font-weight: 550; font-size: 0.78rem; }
   border-radius: 0 4px 4px 0;
   min-width: 2px;
 }
-.funnel-value { font-size: 0.85rem; font-weight: 600; font-variant-numeric: tabular-nums; }
-.funnel-rate { font-size: 0.8rem; color: var(--muted); text-align: right; font-variant-numeric: tabular-nums; }
-
-.sr-only {
-  position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
-  overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0;
+.funnel-value {
+  font-size: 0.85rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+.funnel-rate {
+  font-size: 0.8rem;
+  color: var(--muted);
+  text-align: right;
+  font-variant-numeric: tabular-nums;
 }
 
-.lead-table td, .lead-table th { white-space: nowrap; }
-.lead-table td:first-child { max-width: 16rem; overflow: hidden; text-overflow: ellipsis; }
-.lead-table a { text-decoration: none; font-weight: 550; }
-.lead-table a:hover { text-decoration: underline; }
-.muted-cell { color: var(--muted); }
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.lead-table td,
+.lead-table th {
+  white-space: nowrap;
+}
+.lead-table td:first-child {
+  max-width: 16rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.lead-table a {
+  text-decoration: none;
+  font-weight: 550;
+}
+.lead-table a:hover {
+  text-decoration: underline;
+}
+.muted-cell {
+  color: var(--muted);
+}
 
 /* Setter badges are defined with the rest of a person's colour, further down. */
 
-.bucket-tabs { display: flex; gap: 0.4rem; flex-wrap: wrap; margin-bottom: 0.8rem; }
-.bucket-tabs .btn { gap: 0.4rem; }
-.bucket-tabs .btn-primary .pill { background: rgb(255 255 255 / 0.25); color: inherit; border-color: transparent; }
-.row-actions { display: inline-flex; gap: 0.3rem; }
-.row-actions button { font-size: 0.78rem; padding: 0.25rem 0.5rem; min-height: 1.9rem; }
+.bucket-tabs {
+  display: flex;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+  margin-bottom: 0.8rem;
+}
+.bucket-tabs .btn {
+  gap: 0.4rem;
+}
+.bucket-tabs .btn-primary .pill {
+  background: rgb(255 255 255 / 0.25);
+  color: inherit;
+  border-color: transparent;
+}
+.row-actions {
+  display: inline-flex;
+  gap: 0.3rem;
+}
+.row-actions button {
+  font-size: 0.78rem;
+  padding: 0.25rem 0.5rem;
+  min-height: 1.9rem;
+}
 
 .booking-grid {
   display: grid;
@@ -607,21 +1108,57 @@ th { color: var(--muted); font-weight: 550; font-size: 0.78rem; }
   align-items: flex-start;
   min-height: 8.5rem;
 }
-.booking-tile.tone-amber  { border-top-color: #eda100; }
-.booking-tile.tone-orange { border-top-color: #eb6834; }
-.booking-tile.tone-blue   { border-top-color: #2a78d6; }
-.booking-tile.tone-grey   { border-top-color: var(--border); }
-.booking-icon { font-size: 1.35rem; line-height: 1; }
-.booking-label { font-size: 0.8rem; font-weight: 600; line-height: 1.3; }
-.booking-tile button { font-size: 0.76rem; padding: 0.25rem 0.55rem; min-height: 1.85rem; }
+.booking-tile.tone-amber {
+  border-top-color: #eda100;
+}
+.booking-tile.tone-orange {
+  border-top-color: #eb6834;
+}
+.booking-tile.tone-blue {
+  border-top-color: #2a78d6;
+}
+.booking-tile.tone-grey {
+  border-top-color: var(--border);
+}
+.booking-icon {
+  font-size: 1.35rem;
+  line-height: 1;
+}
+.booking-label {
+  font-size: 0.8rem;
+  font-weight: 600;
+  line-height: 1.3;
+}
+.booking-tile button {
+  font-size: 0.76rem;
+  padding: 0.25rem 0.55rem;
+  min-height: 1.85rem;
+}
 
-.convo-actions { display: inline-flex; gap: 0.2rem; align-items: flex-start; }
-.convo-msg { font-size: 0.72rem; padding: 0.2rem 0.45rem; min-height: 1.7rem; }
+.convo-actions {
+  display: inline-flex;
+  gap: 0.2rem;
+  align-items: flex-start;
+}
+.convo-msg {
+  font-size: 0.72rem;
+  padding: 0.2rem 0.45rem;
+  min-height: 1.7rem;
+}
 /* Already logged today reads as done rather than just unchanged, so nobody
    wonders whether the first press registered. */
-.convo-msg.is-done { background: var(--ok-bg); color: var(--ok); border-color: transparent; }
+.convo-msg.is-done {
+  background: var(--ok-bg);
+  color: var(--ok);
+  border-color: transparent;
+}
 
-.streaks { display: flex; gap: 0.5rem; flex-wrap: wrap; margin: 0.2rem 0 1rem; }
+.streaks {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  margin: 0.2rem 0 1rem;
+}
 .streak {
   background: var(--surface);
   border: 1px solid var(--border);
@@ -631,54 +1168,161 @@ th { color: var(--muted); font-weight: 550; font-size: 0.78rem; }
   align-items: center;
   gap: 0.55rem;
 }
-.streak-n { font-size: 1.15rem; font-weight: 650; font-variant-numeric: tabular-nums; }
-.streak-l { font-size: 0.74rem; color: var(--muted); line-height: 1.25; }
+.streak-n {
+  font-size: 1.15rem;
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+}
+.streak-l {
+  font-size: 0.74rem;
+  color: var(--muted);
+  line-height: 1.25;
+}
 /* A live streak is worth looking at; a cold one shouldn't shout. */
-.streak.is-cold .streak-n { color: var(--muted); }
-.streak.is-hot .streak-n { color: var(--warn); }
-.streak-second { border-left: 1px solid var(--border); padding-left: 0.55rem; }
-
-.btn-new { background: #d6f0e2; color: #1a6b46; border-color: transparent; font-weight: 600; }
-.btn-new:hover { background: #c3e9d5; border-color: transparent; }
-@media (prefers-color-scheme: dark) {
-  .btn-new { background: #17402c; color: #92dcb7; }
-  .btn-new:hover { background: #1d5238; }
+.streak.is-cold .streak-n {
+  color: var(--muted);
+}
+.streak.is-hot .streak-n {
+  color: var(--warn);
+}
+.streak-second {
+  border-left: 1px solid var(--border);
+  padding-left: 0.55rem;
 }
 
-.stat-hero .stat-n { font-size: 1.85rem; }
-.pager { display: flex; justify-content: space-between; gap: 0.8rem; flex-wrap: wrap; margin-top: 0.8rem; align-items: center; }
-.pager-size, .pager-pages { display: inline-flex; gap: 0.25rem; align-items: center; flex-wrap: wrap; font-size: 0.8rem; color: var(--muted); }
-.pager .btn { padding: 0.25rem 0.55rem; min-height: 1.9rem; font-size: 0.8rem; }
-.pager-gap { padding: 0 0.2rem; color: var(--muted); }
+.btn-new {
+  background: #d6f0e2;
+  color: #1a6b46;
+  border-color: transparent;
+  font-weight: 600;
+}
+.btn-new:hover {
+  background: #c3e9d5;
+  border-color: transparent;
+}
+@media (prefers-color-scheme: dark) {
+  .btn-new {
+    background: #17402c;
+    color: #92dcb7;
+  }
+  .btn-new:hover {
+    background: #1d5238;
+  }
+}
 
-.page-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem; flex-wrap: wrap; }
-.period-tabs { display: flex; gap: 0.3rem; flex-wrap: wrap; }
-.period-tabs .btn { padding: 0.3rem 0.7rem; min-height: 2rem; font-size: 0.82rem; }
+.stat-hero .stat-n {
+  font-size: 1.85rem;
+}
+.pager {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.8rem;
+  flex-wrap: wrap;
+  margin-top: 0.8rem;
+  align-items: center;
+}
+.pager-size,
+.pager-pages {
+  display: inline-flex;
+  gap: 0.25rem;
+  align-items: center;
+  flex-wrap: wrap;
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+.pager .btn {
+  padding: 0.25rem 0.55rem;
+  min-height: 1.9rem;
+  font-size: 0.8rem;
+}
+.pager-gap {
+  padding: 0 0.2rem;
+  color: var(--muted);
+}
+
+.page-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+.period-tabs {
+  display: flex;
+  gap: 0.3rem;
+  flex-wrap: wrap;
+}
+.period-tabs .btn {
+  padding: 0.3rem 0.7rem;
+  min-height: 2rem;
+  font-size: 0.82rem;
+}
 
 /* Stat tiles carry a tone so a row of numbers reads as grouped rather than as
    an undifferentiated wall. The colour is a left rule and a tinted figure -
    never the only thing carrying meaning, since every tile is also labelled. */
-.stat { border-left: 3px solid var(--border); }
-.stat.tone-blue   { border-left-color: #2a78d6; }
-.stat.tone-green  { border-left-color: #1a7f52; }
-.stat.tone-teal   { border-left-color: #1baf7a; }
-.stat.tone-violet { border-left-color: #4a3aa7; }
-.stat.tone-amber  { border-left-color: #eda100; }
-.stat.tone-blue .stat-n   { color: #1f5ea8; }
-.stat.tone-green .stat-n  { color: #16663f; }
-.stat.tone-teal .stat-n   { color: #12805a; }
-.stat.tone-violet .stat-n { color: #45369b; }
-.stat.tone-amber .stat-n  { color: #8a5e00; }
-@media (prefers-color-scheme: dark) {
-  .stat.tone-blue .stat-n   { color: #79aef5; }
-  .stat.tone-green .stat-n  { color: #5ddba4; }
-  .stat.tone-teal .stat-n   { color: #4fd3a0; }
-  .stat.tone-violet .stat-n { color: #a99cf0; }
-  .stat.tone-amber .stat-n  { color: #f0b95c; }
+.stat {
+  border-left: 3px solid var(--border);
 }
-.lead-subline { display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap; }
+.stat.tone-blue {
+  border-left-color: #2a78d6;
+}
+.stat.tone-green {
+  border-left-color: #1a7f52;
+}
+.stat.tone-teal {
+  border-left-color: #1baf7a;
+}
+.stat.tone-violet {
+  border-left-color: #4a3aa7;
+}
+.stat.tone-amber {
+  border-left-color: #eda100;
+}
+.stat.tone-blue .stat-n {
+  color: #1f5ea8;
+}
+.stat.tone-green .stat-n {
+  color: #16663f;
+}
+.stat.tone-teal .stat-n {
+  color: #12805a;
+}
+.stat.tone-violet .stat-n {
+  color: #45369b;
+}
+.stat.tone-amber .stat-n {
+  color: #8a5e00;
+}
+@media (prefers-color-scheme: dark) {
+  .stat.tone-blue .stat-n {
+    color: #79aef5;
+  }
+  .stat.tone-green .stat-n {
+    color: #5ddba4;
+  }
+  .stat.tone-teal .stat-n {
+    color: #4fd3a0;
+  }
+  .stat.tone-violet .stat-n {
+    color: #a99cf0;
+  }
+  .stat.tone-amber .stat-n {
+    color: #f0b95c;
+  }
+}
+.lead-subline {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  flex-wrap: wrap;
+}
 
-.topbar-right { display: flex; align-items: center; gap: 0.7rem; }
+.topbar-right {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+}
 .report-btn {
   white-space: nowrap;
   font-size: 0.78rem;
@@ -687,11 +1331,18 @@ th { color: var(--muted); font-weight: 550; font-size: 0.78rem; }
   color: var(--muted);
 }
 @media (max-width: 34rem) {
-  .topbar-right { order: 2; }
-  .report-btn { font-size: 0.72rem; padding: 0.2rem 0.45rem; }
+  .topbar-right {
+    order: 2;
+  }
+  .report-btn {
+    font-size: 0.72rem;
+    padding: 0.2rem 0.45rem;
+  }
 }
 
-.nav a { position: relative; }
+.nav a {
+  position: relative;
+}
 /* Never the only signal - the Admin page lists what it refers to, and the dot
    carries an aria-label with the count. */
 .nav-dot {
@@ -707,8 +1358,12 @@ th { color: var(--muted); font-weight: 550; font-size: 0.78rem; }
 
 /* Something the app is waiting on a person for - louder than a normal card,
    quieter than an error. */
-.card-attention { border-color: var(--warn); }
-.mini-attention { border-color: var(--warn); }
+.card-attention {
+  border-color: var(--warn);
+}
+.mini-attention {
+  border-color: var(--warn);
+}
 
 /* A post-call report's own notes, shown on the card so the call can be
    recognised without opening anything. Long ones are cut off rather than
@@ -727,7 +1382,13 @@ th { color: var(--muted); font-weight: 550; font-size: 0.78rem; }
 
 /* Search results inside a picker: whole rows are the button, so there is a
    large target on a phone rather than a link to aim at. */
-.pick-list { list-style: none; margin: 0; padding: 0; max-height: 45vh; overflow-y: auto; }
+.pick-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  max-height: 45vh;
+  overflow-y: auto;
+}
 .pick {
   width: 100%;
   display: flex;
@@ -739,11 +1400,28 @@ th { color: var(--muted); font-weight: 550; font-size: 0.78rem; }
   margin-bottom: 0.3rem;
   min-height: 2.6rem;
 }
-.pick-main { display: flex; gap: 0.4rem; align-items: baseline; flex-wrap: wrap; }
-.pick-handle { font-weight: 600; overflow-wrap: anywhere; }
-.pick-name { color: var(--muted); font-size: 0.82rem; }
-.pick-meta { display: flex; gap: 0.25rem; flex-wrap: wrap; }
-.pick-meta .pill { font-size: 0.68rem; }
+.pick-main {
+  display: flex;
+  gap: 0.4rem;
+  align-items: baseline;
+  flex-wrap: wrap;
+}
+.pick-handle {
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+.pick-name {
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+.pick-meta {
+  display: flex;
+  gap: 0.25rem;
+  flex-wrap: wrap;
+}
+.pick-meta .pill {
+  font-size: 0.68rem;
+}
 
 /* A plumbing problem worth interrupting the page for: loud enough to notice,
    not so loud it looks like an error the app has already failed at. */
@@ -756,7 +1434,9 @@ th { color: var(--muted); font-weight: 550; font-size: 0.78rem; }
   line-height: 1.45;
   margin: 0.9rem 0 0;
 }
-.banner-warn a { color: inherit; }
+.banner-warn a {
+  color: inherit;
+}
 
 /* Shown while a server action is in flight. An import can run for most of a
    minute, and a button that looks unchanged reads as a click that never
@@ -781,11 +1461,18 @@ th { color: var(--muted); font-weight: 550; font-size: 0.78rem; }
 
 /* The form a running action belongs to. Dimming it is the change that catches
    the eye - a small line of text underneath was missed entirely. */
-.action-fieldset { border: 0; padding: 0; margin: 0; min-width: 0; }
-.action-fieldset:disabled { opacity: 0.5; }
+.action-fieldset {
+  border: 0;
+  padding: 0;
+  margin: 0;
+  min-width: 0;
+}
+.action-fieldset:disabled {
+  opacity: 0.5;
+}
 /* A spinner on the button itself, where the eye already is. */
-.action-fieldset:disabled button[type='submit']::before {
-  content: '';
+.action-fieldset:disabled button[type="submit"]::before {
+  content: "";
   width: 0.8rem;
   height: 0.8rem;
   margin-right: 0.35rem;
@@ -796,16 +1483,32 @@ th { color: var(--muted); font-weight: 550; font-size: 0.78rem; }
   vertical-align: -0.1em;
   animation: spin 0.7s linear infinite;
 }
-@keyframes spin { to { transform: rotate(360deg); } }
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
 /* Still legible as "busy" without the motion. */
 @media (prefers-reduced-motion: reduce) {
-  .spinner { animation: none; border-top-color: var(--accent); opacity: 0.7; }
+  .spinner {
+    animation: none;
+    border-top-color: var(--accent);
+    opacity: 0.7;
+  }
 }
 
 /* For the one button that deletes things. Distinct from btn-primary so a
    destructive action never looks like the obvious next step. */
-.btn-danger { background: var(--danger-bg); color: var(--danger); border-color: transparent; font-weight: 600; }
-.btn-danger:hover { filter: brightness(0.96); border-color: transparent; }
+.btn-danger {
+  background: var(--danger-bg);
+  color: var(--danger);
+  border-color: transparent;
+  font-weight: 600;
+}
+.btn-danger:hover {
+  filter: brightness(0.96);
+  border-color: transparent;
+}
 
 /* Two rows for one person, side by side. Stacked below the breakpoint rather
    than squeezed, because the whole job is reading them against each other. */
@@ -823,15 +1526,30 @@ th { color: var(--muted); font-weight: 550; font-size: 0.78rem; }
 }
 
 /* A count worth acting on, and the page that acts on it. */
-.stat-link { display: block; text-decoration: none; color: inherit; }
-.stat-link:hover { border-color: var(--accent); }
-.stat-link:hover .stat-l { color: var(--accent); }
+.stat-link {
+  display: block;
+  text-decoration: none;
+  color: inherit;
+}
+.stat-link:hover {
+  border-color: var(--accent);
+}
+.stat-link:hover .stat-l {
+  color: var(--accent);
+}
 
 /* However many of these there are, they stay the size of the number in them.
    The grid the other rows use stretches two tiles across the whole page, which
    reads as though something is missing between them. */
-.stats-attention { display: flex; flex-wrap: wrap; gap: 0.6rem; margin: 0.9rem 0 0.25rem; }
-.stats-attention .stat { flex: 0 1 14rem; }
+.stats-attention {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  margin: 0.9rem 0 0.25rem;
+}
+.stats-attention .stat {
+  flex: 0 1 14rem;
+}
 
 /* Says which tab a row of numbers answers to. Two rows of tiles that look the
    same but mean different things need one word each more than they need
@@ -857,13 +1575,36 @@ th { color: var(--muted); font-weight: 550; font-size: 0.78rem; }
   border: 1px solid var(--border);
   border-radius: var(--radius);
 }
-.bulk-all { display: inline-flex; align-items: center; gap: 0.4rem; font-size: 0.875rem; }
-.bulk-count { color: var(--muted); font-size: 0.82rem; font-variant-numeric: tabular-nums; }
-.bulk-bar select { width: auto; min-width: 9rem; }
-.bulk-bar button:disabled { opacity: 0.45; cursor: not-allowed; }
+.bulk-all {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.875rem;
+}
+.bulk-count {
+  color: var(--muted);
+  font-size: 0.82rem;
+  font-variant-numeric: tabular-nums;
+}
+.bulk-bar select {
+  width: auto;
+  min-width: 9rem;
+}
+.bulk-bar button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
 /* Narrow enough that the tick box is the column, wide enough to hit on a phone. */
-.pick-col { width: 2.2rem; text-align: center; }
-.bulk-sep { width: 1px; align-self: stretch; background: var(--border); margin: 0 0.15rem; }
+.pick-col {
+  width: 2.2rem;
+  text-align: center;
+}
+.bulk-sep {
+  width: 1px;
+  align-self: stretch;
+  background: var(--border);
+  margin: 0 0.15rem;
+}
 
 /* A count you can read across the room, and the page it opens. Bigger than a
    stat tile on purpose: these are the numbers somebody comes to the lead
@@ -886,14 +1627,35 @@ th { color: var(--muted); font-weight: 550; font-size: 0.78rem; }
   text-decoration: none;
   color: var(--fg);
 }
-.tile:hover { border-color: var(--accent); border-left-color: var(--accent); }
-.tile-n { font-size: 2.1rem; font-weight: 680; line-height: 1.05; font-variant-numeric: tabular-nums; }
-.tile-l { color: var(--muted); font-size: 0.85rem; }
-.tile:hover .tile-l { color: var(--accent); }
-.tile.tone-teal { border-left-color: #1baf7a; }
-.tile.tone-violet { border-left-color: #4a3aa7; }
-.tile.tone-warn { border-left-color: var(--warn); }
-.tile.tone-warn .tile-n { color: var(--warn); }
+.tile:hover {
+  border-color: var(--accent);
+  border-left-color: var(--accent);
+}
+.tile-n {
+  font-size: 2.1rem;
+  font-weight: 680;
+  line-height: 1.05;
+  font-variant-numeric: tabular-nums;
+}
+.tile-l {
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+.tile:hover .tile-l {
+  color: var(--accent);
+}
+.tile.tone-teal {
+  border-left-color: #1baf7a;
+}
+.tile.tone-violet {
+  border-left-color: #4a3aa7;
+}
+.tile.tone-warn {
+  border-left-color: var(--warn);
+}
+.tile.tone-warn .tile-n {
+  color: var(--warn);
+}
 
 /* Stacked charts need air between them, and a little room above each heading
    so a legend doesn't read as belonging to the chart below it.
@@ -902,9 +1664,13 @@ th { color: var(--muted); font-weight: 550; font-size: 0.78rem; }
    spaces them, and this margin pushed every panel but the first down by its
    own height - which is why Loui's card sat level with the others' headings
    rather than with their tops. */
-.panel + .panel { margin-top: 0.9rem; }
+.panel + .panel {
+  margin-top: 0.9rem;
+}
 .week-board > .panel + .panel,
-.panel-grid > .panel + .panel { margin-top: 0; }
+.panel-grid > .panel + .panel {
+  margin-top: 0;
+}
 
 /* Viewing as somebody else.
 
@@ -930,8 +1696,12 @@ th { color: var(--muted); font-weight: 550; font-size: 0.78rem; }
   border-top: 2px solid var(--warn);
   font-size: 0.9rem;
 }
-.viewas-bar strong { color: var(--warn); }
-.viewas-bar form { margin: 0; }
+.viewas-bar strong {
+  color: var(--warn);
+}
+.viewas-bar form {
+  margin: 0;
+}
 .viewas-bar button {
   background: var(--warn);
   color: var(--warn-bg);
@@ -946,9 +1716,13 @@ th { color: var(--muted); font-weight: 550; font-size: 0.78rem; }
 /* Keeps the last row of a table clear of the bar. The bar wraps onto three
    rows once the sentence no longer fits beside the button, so a narrow screen
    has to reserve roughly twice the height - measured, not guessed. */
-main.has-viewas { padding-bottom: 5rem; }
+main.has-viewas {
+  padding-bottom: 5rem;
+}
 @media (max-width: 48rem) {
-  main.has-viewas { padding-bottom: 9rem; }
+  main.has-viewas {
+    padding-bottom: 9rem;
+  }
 }
 
 /* --- Boosted reels ------------------------------------------------------ */
@@ -996,8 +1770,12 @@ main.has-viewas { padding-bottom: 5rem; }
   transform: scale(calc(100% / 326 * 1));
 }
 @supports (container-type: inline-size) {
-  .reel-preview { container-type: inline-size; }
-  .reel-preview iframe { transform: scale(calc(100cqw / 326)); }
+  .reel-preview {
+    container-type: inline-size;
+  }
+  .reel-preview iframe {
+    transform: scale(calc(100cqw / 326));
+  }
 }
 /* The iframe swallows clicks, so an invisible layer above it takes them and
    lets the anchor do its job. */
@@ -1016,8 +1794,14 @@ main.has-viewas { padding-bottom: 5rem; }
   padding: 1rem;
 }
 
-.reel-body { padding: 0.7rem 0.75rem 0.8rem; }
-.reel-body h3 { margin: 0 0 0.15rem; font-size: 0.98rem; line-height: 1.25; }
+.reel-body {
+  padding: 0.7rem 0.75rem 0.8rem;
+}
+.reel-body h3 {
+  margin: 0 0 0.15rem;
+  font-size: 0.98rem;
+  line-height: 1.25;
+}
 .reel-hook {
   margin: 0 0 0.35rem;
   font-size: 0.82rem;
@@ -1039,9 +1823,18 @@ main.has-viewas { padding-bottom: 5rem; }
   padding: 0.1rem 0.4rem;
   border-radius: 0.3rem;
 }
-.reel-status-running { background: var(--ok-bg, #e7f6ee); color: var(--ok, #1baf7a); }
-.reel-status-paused { background: var(--warn-bg); color: var(--warn); }
-.reel-status-finished { background: var(--border); color: var(--muted); }
+.reel-status-running {
+  background: var(--ok-bg, #e7f6ee);
+  color: var(--ok, #1baf7a);
+}
+.reel-status-paused {
+  background: var(--warn-bg);
+  color: var(--warn);
+}
+.reel-status-finished {
+  background: var(--border);
+  color: var(--muted);
+}
 
 /* Two columns of small figures rather than the full-width stat tiles the
    dashboard uses: at this width a stat tile fits one number per row. */
@@ -1051,8 +1844,15 @@ main.has-viewas { padding-bottom: 5rem; }
   gap: 0.3rem 0.5rem;
   margin-top: 0.55rem;
 }
-.reel-figure { display: flex; flex-direction: column; line-height: 1.15; }
-.reel-figure-n { font-weight: 700; font-size: 0.95rem; }
+.reel-figure {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.15;
+}
+.reel-figure-n {
+  font-weight: 700;
+  font-size: 0.95rem;
+}
 .reel-figure-l {
   font-size: 0.7rem;
   color: var(--muted);
@@ -1060,14 +1860,20 @@ main.has-viewas { padding-bottom: 5rem; }
   letter-spacing: 0.03em;
 }
 
-.reel-edit { margin-top: 0.6rem; }
+.reel-edit {
+  margin-top: 0.6rem;
+}
 .reel-edit summary {
   cursor: pointer;
   font-size: 0.82rem;
   color: var(--accent);
 }
-.reel-edit .grid2 { margin-top: 0.5rem; }
-.field-wide { grid-column: 1 / -1; }
+.reel-edit .grid2 {
+  margin-top: 0.5rem;
+}
+.field-wide {
+  grid-column: 1 / -1;
+}
 .danger-link {
   background: none;
   border: none;
@@ -1090,8 +1896,15 @@ main.has-viewas { padding-bottom: 5rem; }
   padding: 1rem;
   text-align: center;
 }
-.reel-preview-title { font-weight: 600; font-size: 0.85rem; line-height: 1.25; }
-.reel-preview-cta { font-size: 0.75rem; color: var(--accent); }
+.reel-preview-title {
+  font-weight: 600;
+  font-size: 0.85rem;
+  line-height: 1.25;
+}
+.reel-preview-cta {
+  font-size: 0.75rem;
+  color: var(--accent);
+}
 
 /* Two lines for every hook, so tiles in a row start their numbers level even
    when one headline is twice the length of the next. */
@@ -1139,8 +1952,15 @@ main.has-viewas { padding-bottom: 5rem; }
   font-size: 0.88rem;
   line-height: 1.35;
 }
-.check input { margin-top: 0.15rem; flex: none; }
-.btn-row { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+.check input {
+  margin-top: 0.15rem;
+  flex: none;
+}
+.btn-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
 
 /* --- Help ---------------------------------------------------------------- */
 
@@ -1230,7 +2050,9 @@ main.has-viewas { padding-bottom: 5rem; }
   margin: 0.6rem 0;
   max-width: 44rem;
 }
-.help-watch strong { color: var(--warn); }
+.help-watch strong {
+  color: var(--warn);
+}
 
 /* The shape of a day, as a strip you can read in one glance. */
 .help-rhythm {
@@ -1259,22 +2081,41 @@ main.has-viewas { padding-bottom: 5rem; }
   color: var(--accent);
   margin-bottom: 0.2rem;
 }
-.help-rhythm-what { font-size: 0.86rem; line-height: 1.4; }
-.help-section h3 { margin: 1.1rem 0 0.3rem; font-size: 0.98rem; }
+.help-rhythm-what {
+  font-size: 0.86rem;
+  line-height: 1.4;
+}
+.help-section h3 {
+  margin: 1.1rem 0 0.3rem;
+  font-size: 0.98rem;
+}
 /* Running text, not dashboard chrome: a measure that does not run the width of
    a laptop screen. */
 .help-section p,
 .help-section ol,
-.help-section ul { max-width: 44rem; }
-.help-section p { margin: 0.45rem 0; }
-.help-section ol { padding-left: 1.2rem; }
-.help-section ol li { margin: 0.35rem 0; }
+.help-section ul {
+  max-width: 44rem;
+}
+.help-section p {
+  margin: 0.45rem 0;
+}
+.help-section ol {
+  padding-left: 1.2rem;
+}
+.help-section ol li {
+  margin: 0.35rem 0;
+}
 
 /* Figures line up under each other when they are right-aligned and tabular;
    a column of money that does not is read one row at a time. */
-td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
-.nowrap { white-space: nowrap; }
-
+td.num,
+th.num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.nowrap {
+  white-space: nowrap;
+}
 
 /* Help sits with Report a problem rather than in the nav: it is what you reach
    for when stuck, not a place you go. Quieter than the button beside it. */
@@ -1285,7 +2126,10 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
   white-space: nowrap;
   padding: 0.25rem 0.1rem;
 }
-.topbar-link:hover { color: var(--fg); text-decoration: underline; }
+.topbar-link:hover {
+  color: var(--fg);
+  text-decoration: underline;
+}
 
 /* --- A person's colour --------------------------------------------------- 
 
@@ -1312,45 +2156,90 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
 }
 
 /* The tile a person owns. */
-.tile.tone-cyan    { border-left-color: var(--person-cyan); }
-.tile.tone-lime    { border-left-color: var(--person-lime); }
-.tile.tone-magenta { border-left-color: var(--person-magenta); }
-.tile.tone-cyan    .tile-n { color: var(--person-cyan); }
-.tile.tone-lime    .tile-n { color: var(--person-lime); }
-.tile.tone-magenta .tile-n { color: var(--person-magenta); }
+.tile.tone-cyan {
+  border-left-color: var(--person-cyan);
+}
+.tile.tone-lime {
+  border-left-color: var(--person-lime);
+}
+.tile.tone-magenta {
+  border-left-color: var(--person-magenta);
+}
+.tile.tone-cyan .tile-n {
+  color: var(--person-cyan);
+}
+.tile.tone-lime .tile-n {
+  color: var(--person-lime);
+}
+.tile.tone-magenta .tile-n {
+  color: var(--person-magenta);
+}
 
 /* Their name, as a pill. The tint is mixed from the one token rather than
    hand-picked, so a badge can never drift from the tile beside it. Browsers
    without color-mix fall back to the flat surface and keep the coloured text,
    which is still legible. */
-.setter-badge { border-color: transparent; font-weight: 600; }
-.setter-badge[data-color='cyan']    { background: var(--surface); color: var(--person-cyan); }
-.setter-badge[data-color='lime']    { background: var(--surface); color: var(--person-lime); }
-.setter-badge[data-color='magenta'] { background: var(--surface); color: var(--person-magenta); }
+.setter-badge {
+  border-color: transparent;
+  font-weight: 600;
+}
+.setter-badge[data-color="cyan"] {
+  background: var(--surface);
+  color: var(--person-cyan);
+}
+.setter-badge[data-color="lime"] {
+  background: var(--surface);
+  color: var(--person-lime);
+}
+.setter-badge[data-color="magenta"] {
+  background: var(--surface);
+  color: var(--person-magenta);
+}
 @supports (background: color-mix(in srgb, red 10%, white)) {
-  .setter-badge[data-color='cyan'] {
+  .setter-badge[data-color="cyan"] {
     background: color-mix(in srgb, var(--person-cyan) 16%, var(--surface));
   }
-  .setter-badge[data-color='lime'] {
+  .setter-badge[data-color="lime"] {
     background: color-mix(in srgb, var(--person-lime) 16%, var(--surface));
   }
-  .setter-badge[data-color='magenta'] {
+  .setter-badge[data-color="magenta"] {
     background: color-mix(in srgb, var(--person-magenta) 16%, var(--surface));
   }
 }
-.setter-badge[data-color='grey'] { background: var(--bg); color: var(--muted); }
+.setter-badge[data-color="grey"] {
+  background: var(--bg);
+  color: var(--muted);
+}
 
 /* And their line on a chart that is about people, so the tracker and the KPIs
    agree rather than each having their own idea of who is what colour. */
-.chart-line.person-cyan    { stroke: var(--person-cyan); }
-.chart-line.person-lime    { stroke: var(--person-lime); }
-.chart-line.person-magenta { stroke: var(--person-magenta); }
-.chart-dot.person-cyan     { fill: var(--person-cyan); }
-.chart-dot.person-lime     { fill: var(--person-lime); }
-.chart-dot.person-magenta  { fill: var(--person-magenta); }
-.chart-swatch.person-cyan    { background: var(--person-cyan); }
-.chart-swatch.person-lime    { background: var(--person-lime); }
-.chart-swatch.person-magenta { background: var(--person-magenta); }
+.chart-line.person-cyan {
+  stroke: var(--person-cyan);
+}
+.chart-line.person-lime {
+  stroke: var(--person-lime);
+}
+.chart-line.person-magenta {
+  stroke: var(--person-magenta);
+}
+.chart-dot.person-cyan {
+  fill: var(--person-cyan);
+}
+.chart-dot.person-lime {
+  fill: var(--person-lime);
+}
+.chart-dot.person-magenta {
+  fill: var(--person-magenta);
+}
+.chart-swatch.person-cyan {
+  background: var(--person-cyan);
+}
+.chart-swatch.person-lime {
+  background: var(--person-lime);
+}
+.chart-swatch.person-magenta {
+  background: var(--person-magenta);
+}
 
 /* --- Sparklines, the day strip, and pace bars ----------------------------- */
 
@@ -1361,30 +2250,77 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
   gap: 0.5rem;
   margin-top: 0.4rem;
 }
-.stat-foot-text { margin-top: 0.35rem; font-size: 0.75rem; color: var(--muted); }
-.stat-of { font-size: 0.9rem; font-weight: 500; color: var(--muted); }
+.stat-foot-text {
+  margin-top: 0.35rem;
+  font-size: 0.75rem;
+  color: var(--muted);
+}
+.stat-of {
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: var(--muted);
+}
 
-.spark { display: block; overflow: visible; }
-.spark-line { fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
-.spark-area { stroke: none; opacity: 0.14; }
-.spark-accent .spark-line, .spark-accent .spark-end { stroke: var(--accent); fill: none; }
-.spark-accent .spark-end { fill: var(--accent); }
-.spark-accent .spark-area { fill: var(--accent); }
-.spark-ok .spark-line { stroke: var(--ok); }
-.spark-ok .spark-end { fill: var(--ok); stroke: none; }
-.spark-ok .spark-area { fill: var(--ok); }
+.spark {
+  display: block;
+  overflow: visible;
+}
+.spark-line {
+  fill: none;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.spark-area {
+  stroke: none;
+  opacity: 0.14;
+}
+.spark-accent .spark-line,
+.spark-accent .spark-end {
+  stroke: var(--accent);
+  fill: none;
+}
+.spark-accent .spark-end {
+  fill: var(--accent);
+}
+.spark-accent .spark-area {
+  fill: var(--accent);
+}
+.spark-ok .spark-line {
+  stroke: var(--ok);
+}
+.spark-ok .spark-end {
+  fill: var(--ok);
+  stroke: none;
+}
+.spark-ok .spark-area {
+  fill: var(--ok);
+}
 
 /* The change, as a word rather than a colour alone. */
-.delta { font-size: 0.74rem; font-weight: 600; white-space: nowrap; }
-.delta-up { color: var(--ok); }
-.delta-down { color: var(--warn); }
-.delta-flat, .delta-new { color: var(--muted); }
+.delta {
+  font-size: 0.74rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.delta-up {
+  color: var(--ok);
+}
+.delta-down {
+  color: var(--warn);
+}
+.delta-flat,
+.delta-new {
+  color: var(--muted);
+}
 
 /* The day, 8am to 8pm, with each call where it falls. */
 /* Room above for the hour marks and below for two staggered rows of labels -
    at four calls in a working day, one row collides the moment two are within
    an hour of each other. */
-.daystrip { padding: 1.5rem 0 0.2rem; }
+.daystrip {
+  padding: 1.5rem 0 0.2rem;
+}
 /* Tall enough to hold both rows of labels. With a zero-height track they
    overflow it, and the key line underneath renders straight through them. */
 .daystrip-track {
@@ -1407,7 +2343,11 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
   font-size: 0.85rem;
   color: var(--muted);
 }
-.daystrip-call { position: absolute; top: -0.4rem; transform: translateX(-50%); }
+.daystrip-call {
+  position: absolute;
+  top: -0.4rem;
+  transform: translateX(-50%);
+}
 .daystrip-dot {
   display: block;
   width: 0.75rem;
@@ -1417,7 +2357,9 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
   border: 2px solid var(--accent);
   background: var(--surface);
 }
-.is-confirmed .daystrip-dot { background: var(--accent); }
+.is-confirmed .daystrip-dot {
+  background: var(--accent);
+}
 .daystrip-label {
   position: absolute;
   top: 1.05rem;
@@ -1428,7 +2370,40 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
   background: var(--surface);
   padding: 0 0.2rem;
 }
-.is-unconfirmed .daystrip-label { color: var(--warn); }
+.is-unconfirmed .daystrip-label {
+  color: var(--warn);
+}
+
+/* Where the day has got to. Sits behind the calls so it never covers a dot,
+   and is a plain line rather than another marker - it is the one thing on the
+   strip that is not a call, and should not read as one. */
+.daystrip-now {
+  position: absolute;
+  top: -0.2rem;
+  bottom: 0.2rem;
+  width: 2px;
+  transform: translateX(-50%);
+  background: var(--danger);
+  opacity: 0.65;
+  pointer-events: none;
+  z-index: 0;
+}
+.daystrip-now-label {
+  position: absolute;
+  top: -1.25rem;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 0.65rem;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: var(--danger);
+  background: var(--surface);
+  padding: 0 0.25rem;
+}
+/* Above the line, so a call at the current time is still readable. */
+.daystrip-call {
+  z-index: 1;
+}
 
 /* How far along, against where you should be by now. */
 .pace {
@@ -1445,7 +2420,9 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
   border-radius: 99px;
   background: var(--accent);
 }
-.pace-fill.pace-ok { background: var(--ok); }
+.pace-fill.pace-ok {
+  background: var(--ok);
+}
 .pace-mark {
   position: absolute;
   top: -0.2rem;
@@ -1456,7 +2433,9 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
 }
 
 /* The sticky header would otherwise cover a card jumped to from the strip. */
-.tile[id^='call-'] { scroll-margin-top: 6rem; }
+.tile[id^="call-"] {
+  scroll-margin-top: 6rem;
+}
 .stats-note {
   display: block;
   font-weight: 400;
@@ -1466,13 +2445,22 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
   font-size: 0.72rem;
   margin-top: 0.1rem;
 }
-.daystrip-key { margin: 0.5rem 0 0; }
-.daystrip-call { text-decoration: none; color: inherit; }
-.daystrip-call:hover .daystrip-label { text-decoration: underline; }
+.daystrip-key {
+  margin: 0.5rem 0 0;
+}
+.daystrip-call {
+  text-decoration: none;
+  color: inherit;
+}
+.daystrip-call:hover .daystrip-label {
+  text-decoration: underline;
+}
 /* The lower row, for calls that would otherwise print over their neighbour. */
-.daystrip-call.is-low .daystrip-label { top: 2.4rem; }
+.daystrip-call.is-low .daystrip-label {
+  top: 2.4rem;
+}
 .daystrip-call.is-low .daystrip-label::before {
-  content: '';
+  content: "";
   position: absolute;
   left: 50%;
   top: -1.05rem;
@@ -1481,9 +2469,16 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
 }
 
 /* The open-problems dot, now that Admin sits with the account controls. */
-.topbar-link { position: relative; }
-.topbar-right > * { flex: none; }
-.topbar-right .btn, .topbar-right button { white-space: nowrap; }
+.topbar-link {
+  position: relative;
+}
+.topbar-right > * {
+  flex: none;
+}
+.topbar-right .btn,
+.topbar-right button {
+  white-space: nowrap;
+}
 .topbar-dot {
   display: inline-block;
   width: 0.4rem;
@@ -1498,7 +2493,9 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
    scrolling. It goes with the page there and stays put on a desktop, where
    there is room for it and the nav is how you move around. */
 @media (max-width: 48rem) {
-  .topbar { position: static; }
+  .topbar {
+    position: static;
+  }
 }
 
 /* A warning, shaped like one thing rather than a wall of amber text. A mark on
@@ -1527,7 +2524,7 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
 }
 /* An exclamation drawn rather than an emoji, so it follows the theme. */
 .notice-mark::after {
-  content: '!';
+  content: "!";
   position: absolute;
   inset: 0;
   display: grid;
@@ -1536,10 +2533,23 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
   font-size: 0.78rem;
   font-weight: 800;
 }
-.notice-body { flex: 1 1 18rem; font-size: 0.88rem; line-height: 1.45; }
-.notice-body strong { color: var(--warn); }
-.notice-actions { display: flex; gap: 0.4rem; align-items: center; flex-wrap: wrap; }
-.notice-actions form { margin: 0; }
+.notice-body {
+  flex: 1 1 18rem;
+  font-size: 0.88rem;
+  line-height: 1.45;
+}
+.notice-body strong {
+  color: var(--warn);
+}
+.notice-actions {
+  display: flex;
+  gap: 0.4rem;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.notice-actions form {
+  margin: 0;
+}
 .btn-quiet {
   background: none;
   border: 1px solid transparent;
@@ -1550,10 +2560,26 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
   cursor: pointer;
   min-height: auto;
 }
-.btn-quiet:hover { border-color: var(--border); color: var(--fg); }
+.btn-quiet:hover {
+  border-color: var(--border);
+  color: var(--fg);
+}
 
 /* The headline tiles are links now. They should look it without turning into
    five blue rectangles. */
-a.stat { display: block; text-decoration: none; color: inherit; transition: border-color 0.12s, transform 0.12s; }
-a.stat:hover { border-color: var(--accent); transform: translateY(-1px); }
-a.stat:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+a.stat {
+  display: block;
+  text-decoration: none;
+  color: inherit;
+  transition:
+    border-color 0.12s,
+    transform 0.12s;
+}
+a.stat:hover {
+  border-color: var(--accent);
+  transform: translateY(-1px);
+}
+a.stat:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}

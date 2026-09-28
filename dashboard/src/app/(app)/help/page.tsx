@@ -63,6 +63,7 @@ const SETTER_SECTIONS = [
   ["booked", "When a call gets booked"],
   ["after", "After the call"],
   ["calls", "Every call, and how they went"],
+  ["kpis", "Your numbers over a stretch"],
   ["eod", "End of day — every day"],
   ["clean", "Keeping it clean"],
   ["short", "The short version"],
@@ -158,7 +159,9 @@ export default async function HelpPage() {
         <p>
           Under <strong>Calls today</strong> the day runs left to right from
           8am. A filled dot is a confirmed call, a hollow one is not, and
-          tapping a dot jumps to that call&apos;s card.
+          tapping a dot jumps to that call&apos;s card. The red line is the time
+          right now, so what is behind you and what is still coming reads at a
+          glance. After 8pm there is no line rather than one pinned to the end.
         </p>
         <ol>
           <li>
@@ -345,8 +348,48 @@ export default async function HelpPage() {
           counted against you twice.
         </p>
         <p>
+          <strong>Export</strong> beside the filters hands you the list as a
+          spreadsheet, filtered exactly as it is on screen — the same setter,
+          closer and dates. One row per call, with the outcome and the money.
+          Anything nobody has priced comes out blank rather than zero, so an
+          unrecorded call is not read as a deal worth nothing.
+        </p>
+        <p>
           Calls are counted on the day they were due, not the day anybody typed
           them in.
+        </p>
+      </Section>
+
+      <Section
+        id="kpis"
+        title="Your numbers over a stretch"
+        lead="KPIs answers how much, and which way it is going."
+      >
+        <p>
+          <strong>KPIs</strong> takes a <strong>Who</strong> and a date range.
+          Leave Who on the whole team or pick one person, set the dates, press{" "}
+          <strong>Update</strong>.
+        </p>
+        <p>
+          The row of tiles is the size of it — cash collected, revenue
+          generated, deals closed, calls booked and new leads — with cash per
+          close under the first one. The charts below show which way each is
+          moving. Read the tiles for a figure to quote and the charts for
+          whether it is going the right way.
+        </p>
+        <Watch>
+          Three different dates are at work and they are not the same thing.
+          Cash, revenue and closes count on the day the deal <em>closed</em>.
+          Calls count on the day they were
+          <em> booked</em>. Leads count on the day they <em>came in</em>. So a
+          deal booked in July and closed in September lands in July&apos;s calls
+          and September&apos;s cash — that is correct, not a mistake. The line
+          under the tiles says the same thing on screen.
+        </Watch>
+        <p>
+          Nothing closed in the window shows <em>no closes yet</em> rather than
+          a cash-per-close of nothing, because a rate with an empty half is not
+          a result.
         </p>
       </Section>
 

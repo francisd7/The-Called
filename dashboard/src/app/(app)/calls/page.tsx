@@ -1,17 +1,27 @@
-import { getBookedCalls, getClosers, getSetters, type CallFilters } from '@/lib/queries';
-import { summariseCalls } from '@/lib/callStats';
-import { formatCallTime, teamDateString, shiftDateString } from '@/lib/dates';
+import {
+  getBookedCalls,
+  getClosers,
+  getSetters,
+  type CallFilters,
+} from "@/lib/queries";
+import { summariseCalls } from "@/lib/callStats";
+import { formatCallTime, teamDateString, shiftDateString } from "@/lib/dates";
 
-export const dynamic = 'force-dynamic';
+export const dynamic = "force-dynamic";
 
 type SearchParams = Promise<Record<string, string | string[] | undefined>>;
 
 const one = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v);
 
 const money0 = (n: number) =>
-  n.toLocaleString('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 });
+  n.toLocaleString("en-US", {
+    style: "currency",
+    currency: "USD",
+    maximumFractionDigits: 0,
+  });
 
-const pct = (v: number | null) => (v === null ? '—' : `${Math.round(v * 100)}%`);
+const pct = (v: number | null) =>
+  v === null ? "—" : `${Math.round(v * 100)}%`;
 
 /** What happened, as one word, with the shape that says which kind of word it is. */
 function Outcome({
@@ -40,7 +50,11 @@ function Outcome({
   return <span className="pill">No close</span>;
 }
 
-export default async function CallsPage({ searchParams }: { searchParams: SearchParams }) {
+export default async function CallsPage({
+  searchParams,
+}: {
+  searchParams: SearchParams;
+}) {
   const sp = await searchParams;
 
   // Ninety days back by default: long enough to see a pattern, short enough
@@ -60,6 +74,10 @@ export default async function CallsPage({ searchParams }: { searchParams: Search
   ]);
   const stats = summariseCalls(calls);
 
+  const exportQuery = new URLSearchParams(
+    Object.entries(filters).filter(([, v]) => Boolean(v)) as [string, string][],
+  ).toString();
+
   return (
     <>
       <h1>Calls</h1>
@@ -71,7 +89,11 @@ export default async function CallsPage({ searchParams }: { searchParams: Search
       <form className="toolbar" method="get" action="/calls">
         <div className="field">
           <label htmlFor="setterId">Setter</label>
-          <select id="setterId" name="setterId" defaultValue={filters.setterId ?? ''}>
+          <select
+            id="setterId"
+            name="setterId"
+            defaultValue={filters.setterId ?? ""}
+          >
             <option value="">Everyone</option>
             {setters.map((s) => (
               <option key={s.id} value={s.id}>
@@ -82,7 +104,11 @@ export default async function CallsPage({ searchParams }: { searchParams: Search
         </div>
         <div className="field">
           <label htmlFor="closerId">Closer</label>
-          <select id="closerId" name="closerId" defaultValue={filters.closerId ?? ''}>
+          <select
+            id="closerId"
+            name="closerId"
+            defaultValue={filters.closerId ?? ""}
+          >
             <option value="">Either</option>
             {closers.map((c) => (
               <option key={c.id} value={c.id}>
@@ -93,13 +119,23 @@ export default async function CallsPage({ searchParams }: { searchParams: Search
         </div>
         <div className="field">
           <label htmlFor="from">From</label>
-          <input id="from" name="from" type="date" defaultValue={filters.from} />
+          <input
+            id="from"
+            name="from"
+            type="date"
+            defaultValue={filters.from}
+          />
         </div>
         <div className="field">
           <label htmlFor="to">To</label>
           <input id="to" name="to" type="date" defaultValue={filters.to} />
         </div>
         <button type="submit">Update</button>
+        {/* Carries the boxes beside it, so the file is what is on screen
+            rather than the whole table under a different name. */}
+        <a className="btn" href={`/api/export/calls?${exportQuery}`}>
+          Export
+        </a>
       </form>
 
       <div className="stats">
@@ -124,7 +160,9 @@ export default async function CallsPage({ searchParams }: { searchParams: Search
           <div className="stat-l">cancelled · {pct(stats.cancelRate)}</div>
         </div>
         <div className="stat tone-violet">
-          <div className="stat-n">{stats.cashPerShow === null ? '—' : money0(stats.cashPerShow)}</div>
+          <div className="stat-n">
+            {stats.cashPerShow === null ? "—" : money0(stats.cashPerShow)}
+          </div>
           <div className="stat-l">per call that showed</div>
         </div>
       </div>
@@ -132,10 +170,12 @@ export default async function CallsPage({ searchParams }: { searchParams: Search
       <p className="sub">
         {stats.settled < stats.held ? (
           <>
-            {stats.held - stats.settled} of these {stats.held} held calls{' '}
-            {stats.held - stats.settled === 1 ? 'has' : 'have'} no result recorded yet, so{' '}
-            {stats.held - stats.settled === 1 ? 'it counts' : 'they count'} in neither the show rate
-            nor the close rate. A call nobody has written up is unknown, not a no-show.
+            {stats.held - stats.settled} of these {stats.held} held calls{" "}
+            {stats.held - stats.settled === 1 ? "has" : "have"} no result
+            recorded yet, so{" "}
+            {stats.held - stats.settled === 1 ? "it counts" : "they count"} in
+            neither the show rate nor the close rate. A call nobody has written
+            up is unknown, not a no-show.
           </>
         ) : (
           <>Every held call in this range has a result recorded.</>
@@ -162,17 +202,27 @@ export default async function CallsPage({ searchParams }: { searchParams: Search
             <tbody>
               {calls.map((c) => (
                 <tr key={c.id}>
-                  <td className="nowrap">{formatCallTime(c.callScheduledFor)}</td>
-                  <td>
-                    <a href={`/leads/${c.id}`}>{c.name?.trim() || `@${c.igHandle}`}</a>
-                  </td>
-                  <td>{c.setterName ?? '—'}</td>
-                  <td>{c.closerName ?? '—'}</td>
-                  <td>{c.offerLabel ?? '—'}</td>
                   <td className="nowrap">
-                    {c.confirmed ? <span className="pill ok">Confirmed</span> : null}{' '}
-                    {c.triaged ? <span className="pill ok">Triaged</span> : null}
-                    {!c.confirmed && !c.triaged ? <span className="pill warn">Neither</span> : null}
+                    {formatCallTime(c.callScheduledFor)}
+                  </td>
+                  <td>
+                    <a href={`/leads/${c.id}`}>
+                      {c.name?.trim() || `@${c.igHandle}`}
+                    </a>
+                  </td>
+                  <td>{c.setterName ?? "—"}</td>
+                  <td>{c.closerName ?? "—"}</td>
+                  <td>{c.offerLabel ?? "—"}</td>
+                  <td className="nowrap">
+                    {c.confirmed ? (
+                      <span className="pill ok">Confirmed</span>
+                    ) : null}{" "}
+                    {c.triaged ? (
+                      <span className="pill ok">Triaged</span>
+                    ) : null}
+                    {!c.confirmed && !c.triaged ? (
+                      <span className="pill warn">Neither</span>
+                    ) : null}
                   </td>
                   <td>
                     <Outcome
@@ -184,7 +234,7 @@ export default async function CallsPage({ searchParams }: { searchParams: Search
                     />
                   </td>
                   <td className="num">
-                    {c.cashCollected ? money0(Number(c.cashCollected)) : '—'}
+                    {c.cashCollected ? money0(Number(c.cashCollected)) : "—"}
                   </td>
                 </tr>
               ))}
