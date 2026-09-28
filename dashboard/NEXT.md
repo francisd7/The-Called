@@ -1,63 +1,64 @@
 # Next up
 
-Parked work, newest ask first. Everything here is deliberate, not forgotten.
+Parked work and what is left before the team uses this. Everything here is
+deliberate, not forgotten.
 
-## 1. ~~"View as Loui / Alexis" in admin~~ — built
+## Before launch — Francis only
 
-Admin -> People has a **View as** button per active person. It swaps the
-identity the whole app resolves to, so the menu, the numbers and the pages
-are the ones that sign-in actually returns - not admin's data relabelled.
-Read-only while it is on, with a fixed bar at the bottom of every screen to
-get back out.
+These cannot be done from a branch. They need the live dashboard.
 
-## 2. ~~A "Data" tab, starting with boosted reels~~ — built, waiting on the reels
+1. **Give Loui and Alexis real addresses.** Admin → People. Both are seeded
+   as `CHANGEME...@example.com`, and an address that is not a real Google
+   account cannot sign in at all. This is the one item that stops the day
+   rather than degrading it.
+2. **Split the old leads by date.** Admin → Setup & imports → Move a pile of
+   leads by date. The Setter column in the old tracker was blank for most of
+   its life, so a long run of leads sits on one name. Cash follows whoever
+   owns the lead, so until this is done every setter's cash figure is wrong.
+   Pick the pile with the leads in it — the dropdown shows each one's size —
+   dry run, read the three bands, then move.
+3. **Set the monthly targets.** Admin → Setup & imports → Monthly targets.
+   Without them the pace bars on the Dashboard do not draw at all. A target
+   nobody set is not a target being missed, so this is optional — but the
+   bars are most of what makes the Dashboard worth opening in the morning.
+4. **Take a backup.** Admin → Backups → Back up now. One before the team
+   starts writing to it is worth having.
+5. **Send the team the Help link.** `/help` is the manual. It has a setter
+   half and an admin half, so a setter is not shown buttons they do not have.
 
-`/data` holds one tile per boosted reel: an Instagram embed, the spend, the
-cash, and the rates worked out from them. Below it, the same reels side by
-side in a table.
+## Waiting on Francis, not blocking
 
-Every number is entered by hand — Instagram insights and Ads Manager are
-not readable from here, and the ones that matter most (did this reel produce
-a call, did that call close) only exist in this dashboard anyway. Nothing
-derived is stored: cost per lead, return, net and the funnel rates are
-computed on read so they cannot drift from the numbers they came from.
+**Boosted reels.** `/ads` holds one tile per reel: an Instagram embed, the
+spend, the cash, and the rates worked out from them. Nothing runs right now,
+so the page is empty by design. Two things to settle when reels do go live:
 
-**Still open:** Francis pastes the current boosted reels. Two things to
-settle when he does:
-
-- **Spend currency.** Each reel carries its own, defaulting to USD. If the
-  ad account bills CAD while contracts are USD, a cost-per-lead that mixes
-  them is nonsense — so the figure is only ever shown next to its own
-  currency. Worth confirming which the ad account actually uses.
+- **Spend currency.** Each reel carries its own, defaulting to USD. If the ad
+  account bills CAD while contracts are USD, a cost-per-lead that mixes them
+  is nonsense — so the figure is only ever shown next to its own currency.
 - **Whether "conversations started" should be counted rather than typed.**
   Leads already carry a source; if setters tagged a lead with the reel it
   came from, that column and the two after it would fill themselves. That is
   a behaviour change for the team, so it is not assumed.
 
-## Backups — done, and not the way we planned
+## Built and done
 
-Railway only offers them on the Pro plan ($20/mo against Hobby's $5), so the
-dashboard does it itself. A full CSV copy of every table posts to the COO
-chat on Discord every seven days, triggered the first time anybody opens the
-dashboard after that — nobody has to remember, and the copy is not on the
-same disk as the database it protects. Admin → Put a backup back reads those
-files straight in, filling gaps without overwriting anything newer.
-
-At the current size a copy is 224 KB against Discord's 10 MB limit, and the
-backup refuses rather than posting a partial set if it ever outgrows it.
-
-## Open items Francis is handling himself
-
-- Merge the duplicate pairs on `/leads/duplicates`.
-- Log the outcomes still owed on past calls.
-- Link the pending post-call reports.
-- Check Loui and Alexis can both sign in (Admin -> People, look for
-  "needs a real address").
+- **View as Loui / Alexis.** Admin → People. Swaps the identity the whole app
+  resolves to, so the menu, the numbers and the pages are the ones sign-in
+  actually returns — not admin's data relabelled. Read-only while it is on.
+- **Backups.** Railway only offers them on the Pro plan ($20/mo against
+  Hobby's $5), so the dashboard does it itself: a full CSV copy of every
+  table posts to the COO chat on Discord every seven days, triggered the
+  first time anybody opens the dashboard after that. Admin → Put a backup
+  back reads those files straight in, filling gaps without overwriting
+  anything newer. At the current size a copy is 224 KB against Discord's
+  10 MB limit, and it refuses rather than posting a partial set.
+- **Moving leads between people by date**, with a dry run that reports the
+  cash in each band before anything moves.
 
 ## Decided, deliberately not built
 
-- **EOD streak honesty.** A missed day currently breaks the streak and the
-  report can still be filed late. Francis wants it that way: going back to
-  fill in a missed day reinforces the habit even though the streak is gone.
+- **EOD streak honesty.** A missed day breaks the streak and the report can
+  still be filed late. Francis wants it that way: going back to fill in a
+  missed day reinforces the habit even though the streak is gone.
 - **Splitting compound cancel reasons** such as "Bad Fit, No Money". The
   team's own Airtable vocabulary is the source of truth and stays as-is.

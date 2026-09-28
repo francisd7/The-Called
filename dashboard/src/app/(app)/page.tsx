@@ -90,6 +90,12 @@ export default async function TodayPage({ searchParams }: { searchParams: Search
     me!.role === 'admin' ? getCalendlyHealth() : null,
   ]);
 
+  // Null for an admin, whose job is the team figure; a number for anybody
+  // whose own pile the tile should be reporting.
+  const myConvos = isSetter
+    ? (convos.groups.find((g) => g.id === userId)?.total ?? 0)
+    : null;
+
   // A webhook that has quietly stopped delivering looks exactly like a quiet
   // week, and only one of those is survivable. Admin-only: it's a plumbing
   // problem, not something a setter can act on.
@@ -287,9 +293,12 @@ export default async function TodayPage({ searchParams }: { searchParams: Search
           <div className="stat-n">{summary.needsTriage}</div>
           <div className="stat-l">need triage</div>
         </div>
+        {/* A setter's own workload, not the team's. Loui owning 76 leads and
+            reading 442 here is the kind of number that gets the whole tile
+            distrusted. Admin keeps the team figure, which is their job. */}
         <div className="stat tone-teal">
-          <div className="stat-n">{convos.teamTotal}</div>
-          <div className="stat-l">active convos</div>
+          <div className="stat-n">{myConvos ?? convos.teamTotal}</div>
+          <div className="stat-l">{myConvos === null ? 'active convos' : 'your active convos'}</div>
         </div>
       </div>
 
