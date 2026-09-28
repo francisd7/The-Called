@@ -5,6 +5,7 @@ import {
   type CallFilters,
 } from "@/lib/queries";
 import { summariseCalls } from "@/lib/callStats";
+import { validDay, validUuid } from "@/lib/params";
 import { formatCallTime, teamDateString, shiftDateString } from "@/lib/dates";
 
 export const dynamic = "force-dynamic";
@@ -60,11 +61,14 @@ export default async function CallsPage({
   // Ninety days back by default: long enough to see a pattern, short enough
   // that the page is about now rather than about the whole history.
   const today = teamDateString();
+  // Everything here comes off the URL, so it can be anything. Unchecked, a
+  // mistyped date or id reached the cast in the query builder and 500d the
+  // page over a typo in an address bar.
   const filters: CallFilters = {
-    setterId: one(sp.setterId) || undefined,
-    closerId: one(sp.closerId) || undefined,
-    from: one(sp.from) || shiftDateString(today, -90),
-    to: one(sp.to) || today,
+    setterId: validUuid(one(sp.setterId)),
+    closerId: validUuid(one(sp.closerId)),
+    from: validDay(one(sp.from), shiftDateString(today, -90)),
+    to: validDay(one(sp.to), today),
   };
 
   const [calls, setters, closers] = await Promise.all([

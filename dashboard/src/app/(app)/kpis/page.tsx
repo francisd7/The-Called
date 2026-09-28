@@ -16,6 +16,7 @@ import {
   type BreakdownKind,
 } from "@/lib/kpis";
 import { formatDay } from "@/lib/dates";
+import { validDay, validUuid } from "@/lib/params";
 
 export const dynamic = "force-dynamic";
 
@@ -30,12 +31,6 @@ function one(
 }
 
 /** A date only counts if it's a real YYYY-MM-DD; anything else falls back. */
-function validDate(value: string | undefined, fallback: string): string {
-  if (!value || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return fallback;
-  const parsed = new Date(`${value}T12:00:00Z`);
-  return Number.isNaN(parsed.getTime()) ? fallback : value;
-}
-
 export default async function KpisPage({
   searchParams,
 }: {
@@ -46,10 +41,10 @@ export default async function KpisPage({
   // Straight off the URL, so it can be anything. An unparseable date used to
   // reach the driver and throw a 500 from deep inside the query builder.
   const range = {
-    from: validDate(one(params, "from"), fallback.from),
-    to: validDate(one(params, "to"), fallback.to),
+    from: validDay(one(params, "from"), fallback.from),
+    to: validDay(one(params, "to"), fallback.to),
   };
-  const setterId = one(params, "setterId");
+  const setterId = validUuid(one(params, "setterId"));
 
   // Which tile was opened. Anything else is treated as none, so a hand-edited
   // URL cannot reach the query with something that is not one of the three.
@@ -62,7 +57,7 @@ export default async function KpisPage({
   // All four, always. Picking one at a time meant four page loads to answer a
   // question about one week, and no way to see a dip in bookings next to the
   // outreach that did or didn't cause it.
-  const [setters, streaks, steps, booked, cash, activity, sums] =
+  const [setters, streaks, steps, booked, cash, activity, sums, rows] =
     await Promise.all([
       getSetters(),
       getStreaks(),
@@ -71,9 +66,10 @@ export default async function KpisPage({
       money(range, setterId),
       outreach(range, setterId),
       totals(range, setterId),
+      // In the batch, not after it: it depends on nothing above and a serial
+      // round trip is a round trip somebody waits for on every tile they open.
+      show ? breakdown(range, setterId, show) : null,
     ]);
-
-  const rows = show ? await breakdown(range, setterId, show) : null;
 
   // Keeps the person and the dates while swapping which tile is open, so
   // opening one is never also a silent reset of the filters.
@@ -183,6 +179,12 @@ export default async function KpisPage({
         </a>
       </div>
 
+      <p className="sub" style={{ marginTop: "-0.3rem" }}>
+        Cash, revenue and closes count on the day the deal closed; calls on the
+        day they were booked; leads on the day they came in. Three different
+        dates, so they are counted separately rather than forced onto one.
+      </p>
+
       {show && rows && (
         <section className="panel" id="breakdown">
           <div className="panel-head">
@@ -235,18 +237,13 @@ export default async function KpisPage({
               {rows.total > rows.rows.length && (
                 <p className="sub" style={{ marginTop: "0.7rem" }}>
                   The newest {BREAKDOWN_CAP} of {rows.total}. Narrow the dates
-                  to see the rest, or use Export on the Calls page.
+                  to see the rest.
                 </p>
               )}
             </>
           )}
         </section>
       )}
-      <p className="sub" style={{ marginTop: "-0.3rem" }}>
-        Cash, revenue and closes count on the day the deal closed; calls on the
-        day they were booked; leads on the day they came in. Three different
-        dates, so they are counted separately rather than forced onto one.
-      </p>
 
       <section className="panel">
         <div className="panel-head">

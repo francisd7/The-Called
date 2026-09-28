@@ -1,6 +1,7 @@
 import { count, eq } from "drizzle-orm";
 import { db } from "../db";
 import { offers, optionSets, users } from "../db/schema";
+import { SETTER_EMAILS } from "./people";
 
 /**
  * The rows the app can't function without. Runs on every boot and is
@@ -16,6 +17,8 @@ const ADMIN_EMAIL = (process.env.ADMIN_EMAIL ?? "francisduong7@gmail.com")
   .trim()
   .toLowerCase();
 
+const byName = (n: string) => SETTER_EMAILS.find((p) => p.name === n)!.email;
+
 const PEOPLE = [
   {
     email: ADMIN_EMAIL,
@@ -24,14 +27,14 @@ const PEOPLE = [
     active: true,
   },
   {
-    email: "lalbawab6@gmail.com",
+    email: byName("Loui"),
     name: "Loui",
     role: "setter" as const,
     active: true,
     color: "orange",
   },
   {
-    email: "alexisleid7@gmail.com",
+    email: byName("Alexis"),
     name: "Alexis",
     role: "setter" as const,
     active: true,
@@ -149,12 +152,7 @@ export async function seedBaseline() {
   // first, the update would collide with the unique index on email and take
   // the whole app down with it. Skipping is always the safe answer - the
   // address is already in, which is the point.
-  const PLACEHOLDERS: Array<[placeholder: string, real: string]> = [
-    ["CHANGEME.loui@example.com", "lalbawab6@gmail.com"],
-    ["CHANGEME.alexis@example.com", "alexisleid7@gmail.com"],
-  ];
-
-  for (const [placeholder, real] of PLACEHOLDERS) {
+  for (const { placeholder, email: real } of SETTER_EMAILS) {
     const [taken] = await db
       .select({ id: users.id })
       .from(users)

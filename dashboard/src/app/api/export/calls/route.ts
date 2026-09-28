@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { currentUser } from "@/lib/session";
 import { getBookedCalls, type CallFilters } from "@/lib/queries";
 import { toCsv } from "@/lib/csv";
+import { validDay, validUuid } from "@/lib/params";
 import { teamDateString, formatTimeOnly } from "@/lib/dates";
 
 export const dynamic = "force-dynamic";
@@ -55,11 +56,16 @@ export async function GET(req: Request) {
 
   const url = new URL(req.url);
   const today = teamDateString();
+  // Straight off the URL, so it can be anything. Both of these reach a cast in
+  // the query builder - a date that will not parse, or an id that is not a
+  // uuid, throws from inside the driver and 500s the download. The KPIs page
+  // learned this already; anything that is not the right shape is dropped
+  // rather than passed on, which widens the export instead of breaking it.
   const filters: CallFilters = {
-    setterId: url.searchParams.get("setterId") || undefined,
-    closerId: url.searchParams.get("closerId") || undefined,
-    from: url.searchParams.get("from") || undefined,
-    to: url.searchParams.get("to") || undefined,
+    setterId: validUuid(url.searchParams.get("setterId")),
+    closerId: validUuid(url.searchParams.get("closerId")),
+    from: validDay(url.searchParams.get("from"), undefined),
+    to: validDay(url.searchParams.get("to"), undefined),
   };
 
   // Well past the page's own cap: a file that stops at 500 without saying so

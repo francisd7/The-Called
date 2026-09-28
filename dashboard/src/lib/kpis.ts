@@ -1,7 +1,7 @@
 import { and, asc, eq, gte, isNotNull, lte, sql } from "drizzle-orm";
 import type { PgColumn } from "drizzle-orm/pg-core";
 import { db } from "@/db";
-import { teamDateString } from "./dates.ts";
+import { shiftDateString, teamDateString, teamDayStart } from "./dates.ts";
 import type { Period } from "./queries.ts";
 import { colourOrder, personColour, type PersonColour } from "./people.ts";
 import { eodReports, leads, users } from "@/db/schema";
@@ -10,19 +10,22 @@ export type Range = { from: string; to: string };
 
 /** Default window: the last 12 weeks, which is roughly the life of this data. */
 export function defaultRange(): Range {
-  const to = new Date();
-  const from = new Date(to.getTime() - 84 * 86_400_000);
-  return {
-    from: from.toISOString().slice(0, 10),
-    to: to.toISOString().slice(0, 10),
-  };
+  // Team dates. toISOString() reads as tomorrow for the last four hours of
+  // every working day, so the box opened on a window that had not started.
+  const to = teamDateString();
+  return { from: shiftDateString(to, -84), to };
 }
 
 function bounds({ from, to }: Range) {
-  // `to` is inclusive of its whole day, so compare against the following midnight.
+  // Anchored to the team's day, not UTC. Midnight to midnight in UTC runs four
+  // or five hours ahead of the calendar everyone here reads, so a call booked
+  // at 9pm on the last day of a range fell outside it, while the same lead sat
+  // inside the window everywhere else - the Dashboard's queries all convert to
+  // America/New_York first. `to` is inclusive of its whole day, so the window
+  // ends at the following midnight.
   return {
-    start: new Date(`${from}T00:00:00Z`),
-    end: new Date(`${to}T23:59:59.999Z`),
+    start: teamDayStart(from),
+    end: teamDayStart(shiftDateString(to, 1)),
   };
 }
 
@@ -376,6 +379,11 @@ export async function totals(range: Range, setterId?: string): Promise<Totals> {
       .where(
         and(
           notTest,
+          // The tracker holds rows with a close date and the box never ticked.
+          // Every other count in the app filters on the box, so counting the
+          // date alone made this page disagree with the Dashboard, and with
+          // the funnel directly below it.
+          sql`${leads.closed} IS TRUE`,
           isNotNull(leads.closedDate),
           gte(leads.closedDate, start),
           lte(leads.closedDate, end),
@@ -463,6 +471,8 @@ export async function breakdown(
         ? leads.callBookedAt
         : leads.leadCreatedAt;
   const scope = [notTest, gte(on, start), lte(on, end), ...mine];
+  // Same rule as the tile, or the list contradicts the number it came from.
+  if (kind === "closed") scope.push(sql`${leads.closed} IS TRUE`);
   // Created-at is never null; the other two are, and a null would sort in as
   // though it belonged here.
   if (kind !== "leads") scope.push(isNotNull(on));

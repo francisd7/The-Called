@@ -24,7 +24,7 @@
  * steps land in the 6-8 floor band, which is legal because a person's name is
  * always printed next to their colour and never replaced by it.
  */
-export const PERSON_COLOURS = ['cyan', 'lime', 'magenta'] as const;
+export const PERSON_COLOURS = ["cyan", "lime", "magenta"] as const;
 export type PersonColour = (typeof PERSON_COLOURS)[number];
 
 type Person = { id: string; name: string; role: string; active: boolean };
@@ -38,7 +38,7 @@ type Person = { id: string; name: string; role: string; active: boolean };
  */
 export function colourOrder(people: Person[]): string[] {
   return people
-    .filter((p) => p.active && (p.role === 'setter' || p.role === 'admin'))
+    .filter((p) => p.active && (p.role === "setter" || p.role === "admin"))
     .slice()
     .sort(
       (a, b) =>
@@ -46,7 +46,8 @@ export function colourOrder(people: Person[]): string[] {
         // line every day, and with fewer colours than people it is their pair
         // that has to stay distinct - an admin is the one who can afford to
         // share. Alphabetical within each group so the order never moves.
-        Number(a.role === 'admin') - Number(b.role === 'admin') || a.name.localeCompare(b.name)
+        Number(a.role === "admin") - Number(b.role === "admin") ||
+        a.name.localeCompare(b.name),
     )
     .map((p) => p.id);
 }
@@ -61,7 +62,7 @@ function isColour(v: string | null | undefined): v is PersonColour {
  */
 export function personColour(
   person: { id: string; color?: string | null },
-  order: string[]
+  order: string[],
 ): PersonColour {
   if (isColour(person.color)) return person.color;
   const at = order.indexOf(person.id);
@@ -76,3 +77,22 @@ export function toneFor(id: string, order: string[]): number {
   const at = order.indexOf(id);
   return at === -1 ? order.length + 1 : at + 1;
 }
+
+/**
+ * The address each setter signs in with, and the placeholder they were seeded
+ * with before anybody had it. Both the list below and the repair further down
+ * read from here, so the two cannot drift apart and quietly give a fresh
+ * database one address and a running one another.
+ */
+export const SETTER_EMAILS = [
+  {
+    name: "Loui",
+    placeholder: "CHANGEME.loui@example.com",
+    email: "lalbawab6@gmail.com",
+  },
+  {
+    name: "Alexis",
+    placeholder: "CHANGEME.alexis@example.com",
+    email: "alexisleid7@gmail.com",
+  },
+] as const;

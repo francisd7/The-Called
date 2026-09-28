@@ -86,11 +86,15 @@ export function DayStrip({ calls }: { calls: Call[] }) {
         ))}
       </div>
       <p className="sub daystrip-key">
+        {/* Nothing here describes the now line. It is drawn client-side and
+            only between 8am and 8pm, and this is a server component - a key
+            that named it would be describing a marker that is not on screen
+            for half the day. It carries its own NOW label instead. */}
         {ordered.length === 0 ? (
-          "Nothing booked today. The red line is the time now."
+          "Nothing booked today."
         ) : (
           <>
-            Filled is confirmed, hollow is not. The red line is the time now.
+            Filled is confirmed, hollow is not.
             {unconfirmed > 0
               ? ` ${unconfirmed} still to confirm.`
               : " All confirmed."}

@@ -1,12 +1,12 @@
-export const TEAM_TZ = 'America/New_York';
+export const TEAM_TZ = "America/New_York";
 
 /** YYYY-MM-DD for a moment, as the team's calendar sees it. */
 export function teamDateString(date: Date = new Date()): string {
-  return new Intl.DateTimeFormat('en-CA', {
+  return new Intl.DateTimeFormat("en-CA", {
     timeZone: TEAM_TZ,
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
   }).format(date);
 }
 
@@ -15,58 +15,60 @@ export function teamDateString(date: Date = new Date()): string {
  * offset at that date rather than a fixed -5/-4, so the DST changeover doesn't
  * silently shift what "today" means.
  */
+/** Midnight in the team's timezone on a given YYYY-MM-DD, as an instant. */
+export function teamDayStart(day: string): Date {
+  const guess = new Date(`${day}T00:00:00Z`);
+  const local = new Date(guess.toLocaleString("en-US", { timeZone: TEAM_TZ }));
+  const utc = new Date(guess.toLocaleString("en-US", { timeZone: "UTC" }));
+  const offsetMs = utc.getTime() - local.getTime();
+  return new Date(guess.getTime() + offsetMs);
+}
+
 export function teamDayRange(dayOffset = 0): { start: Date; end: Date } {
   const now = new Date();
   const target = new Date(now.getTime() + dayOffset * 86_400_000);
-  const day = teamDateString(target);
-
-  const guess = new Date(`${day}T00:00:00Z`);
-  const local = new Date(guess.toLocaleString('en-US', { timeZone: TEAM_TZ }));
-  const utc = new Date(guess.toLocaleString('en-US', { timeZone: 'UTC' }));
-  const offsetMs = utc.getTime() - local.getTime();
-
-  const start = new Date(guess.getTime() + offsetMs);
+  const start = teamDayStart(teamDateString(target));
   return { start, end: new Date(start.getTime() + 86_400_000) };
 }
 
 export function formatCallTime(date: Date | null | undefined): string {
-  if (!date) return '—';
-  return new Intl.DateTimeFormat('en-US', {
-    weekday: 'short',
-    month: 'short',
-    day: 'numeric',
-    hour: 'numeric',
-    minute: '2-digit',
+  if (!date) return "—";
+  return new Intl.DateTimeFormat("en-US", {
+    weekday: "short",
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
     timeZone: TEAM_TZ,
   }).format(date);
 }
 
 export function formatTimeOnly(date: Date | null | undefined): string {
-  if (!date) return '—';
-  return new Intl.DateTimeFormat('en-US', {
-    hour: 'numeric',
-    minute: '2-digit',
+  if (!date) return "—";
+  return new Intl.DateTimeFormat("en-US", {
+    hour: "numeric",
+    minute: "2-digit",
     timeZone: TEAM_TZ,
   }).format(date);
 }
 
 export function formatDay(date: Date | null | undefined): string {
-  if (!date) return '—';
-  return new Intl.DateTimeFormat('en-US', {
-    month: 'short',
-    day: 'numeric',
-    year: 'numeric',
+  if (!date) return "—";
+  return new Intl.DateTimeFormat("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
     timeZone: TEAM_TZ,
   }).format(date);
 }
 
 export function relativeDays(date: Date | null | undefined): string {
-  if (!date) return '';
+  if (!date) return "";
   const days = Math.round((Date.now() - date.getTime()) / 86_400_000);
-  if (days === 0) return 'today';
-  if (days === 1) return 'yesterday';
+  if (days === 0) return "today";
+  if (days === 1) return "yesterday";
   if (days > 0) return `${days}d ago`;
-  if (days === -1) return 'tomorrow';
+  if (days === -1) return "tomorrow";
   return `in ${Math.abs(days)}d`;
 }
 
@@ -87,8 +89,8 @@ export function weekStart(date: Date = new Date()): string {
 
 /** How far the team's clock sits from UTC at a given moment, in ms. */
 function teamOffsetMs(at: Date): number {
-  const local = new Date(at.toLocaleString('en-US', { timeZone: TEAM_TZ }));
-  const utc = new Date(at.toLocaleString('en-US', { timeZone: 'UTC' }));
+  const local = new Date(at.toLocaleString("en-US", { timeZone: TEAM_TZ }));
+  const utc = new Date(at.toLocaleString("en-US", { timeZone: "UTC" }));
   return utc.getTime() - local.getTime();
 }
 
@@ -99,20 +101,21 @@ function teamOffsetMs(at: Date): number {
  * five hours off from the time printed next to it.
  */
 export function teamDateTimeInputValue(date: Date | null | undefined): string {
-  if (!date) return '';
-  const parts = new Intl.DateTimeFormat('en-CA', {
+  if (!date) return "";
+  const parts = new Intl.DateTimeFormat("en-CA", {
     timeZone: TEAM_TZ,
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
     hour12: false,
   }).formatToParts(date);
-  const get = (type: string) => parts.find((p) => p.type === type)?.value ?? '00';
+  const get = (type: string) =>
+    parts.find((p) => p.type === type)?.value ?? "00";
   // Some runtimes render midnight as hour 24 rather than 00.
-  const hour = get('hour') === '24' ? '00' : get('hour');
-  return `${get('year')}-${get('month')}-${get('day')}T${hour}:${get('minute')}`;
+  const hour = get("hour") === "24" ? "00" : get("hour");
+  return `${get("year")}-${get("month")}-${get("day")}T${hour}:${get("minute")}`;
 }
 
 /**

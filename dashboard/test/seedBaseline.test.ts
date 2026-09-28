@@ -6,6 +6,7 @@ import postgres from "postgres";
 import { count, eq } from "drizzle-orm";
 import * as schema from "../src/db/schema.ts";
 import { users } from "../src/db/schema.ts";
+import { SETTER_EMAILS } from "../src/lib/people.ts";
 
 const url = process.env.TEST_DATABASE_URL;
 const skip = url ? false : "TEST_DATABASE_URL is not set";
@@ -61,7 +62,7 @@ async function seedPeople(adminEmail: string) {
       active: true,
     },
     {
-      email: "CHANGEME.loui@example.com",
+      email: PLACEHOLDERS[0].placeholder,
       name: "Loui",
       role: "setter" as const,
       active: true,
@@ -77,7 +78,7 @@ async function seedPeople(adminEmail: string) {
   const [{ existing }] = await db.select({ existing: count() }).from(users);
   if (existing === 0) await db.insert(users).values(PEOPLE);
 
-  for (const [placeholder, real] of PLACEHOLDERS) {
+  for (const { placeholder, email: real } of PLACEHOLDERS) {
     const [taken] = await db
       .select({ id: users.id })
       .from(users)
@@ -98,9 +99,9 @@ async function seedPeople(adminEmail: string) {
     });
 }
 
-const PLACEHOLDERS: Array<[placeholder: string, real: string]> = [
-  ["CHANGEME.loui@example.com", "loui.real@example.com"],
-];
+// The real list, not a copy of it: a test that seeds its own placeholder
+// would keep passing after production stopped using one.
+const PLACEHOLDERS = SETTER_EMAILS.filter((p) => p.name === "Loui");
 
 const ADMIN = "admin@example.com";
 
@@ -175,7 +176,7 @@ test(
     await seedPeople(ADMIN);
 
     const [loui] = await db.select().from(users).where(eq(users.name, "Loui"));
-    assert.equal(loui.email, "loui.real@example.com");
+    assert.equal(loui.email, PLACEHOLDERS[0].email);
   },
 );
 
@@ -225,13 +226,13 @@ test(
     await db.insert(users).values([
       { email: ADMIN, name: "Francis", role: "admin", active: true },
       {
-        email: "CHANGEME.loui@example.com",
+        email: PLACEHOLDERS[0].placeholder,
         name: "Loui",
         role: "setter",
         active: true,
       },
       {
-        email: "loui.real@example.com",
+        email: PLACEHOLDERS[0].email,
         name: "Loui",
         role: "setter",
         active: true,
@@ -243,7 +244,7 @@ test(
     const rows = await db.select().from(users).where(eq(users.name, "Loui"));
     assert.equal(rows.length, 2);
     assert.equal(
-      rows.filter((r) => r.email === "CHANGEME.loui@example.com").length,
+      rows.filter((r) => r.email === PLACEHOLDERS[0].placeholder).length,
       1,
       "the placeholder is left alone rather than renamed into a collision",
     );

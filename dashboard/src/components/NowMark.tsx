@@ -39,7 +39,7 @@ export function NowMark({
       const minute = get("minute");
       const decimal = hour + minute / 60;
 
-      if (decimal < startHour || decimal > endHour) return setAt(null);
+      if (decimal < startHour || decimal >= endHour) return setAt(null);
       setAt({
         fraction: (decimal - startHour) / (endHour - startHour),
         label: new Intl.DateTimeFormat("en-US", {
