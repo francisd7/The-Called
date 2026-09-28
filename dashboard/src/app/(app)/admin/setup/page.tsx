@@ -112,6 +112,15 @@ export default async function SetupPage() {
   const placeholderPeople = people.filter(
     (p) => p.active && p.email.startsWith("CHANGEME"),
   );
+  // Whether the tokens are there, never what they are. These notes used to be
+  // printed unconditionally, so the page said an import "needs AIRTABLE_PAT"
+  // directly underneath that same import reporting 592 rows read - which reads
+  // as a failure sitting under a success, and sends somebody to Railway to fix
+  // something that was never broken. A missing token is worth saying loudly; a
+  // present one is worth not mentioning.
+  const hasAirtablePat = Boolean(process.env.AIRTABLE_PAT);
+  const hasCalendlyPat = Boolean(process.env.CALENDLY_PAT);
+
   const linkedOffers = offerRows.filter((o) => o.eventTypeUri).length;
   const setupComplete =
     placeholderPeople.length === 0 &&
@@ -178,8 +187,16 @@ export default async function SetupPage() {
             </div>
             <p className="sub" style={{ marginTop: "0.4rem" }}>
               Links the three offers to their Calendly event types and registers
-              the booking webhook. Needs <code>CALENDLY_PAT</code> set on this
-              service. Won&apos;t create a duplicate webhook.
+              the booking webhook. Won&apos;t create a duplicate webhook.
+              {!hasCalendlyPat && (
+                <>
+                  {" "}
+                  <strong className="warn-text">
+                    This cannot run until <code>CALENDLY_PAT</code> is set on
+                    this service.
+                  </strong>
+                </>
+              )}
             </p>
           </div>
         </>
@@ -473,8 +490,16 @@ export default async function SetupPage() {
           </ActionForm>
         </div>
         <p className="sub" style={{ marginTop: "0.6rem" }}>
-          {leadCount.toLocaleString()} leads here now. Needs{" "}
-          <code>AIRTABLE_PAT</code> set on this service.
+          {leadCount.toLocaleString()} leads here now.
+          {!hasAirtablePat && (
+            <>
+              {" "}
+              <strong className="warn-text">
+                This cannot run until <code>AIRTABLE_PAT</code> is set on this
+                service.
+              </strong>
+            </>
+          )}
         </p>
       </div>
 

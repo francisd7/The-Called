@@ -412,6 +412,11 @@ button:disabled {
   color: var(--danger);
 }
 
+/* A setting that is genuinely missing, inside a line of ordinary sub text. */
+.warn-text {
+  color: var(--warn);
+}
+
 .empty {
   color: var(--muted);
   font-size: 0.875rem;
