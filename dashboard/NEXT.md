@@ -7,10 +7,13 @@ deliberate, not forgotten.
 
 These cannot be done from a branch. They need the live dashboard.
 
-1. **Give Loui and Alexis real addresses.** Admin → People. Both are seeded
-   as `CHANGEME...@example.com`, and an address that is not a real Google
-   account cannot sign in at all. This is the one item that stops the day
-   rather than degrading it.
+1. **Check Loui and Alexis's addresses took.** Admin → People — both should
+   read a real address with "can sign in: yes", not *needs a real address*.
+   The deploy sets them (`lalbawab6@gmail.com` for Loui,
+   `alexisleid7@gmail.com` for Alexis) by replacing the placeholder they were
+   seeded with; an address already typed in by hand is never overwritten. If
+   either is wrong, edit it there — sign-in matches on email, so a wrong
+   address is the difference between somebody getting in and not.
 2. **Split the old leads by date.** Admin → Setup & imports → Move a pile of
    leads by date. The Setter column in the old tracker was blank for most of
    its life, so a long run of leads sits on one name. Cash follows whoever

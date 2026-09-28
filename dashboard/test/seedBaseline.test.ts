@@ -1,14 +1,14 @@
-import { strict as assert } from 'node:assert';
-import { after, before, test } from 'node:test';
-import { drizzle } from 'drizzle-orm/postgres-js';
-import { migrate } from 'drizzle-orm/postgres-js/migrator';
-import postgres from 'postgres';
-import { count, eq } from 'drizzle-orm';
-import * as schema from '../src/db/schema.ts';
-import { users } from '../src/db/schema.ts';
+import { strict as assert } from "node:assert";
+import { after, before, test } from "node:test";
+import { drizzle } from "drizzle-orm/postgres-js";
+import { migrate } from "drizzle-orm/postgres-js/migrator";
+import postgres from "postgres";
+import { count, eq } from "drizzle-orm";
+import * as schema from "../src/db/schema.ts";
+import { users } from "../src/db/schema.ts";
 
 const url = process.env.TEST_DATABASE_URL;
-const skip = url ? false : 'TEST_DATABASE_URL is not set';
+const skip = url ? false : "TEST_DATABASE_URL is not set";
 
 // These tests empty the users table, which the lead tests populate and
 // reference by foreign key. They get a throwaway database of their own so the
@@ -23,13 +23,13 @@ before(async () => {
   // Creates and drops databases on the target server - never point this at
   // anything that isn't local.
   const host = new URL(url).hostname;
-  if (!['localhost', '127.0.0.1', '::1'].includes(host)) {
+  if (!["localhost", "127.0.0.1", "::1"].includes(host)) {
     throw new Error(
-      `Refusing to run destructive tests against ${host}. TEST_DATABASE_URL must be a local database.`
+      `Refusing to run destructive tests against ${host}. TEST_DATABASE_URL must be a local database.`,
     );
   }
   const parsed = new URL(url);
-  parsed.pathname = '/postgres';
+  parsed.pathname = "/postgres";
   admin = postgres(parsed.toString(), { max: 1 });
   await admin.unsafe(`CREATE DATABASE ${dbName}`);
 
@@ -37,7 +37,7 @@ before(async () => {
   ownUrl.pathname = `/${dbName}`;
   sql = postgres(ownUrl.toString(), { max: 2 });
   db = drizzle(sql, { schema });
-  await migrate(drizzle(sql), { migrationsFolder: 'drizzle' });
+  await migrate(drizzle(sql), { migrationsFolder: "drizzle" });
 });
 
 after(async () => {
@@ -54,62 +54,198 @@ after(async () => {
  */
 async function seedPeople(adminEmail: string) {
   const PEOPLE = [
-    { email: adminEmail, name: 'Francis', role: 'admin' as const, active: true },
-    { email: 'CHANGEME.loui@example.com', name: 'Loui', role: 'setter' as const, active: true },
-    { email: 'CHANGEME.nigel@example.com', name: 'Nigel', role: 'closer' as const, active: false },
+    {
+      email: adminEmail,
+      name: "Francis",
+      role: "admin" as const,
+      active: true,
+    },
+    {
+      email: "CHANGEME.loui@example.com",
+      name: "Loui",
+      role: "setter" as const,
+      active: true,
+    },
+    {
+      email: "CHANGEME.nigel@example.com",
+      name: "Nigel",
+      role: "closer" as const,
+      active: false,
+    },
   ];
 
   const [{ existing }] = await db.select({ existing: count() }).from(users);
   if (existing === 0) await db.insert(users).values(PEOPLE);
 
+  for (const [placeholder, real] of PLACEHOLDERS) {
+    const [taken] = await db
+      .select({ id: users.id })
+      .from(users)
+      .where(eq(users.email, real));
+    if (taken) continue;
+    await db
+      .update(users)
+      .set({ email: real })
+      .where(eq(users.email, placeholder));
+  }
+
   await db
     .insert(users)
-    .values({ email: adminEmail, name: 'Francis', role: 'admin', active: true })
-    .onConflictDoUpdate({ target: users.email, set: { role: 'admin', active: true } });
+    .values({ email: adminEmail, name: "Francis", role: "admin", active: true })
+    .onConflictDoUpdate({
+      target: users.email,
+      set: { role: "admin", active: true },
+    });
 }
 
-const ADMIN = 'admin@example.com';
+const PLACEHOLDERS: Array<[placeholder: string, real: string]> = [
+  ["CHANGEME.loui@example.com", "loui.real@example.com"],
+];
 
-test('seeds the people on an empty table', { skip }, async () => {
+const ADMIN = "admin@example.com";
+
+test("seeds the people on an empty table", { skip }, async () => {
   await db.delete(users);
   await seedPeople(ADMIN);
   const [{ n }] = await db.select({ n: count() }).from(users);
   assert.equal(n, 3);
 });
 
-test('a replaced placeholder email is not resurrected by the next boot', { skip }, async () => {
-  // The bug this guards: seeding upserted on email, so once Nigel's placeholder
-  // was replaced with his real Calendly address the next deploy found no
-  // conflict and inserted the placeholder back. Two Nigels, and bookings
-  // attaching to whichever one the query happened to return.
-  await db
-    .update(users)
-    .set({ email: 'nigel.real@example.com' })
-    .where(eq(users.email, 'CHANGEME.nigel@example.com'));
+test(
+  "a replaced placeholder email is not resurrected by the next boot",
+  { skip },
+  async () => {
+    // The bug this guards: seeding upserted on email, so once Nigel's placeholder
+    // was replaced with his real Calendly address the next deploy found no
+    // conflict and inserted the placeholder back. Two Nigels, and bookings
+    // attaching to whichever one the query happened to return.
+    await db
+      .update(users)
+      .set({ email: "nigel.real@example.com" })
+      .where(eq(users.email, "CHANGEME.nigel@example.com"));
 
-  await seedPeople(ADMIN);
+    await seedPeople(ADMIN);
 
-  const nigels = await db.select().from(users).where(eq(users.name, 'Nigel'));
-  assert.equal(nigels.length, 1, 'expected exactly one Nigel');
-  assert.equal(nigels[0].email, 'nigel.real@example.com');
+    const nigels = await db.select().from(users).where(eq(users.name, "Nigel"));
+    assert.equal(nigels.length, 1, "expected exactly one Nigel");
+    assert.equal(nigels[0].email, "nigel.real@example.com");
 
-  const [{ n }] = await db.select({ n: count() }).from(users);
-  assert.equal(n, 3, 'no extra rows');
-});
+    const [{ n }] = await db.select({ n: count() }).from(users);
+    assert.equal(n, 3, "no extra rows");
+  },
+);
 
-test('a deactivated person stays deactivated across deploys', { skip }, async () => {
-  await db.update(users).set({ active: false }).where(eq(users.name, 'Loui'));
-  await seedPeople(ADMIN);
-  const loui = await db.query.users.findFirst({ where: eq(users.name, 'Loui') });
-  assert.equal(loui?.active, false, 'a deploy must not re-enable someone who was removed');
-});
+test(
+  "a deactivated person stays deactivated across deploys",
+  { skip },
+  async () => {
+    await db.update(users).set({ active: false }).where(eq(users.name, "Loui"));
+    await seedPeople(ADMIN);
+    const loui = await db.query.users.findFirst({
+      where: eq(users.name, "Loui"),
+    });
+    assert.equal(
+      loui?.active,
+      false,
+      "a deploy must not re-enable someone who was removed",
+    );
+  },
+);
 
-test('the admin can never be locked out by a deploy', { skip }, async () => {
+test("the admin can never be locked out by a deploy", { skip }, async () => {
   // If the only way back in could be switched off, a bad edit would end the
   // ability to fix it.
-  await db.update(users).set({ active: false, role: 'setter' }).where(eq(users.email, ADMIN));
+  await db
+    .update(users)
+    .set({ active: false, role: "setter" })
+    .where(eq(users.email, ADMIN));
   await seedPeople(ADMIN);
-  const admin = await db.query.users.findFirst({ where: eq(users.email, ADMIN) });
+  const admin = await db.query.users.findFirst({
+    where: eq(users.email, ADMIN),
+  });
   assert.equal(admin?.active, true);
-  assert.equal(admin?.role, 'admin');
+  assert.equal(admin?.role, "admin");
 });
+
+test(
+  "a placeholder address is replaced once the real one is known",
+  { skip },
+  async () => {
+    await db.delete(users);
+    await seedPeople(ADMIN);
+
+    const [loui] = await db.select().from(users).where(eq(users.name, "Loui"));
+    assert.equal(loui.email, "loui.real@example.com");
+  },
+);
+
+test(
+  "replacing a placeholder does not add a second row for that person",
+  { skip },
+  async () => {
+    await db.delete(users);
+    await seedPeople(ADMIN);
+    await seedPeople(ADMIN);
+
+    const rows = await db.select().from(users).where(eq(users.name, "Loui"));
+    assert.equal(rows.length, 1);
+  },
+);
+
+test(
+  "an address someone typed in by hand survives the next boot",
+  { skip },
+  async () => {
+    // The placeholder is matched, never the name, so a correction made in
+    // Admin -> People is not undone by a deploy that happens to know better.
+    await db.delete(users);
+    await seedPeople(ADMIN);
+    await db
+      .update(users)
+      .set({ email: "loui.corrected@example.com" })
+      .where(eq(users.name, "Loui"));
+
+    await seedPeople(ADMIN);
+
+    const rows = await db.select().from(users).where(eq(users.name, "Loui"));
+    assert.equal(rows.length, 1);
+    assert.equal(rows[0].email, "loui.corrected@example.com");
+  },
+);
+
+test(
+  "a duplicate row holding the real address is skipped, not collided with",
+  { skip },
+  async () => {
+    // The boot-breaker: seeding is fatal on failure, so adding the real address
+    // as a NEW row rather than editing the old one must not make the update run
+    // into the unique index on email. Both rows survive and the app still boots;
+    // the duplicate is a thing to merge, not a reason to take production down.
+    await db.delete(users);
+    await db.insert(users).values([
+      { email: ADMIN, name: "Francis", role: "admin", active: true },
+      {
+        email: "CHANGEME.loui@example.com",
+        name: "Loui",
+        role: "setter",
+        active: true,
+      },
+      {
+        email: "loui.real@example.com",
+        name: "Loui",
+        role: "setter",
+        active: true,
+      },
+    ]);
+
+    await seedPeople(ADMIN);
+
+    const rows = await db.select().from(users).where(eq(users.name, "Loui"));
+    assert.equal(rows.length, 2);
+    assert.equal(
+      rows.filter((r) => r.email === "CHANGEME.loui@example.com").length,
+      1,
+      "the placeholder is left alone rather than renamed into a collision",
+    );
+  },
+);
