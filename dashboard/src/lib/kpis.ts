@@ -244,9 +244,7 @@ const UNIT: Record<Period, "day" | "week" | "month"> = {
   month: "month",
 };
 
-export async function periodTrends(
-  period: Period,
-): Promise<{
+export async function periodTrends(period: Period): Promise<{
   calls: PeriodTrend;
   newLeads: PeriodTrend;
   cash: PeriodTrend;
@@ -417,4 +415,79 @@ export async function totals(range: Range, setterId?: string): Promise<Totals> {
     newLeads: fresh.n,
     cashPerClose: closes.closed === 0 ? null : closes.cash / closes.closed,
   };
+}
+
+export type BreakdownKind = "closed" | "booked" | "leads";
+
+export type BreakdownRow = {
+  id: string;
+  name: string | null;
+  igHandle: string;
+  setterName: string | null;
+  /** The date that put this row in this list, which differs per kind. */
+  on: Date | null;
+  cash: string | null;
+  contract: string | null;
+};
+
+/** What each tile is counting, in the words the page uses. */
+export const BREAKDOWN_TITLES: Record<BreakdownKind, string> = {
+  closed: "Deals closed in this window",
+  booked: "Calls booked in this window",
+  leads: "Leads that came in this window",
+};
+
+export const BREAKDOWN_CAP = 100;
+
+/**
+ * The rows behind a tile.
+ *
+ * Each kind filters on the same date the tile counted, which is the whole
+ * point: a list that came back on a different basis would quietly disagree
+ * with the number it was opened from, and then neither can be trusted. Cash,
+ * revenue and closes share one list because they share one definition - the
+ * deals that closed in the window - and it carries both figures per row.
+ */
+export async function breakdown(
+  range: Range,
+  setterId: string | undefined,
+  kind: BreakdownKind,
+): Promise<{ rows: BreakdownRow[]; total: number }> {
+  const { start, end } = bounds(range);
+  const mine = setterId ? [eq(leads.setterId, setterId)] : [];
+
+  const on =
+    kind === "closed"
+      ? leads.closedDate
+      : kind === "booked"
+        ? leads.callBookedAt
+        : leads.leadCreatedAt;
+  const scope = [notTest, gte(on, start), lte(on, end), ...mine];
+  // Created-at is never null; the other two are, and a null would sort in as
+  // though it belonged here.
+  if (kind !== "leads") scope.push(isNotNull(on));
+
+  const [rows, [{ n }]] = await Promise.all([
+    db
+      .select({
+        id: leads.id,
+        name: leads.name,
+        igHandle: leads.igHandle,
+        setterName: users.name,
+        on: on,
+        cash: leads.cashCollected,
+        contract: leads.contractValue,
+      })
+      .from(leads)
+      .leftJoin(users, eq(users.id, leads.setterId))
+      .where(and(...scope))
+      .orderBy(sql`${on} DESC`)
+      .limit(BREAKDOWN_CAP),
+    db
+      .select({ n: sql<number>`COUNT(*)::int` })
+      .from(leads)
+      .where(and(...scope)),
+  ]);
+
+  return { rows, total: n };
 }

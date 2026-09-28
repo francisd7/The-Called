@@ -2583,3 +2583,10 @@ a.stat:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 2px;
 }
+/* The tile whose rows are open below. Three of the five share one list, so
+   this marks all of them - which is the honest answer to "where did these
+   rows come from". */
+a.stat.is-open {
+  border-color: var(--accent);
+  box-shadow: inset 0 0 0 1px var(--accent);
+}

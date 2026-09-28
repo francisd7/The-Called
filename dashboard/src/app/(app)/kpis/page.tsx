@@ -4,13 +4,18 @@ import { StreakStrip } from "@/components/StreakStrip";
 import { getSetters } from "@/lib/queries";
 import { getStreaks } from "@/lib/streaks";
 import {
+  BREAKDOWN_CAP,
+  BREAKDOWN_TITLES,
+  breakdown,
   callsBooked,
   defaultRange,
   funnel,
   money,
   outreach,
   totals,
+  type BreakdownKind,
 } from "@/lib/kpis";
+import { formatDay } from "@/lib/dates";
 
 export const dynamic = "force-dynamic";
 
@@ -46,6 +51,14 @@ export default async function KpisPage({
   };
   const setterId = one(params, "setterId");
 
+  // Which tile was opened. Anything else is treated as none, so a hand-edited
+  // URL cannot reach the query with something that is not one of the three.
+  const asked = one(params, "show");
+  const show: BreakdownKind | null =
+    asked === "closed" || asked === "booked" || asked === "leads"
+      ? asked
+      : null;
+
   // All four, always. Picking one at a time meant four page loads to answer a
   // question about one week, and no way to see a dip in bookings next to the
   // outreach that did or didn't cause it.
@@ -59,6 +72,19 @@ export default async function KpisPage({
       outreach(range, setterId),
       totals(range, setterId),
     ]);
+
+  const rows = show ? await breakdown(range, setterId, show) : null;
+
+  // Keeps the person and the dates while swapping which tile is open, so
+  // opening one is never also a silent reset of the filters.
+  const withShow = (kind: BreakdownKind | null) => {
+    const q = new URLSearchParams();
+    if (setterId) q.set("setterId", setterId);
+    q.set("from", range.from);
+    q.set("to", range.to);
+    if (kind) q.set("show", kind);
+    return `/kpis?${q.toString()}${kind ? "#breakdown" : ""}`;
+  };
 
   const money0 = (n: number) =>
     n.toLocaleString("en-US", {
@@ -113,8 +139,12 @@ export default async function KpisPage({
       {/* Size before shape. The charts answer "which way is it going"; these
           answer "how much", which is the number that gets quoted. */}
       <p className="stats-label">{who} · this period</p>
+      {/* Each tile opens the rows it counted, on the same date basis it used. */}
       <div className="stats">
-        <div className="stat tone-green">
+        <a
+          className={`stat tone-green${show === "closed" ? " is-open" : ""}`}
+          href={withShow("closed")}
+        >
           <div className="stat-n">{money0(sums.cash)}</div>
           <div className="stat-l">cash collected</div>
           <div className="stat-foot-text">
@@ -122,24 +152,96 @@ export default async function KpisPage({
               ? "no closes yet"
               : `${money0(sums.cashPerClose)} a close`}
           </div>
-        </div>
-        <div className="stat tone-green">
+        </a>
+        <a
+          className={`stat tone-green${show === "closed" ? " is-open" : ""}`}
+          href={withShow("closed")}
+        >
           <div className="stat-n">{money0(sums.contract)}</div>
           <div className="stat-l">revenue generated</div>
-        </div>
-        <div className="stat tone-teal">
+        </a>
+        <a
+          className={`stat tone-teal${show === "closed" ? " is-open" : ""}`}
+          href={withShow("closed")}
+        >
           <div className="stat-n">{sums.closed}</div>
           <div className="stat-l">deals closed</div>
-        </div>
-        <div className="stat tone-blue">
+        </a>
+        <a
+          className={`stat tone-blue${show === "booked" ? " is-open" : ""}`}
+          href={withShow("booked")}
+        >
           <div className="stat-n">{sums.booked}</div>
           <div className="stat-l">calls booked</div>
-        </div>
-        <div className="stat tone-blue">
+        </a>
+        <a
+          className={`stat tone-blue${show === "leads" ? " is-open" : ""}`}
+          href={withShow("leads")}
+        >
           <div className="stat-n">{sums.newLeads}</div>
           <div className="stat-l">new leads</div>
-        </div>
+        </a>
       </div>
+
+      {show && rows && (
+        <section className="panel" id="breakdown">
+          <div className="panel-head">
+            <h3>{BREAKDOWN_TITLES[show]}</h3>
+            <a className="btn-quiet" href={withShow(null)}>
+              Close
+            </a>
+          </div>
+          {rows.rows.length === 0 ? (
+            <p className="sub">Nothing in this window.</p>
+          ) : (
+            <>
+              <table className="table">
+                <thead>
+                  <tr>
+                    <th>
+                      {show === "closed"
+                        ? "Closed"
+                        : show === "booked"
+                          ? "Booked"
+                          : "Came in"}
+                    </th>
+                    <th>Who</th>
+                    <th>Setter</th>
+                    <th className="num">Cash</th>
+                    <th className="num">Contract</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {rows.rows.map((r) => (
+                    <tr key={r.id}>
+                      <td>{formatDay(r.on)}</td>
+                      <td>
+                        <a href={`/leads/${r.id}`}>
+                          {r.name?.trim() || `@${r.igHandle}`}
+                        </a>
+                      </td>
+                      <td>{r.setterName ?? "—"}</td>
+                      {/* Blank, not zero: nobody priced this one. */}
+                      <td className="num">
+                        {r.cash === null ? "—" : money0(Number(r.cash))}
+                      </td>
+                      <td className="num">
+                        {r.contract === null ? "—" : money0(Number(r.contract))}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              {rows.total > rows.rows.length && (
+                <p className="sub" style={{ marginTop: "0.7rem" }}>
+                  The newest {BREAKDOWN_CAP} of {rows.total}. Narrow the dates
+                  to see the rest, or use Export on the Calls page.
+                </p>
+              )}
+            </>
+          )}
+        </section>
+      )}
       <p className="sub" style={{ marginTop: "-0.3rem" }}>
         Cash, revenue and closes count on the day the deal closed; calls on the
         day they were booked; leads on the day they came in. Three different

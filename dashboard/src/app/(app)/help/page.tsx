@@ -391,6 +391,14 @@ export default async function HelpPage() {
           a cash-per-close of nothing, because a rate with an empty half is not
           a result.
         </p>
+        <p>
+          <strong>Tap a tile</strong> to see what is behind it, listed under the
+          row with a link to each lead. The list is pulled on the same date the
+          tile counted, so it always adds up to the number you opened it from.
+          Cash, revenue and deals closed all open the same list — they are three
+          readings of one set of deals — so all three light up together. A long
+          list shows the newest hundred and says how many there are altogether.
+        </p>
       </Section>
 
       <Section
