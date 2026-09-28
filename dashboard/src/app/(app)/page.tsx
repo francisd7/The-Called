@@ -1,18 +1,18 @@
-import { currentUser } from '@/lib/session';
-import { db } from '@/db';
-import { backupIsDue } from '@/lib/backup';
-import { CallTile } from '@/components/CallTile';
-import { MiniLeadTile } from '@/components/MiniLeadTile';
-import { formatCallTime, teamDateString } from '@/lib/dates';
-import { PersonPanel } from '@/components/PersonPanel';
-import { PostCallInbox } from '@/components/PostCallInbox';
-import { BackupWatch } from '@/components/BackupWatch';
-import { Sparkline, Delta } from '@/components/charts/Sparkline';
-import { DayStrip } from '@/components/DayStrip';
-import { periodTrends } from '@/lib/kpis';
-import { paceFor } from '@/lib/pace';
-import { snoozeNotice } from '@/lib/noticeActions';
-import { ActionForm } from '@/components/ActionForm';
+import { currentUser } from "@/lib/session";
+import { db } from "@/db";
+import { backupIsDue } from "@/lib/backup";
+import { CallTile } from "@/components/CallTile";
+import { MiniLeadTile } from "@/components/MiniLeadTile";
+import { formatCallTime, teamDateString } from "@/lib/dates";
+import { PersonPanel } from "@/components/PersonPanel";
+import { PostCallInbox } from "@/components/PostCallInbox";
+import { BackupWatch } from "@/components/BackupWatch";
+import { Sparkline, Delta } from "@/components/charts/Sparkline";
+import { DayStrip } from "@/components/DayStrip";
+import { periodTrends } from "@/lib/kpis";
+import { paceFor } from "@/lib/pace";
+import { snoozeNotice } from "@/lib/noticeActions";
+import { ActionForm } from "@/components/ActionForm";
 import {
   getActiveOffers,
   getAssignableSetters,
@@ -34,27 +34,33 @@ import {
   getUpcomingCalls,
   getWeekBoard,
   type Period,
-} from '@/lib/queries';
+} from "@/lib/queries";
 
-export const dynamic = 'force-dynamic';
+export const dynamic = "force-dynamic";
 
 type SearchParams = Promise<Record<string, string | string[] | undefined>>;
 const PERIODS = [
-  { key: 'today', label: 'Today' },
-  { key: 'week', label: 'This week' },
-  { key: 'month', label: 'This month' },
+  { key: "today", label: "Today" },
+  { key: "week", label: "This week" },
+  { key: "month", label: "This month" },
 ] as const;
 
-export default async function TodayPage({ searchParams }: { searchParams: SearchParams }) {
+export default async function TodayPage({
+  searchParams,
+}: {
+  searchParams: SearchParams;
+}) {
   const params = await searchParams;
   const rawPeriod = params.period;
   const period = (
-    typeof rawPeriod === 'string' && PERIODS.some((p) => p.key === rawPeriod) ? rawPeriod : 'today'
+    typeof rawPeriod === "string" && PERIODS.some((p) => p.key === rawPeriod)
+      ? rawPeriod
+      : "today"
   ) as Period;
 
   const me = await currentUser();
   const userId = me!.id;
-  const isSetter = me!.role === 'setter';
+  const isSetter = me!.role === "setter";
 
   const [
     summary,
@@ -87,7 +93,7 @@ export default async function TodayPage({ searchParams }: { searchParams: Search
     getPeriodSummary(period),
     getCallsAwaitingOutcome(),
     getPostCallInbox(),
-    me!.role === 'admin' ? getCalendlyHealth() : null,
+    me!.role === "admin" ? getCalendlyHealth() : null,
   ]);
 
   // Null for an admin, whose job is the team figure; a number for anybody
@@ -100,10 +106,16 @@ export default async function TodayPage({ searchParams }: { searchParams: Search
   // week, and only one of those is survivable. Admin-only: it's a plumbing
   // problem, not something a setter can act on.
   const calendlyQuiet =
-    calendly && (!calendly.everDelivered || (calendly.daysQuiet ?? 0) >= 7) ? calendly : null;
+    calendly && (!calendly.everDelivered || (calendly.daysQuiet ?? 0) >= 7)
+      ? calendly
+      : null;
 
   const money0 = (n: number) =>
-    n.toLocaleString('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 });
+    n.toLocaleString("en-US", {
+      style: "currency",
+      currency: "USD",
+      maximumFractionDigits: 0,
+    });
 
   // Setters either side of the team column, so the shared list sits in the
   // middle rather than at one end. With an odd number one side just gets more.
@@ -121,12 +133,15 @@ export default async function TodayPage({ searchParams }: { searchParams: Search
   const from = teamDateString(periodStart(period));
   const to = teamDateString();
   const callsLink = `/calls?from=${from}&to=${to}`;
-  const calendlySnoozed = await noticeIsSnoozed('calendly-quiet');
-  const [targets, mtd] = await Promise.all([getMonthlyTargets(), getMonthToDate()]);
+  const calendlySnoozed = await noticeIsSnoozed("calendly-quiet");
+  const [targets, mtd] = await Promise.all([
+    getMonthlyTargets(),
+    getMonthToDate(),
+  ]);
   const now = new Date();
   const pace = {
-    calls: paceFor(mtd.calls, targets.get('calls') ?? null, now),
-    cash: paceFor(mtd.cash, targets.get('cash') ?? null, now),
+    calls: paceFor(mtd.calls, targets.get("calls") ?? null, now),
+    cash: paceFor(mtd.cash, targets.get("cash") ?? null, now),
   };
 
   return (
@@ -136,14 +151,16 @@ export default async function TodayPage({ searchParams }: { searchParams: Search
       <div className="page-head">
         <div>
           <h1>Dashboard</h1>
-          <p className="sub">Calls first, then the week, then anything overdue a follow-up.</p>
+          <p className="sub">
+            Calls first, then the week, then anything overdue a follow-up.
+          </p>
         </div>
         <div className="period-tabs">
           {PERIODS.map((p) => (
             <a
               key={p.key}
-              href={p.key === 'today' ? '/' : `/?period=${p.key}`}
-              className={`btn${p.key === period ? ' btn-primary' : ''}`}
+              href={p.key === "today" ? "/" : `/?period=${p.key}`}
+              className={`btn${p.key === period ? " btn-primary" : ""}`}
             >
               {p.label}
             </a>
@@ -155,11 +172,12 @@ export default async function TodayPage({ searchParams }: { searchParams: Search
         <div className="notice">
           <span className="notice-mark" aria-hidden="true" />
           <div className="notice-body">
-            <strong>Calendly has gone quiet.</strong>{' '}
+            <strong>Calendly has gone quiet.</strong>{" "}
             {calendlyQuiet.everDelivered
               ? `Nothing delivered in ${calendlyQuiet.daysQuiet} days.`
-              : 'Nothing has ever been delivered.'}{' '}
-            Either nobody has booked or the webhook has stopped — those look the same from here.
+              : "Nothing has ever been delivered."}{" "}
+            Either nobody has booked or the webhook has stopped — those look the
+            same from here.
           </div>
           <div className="notice-actions">
             <a className="btn" href="/admin">
@@ -183,13 +201,13 @@ export default async function TodayPage({ searchParams }: { searchParams: Search
           pressing "This week" changes half the numbers and leaves the rest,
           and the only way to find out which half is to remember. */}
       <p className="stats-label">
-        {PERIODS.find((p) => p.key === period)?.label ?? 'Today'}
+        {PERIODS.find((p) => p.key === period)?.label ?? "Today"}
         <span className="stats-note">
-          {period === 'today'
-            ? 'line: last 14 days · against the same time yesterday'
-            : period === 'week'
-              ? 'line: last 12 weeks · against the same point last week'
-              : 'line: last 12 months · against the same point last month'}
+          {period === "today"
+            ? "line: last 14 days · against the same time yesterday"
+            : period === "week"
+              ? "line: last 12 weeks · against the same point last week"
+              : "line: last 12 months · against the same point last month"}
         </span>
       </p>
       <div className="stats">
@@ -250,11 +268,19 @@ export default async function TodayPage({ searchParams }: { searchParams: Search
                 </div>
                 <div className="stat-l">calls booked</div>
                 <div className="pace">
-                  <span className="pace-fill" style={{ width: `${pace.calls.done * 100}%` }} />
-                  <span className="pace-mark" style={{ left: `${pace.calls.elapsed * 100}%` }} />
+                  <span
+                    className="pace-fill"
+                    style={{ width: `${pace.calls.done * 100}%` }}
+                  />
+                  <span
+                    className="pace-mark"
+                    style={{ left: `${pace.calls.elapsed * 100}%` }}
+                  />
                 </div>
                 <div className="stat-foot-text">
-                  {pace.calls.ahead ? 'on pace' : `${Math.round(pace.calls.expected - mtd.calls)} behind pace`}
+                  {pace.calls.ahead
+                    ? "on pace"
+                    : `${Math.round(pace.calls.expected - mtd.calls)} behind pace`}
                 </div>
               </div>
             )}
@@ -266,11 +292,19 @@ export default async function TodayPage({ searchParams }: { searchParams: Search
                 </div>
                 <div className="stat-l">cash collected</div>
                 <div className="pace">
-                  <span className="pace-fill pace-ok" style={{ width: `${pace.cash.done * 100}%` }} />
-                  <span className="pace-mark" style={{ left: `${pace.cash.elapsed * 100}%` }} />
+                  <span
+                    className="pace-fill pace-ok"
+                    style={{ width: `${pace.cash.done * 100}%` }}
+                  />
+                  <span
+                    className="pace-mark"
+                    style={{ left: `${pace.cash.elapsed * 100}%` }}
+                  />
                 </div>
                 <div className="stat-foot-text">
-                  {pace.cash.ahead ? 'on pace' : `${money0(Math.round(pace.cash.expected - mtd.cash))} behind pace`}
+                  {pace.cash.ahead
+                    ? "on pace"
+                    : `${money0(Math.round(pace.cash.expected - mtd.cash))} behind pace`}
                 </div>
               </div>
             )}
@@ -285,11 +319,15 @@ export default async function TodayPage({ searchParams }: { searchParams: Search
           <div className="stat-n">{summary.todayCalls}</div>
           <div className="stat-l">calls today</div>
         </div>
-        <div className={`stat tone-amber${summary.needsConfirming > 0 ? ' alert' : ''}`}>
+        <div
+          className={`stat tone-amber${summary.needsConfirming > 0 ? " alert" : ""}`}
+        >
           <div className="stat-n">{summary.needsConfirming}</div>
           <div className="stat-l">need confirming</div>
         </div>
-        <div className={`stat tone-amber${summary.needsTriage > 0 ? ' alert' : ''}`}>
+        <div
+          className={`stat tone-amber${summary.needsTriage > 0 ? " alert" : ""}`}
+        >
           <div className="stat-n">{summary.needsTriage}</div>
           <div className="stat-l">need triage</div>
         </div>
@@ -298,7 +336,9 @@ export default async function TodayPage({ searchParams }: { searchParams: Search
             distrusted. Admin keeps the team figure, which is their job. */}
         <div className="stat tone-teal">
           <div className="stat-n">{myConvos ?? convos.teamTotal}</div>
-          <div className="stat-l">{myConvos === null ? 'active convos' : 'your active convos'}</div>
+          <div className="stat-l">
+            {myConvos === null ? "active convos" : "your active convos"}
+          </div>
         </div>
       </div>
 
@@ -306,17 +346,19 @@ export default async function TodayPage({ searchParams }: { searchParams: Search
           calls happening today, then the week ahead, then the reports
           waiting to be put on a lead, then the calls still owed a result. */}
       <h2>Calls today</h2>
+      {/* The strip says so itself on an empty day, so a second line under it
+          saying the same thing is just noise. */}
       <DayStrip calls={todaysCalls} />
-      {todaysCalls.length === 0 ? (
-        <p className="empty">No calls booked for today.</p>
-      ) : (
+      {todaysCalls.length === 0 ? null : (
         <div className="tile-grid">
           {todaysCalls.map((lead) => (
             <CallTile
               key={lead.id}
               lead={lead}
               offerKey={lead.offerId ? offerById.get(lead.offerId)?.key : null}
-              offerLabel={lead.offerId ? offerById.get(lead.offerId)?.label : null}
+              offerLabel={
+                lead.offerId ? offerById.get(lead.offerId)?.label : null
+              }
               {...tileProps}
             />
           ))}
@@ -333,7 +375,9 @@ export default async function TodayPage({ searchParams }: { searchParams: Search
               key={lead.id}
               lead={lead}
               offerKey={lead.offerId ? offerById.get(lead.offerId)?.key : null}
-              offerLabel={lead.offerId ? offerById.get(lead.offerId)?.label : null}
+              offerLabel={
+                lead.offerId ? offerById.get(lead.offerId)?.label : null
+              }
               showDate
               {...tileProps}
             />
@@ -342,23 +386,38 @@ export default async function TodayPage({ searchParams }: { searchParams: Search
       )}
 
       <BackupWatch due={backupDue} />
-      <PostCallInbox reports={postCall.pending} staleMinutes={postCall.staleMinutes} />
+      <PostCallInbox
+        reports={postCall.pending}
+        staleMinutes={postCall.staleMinutes}
+      />
 
       {awaitingOutcome.total > 0 && (
         <>
           <h2>Waiting on an outcome</h2>
           <p className="sub">
-            {awaitingOutcome.total} call{awaitingOutcome.total === 1 ? ' has' : 's have'} been and
-            gone without a result recorded. Until {awaitingOutcome.total === 1 ? 'it is' : 'these are'}{' '}
-            logged, the funnel and the cash figures are behind.
+            {awaitingOutcome.total} call
+            {awaitingOutcome.total === 1 ? " has" : "s have"} been and gone
+            without a result recorded. Until{" "}
+            {awaitingOutcome.total === 1 ? "it is" : "these are"} logged, the
+            funnel and the cash figures are behind.
           </p>
           <div className="mini-grid">
             {awaitingOutcome.rows.map((lead) => (
-              <a className="mini mini-attention" key={lead.id} href={`/leads/${lead.id}#outcome`}>
-                <span className="mini-handle">{lead.name?.trim() || `@${lead.igHandle}`}</span>
+              <a
+                className="mini mini-attention"
+                key={lead.id}
+                href={`/leads/${lead.id}#outcome`}
+              >
+                <span className="mini-handle">
+                  {lead.name?.trim() || `@${lead.igHandle}`}
+                </span>
                 <span className="mini-meta">
-                  <span className="pill warn">{formatCallTime(lead.callScheduledFor)}</span>
-                  {lead.closerName && <span className="pill">{lead.closerName}</span>}
+                  <span className="pill warn">
+                    {formatCallTime(lead.callScheduledFor)}
+                  </span>
+                  {lead.closerName && (
+                    <span className="pill">{lead.closerName}</span>
+                  )}
                 </span>
               </a>
             ))}
@@ -373,11 +432,11 @@ export default async function TodayPage({ searchParams }: { searchParams: Search
         className="week-board"
         style={
           {
-            '--board-columns': [
-              ...leftPeople.map(() => '1fr'),
-              '1.4fr',
-              ...rightPeople.map(() => '1fr'),
-            ].join(' '),
+            "--board-columns": [
+              ...leftPeople.map(() => "1fr"),
+              "1.4fr",
+              ...rightPeople.map(() => "1fr"),
+            ].join(" "),
           } as React.CSSProperties
         }
       >
@@ -424,9 +483,10 @@ export default async function TodayPage({ searchParams }: { searchParams: Search
       ) : (
         <>
           <p className="sub">
-            {followUps.total} active conversation{followUps.total === 1 ? '' : 's'} with no contact
-            in over a week
-            {followUps.total > followUps.rows.length && ` — showing the ${followUps.rows.length} quietest`}
+            {followUps.total} active conversation
+            {followUps.total === 1 ? "" : "s"} with no contact in over a week
+            {followUps.total > followUps.rows.length &&
+              ` — showing the ${followUps.rows.length} quietest`}
           </p>
           <div className="mini-grid">
             {followUps.rows.map((lead) => (

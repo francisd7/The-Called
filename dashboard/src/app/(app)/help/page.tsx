@@ -163,6 +163,11 @@ export default async function HelpPage() {
           right now, so what is behind you and what is still coming reads at a
           glance. After 8pm there is no line rather than one pinned to the end.
         </p>
+        <p>
+          The strip is there on a clear day too, with nothing on it — a day with
+          no calls still has a shape worth seeing, and a strip that vanished
+          would read as broken rather than empty.
+        </p>
         <ol>
           <li>
             <strong>Calls today</strong> — anything happening today. Confirm and

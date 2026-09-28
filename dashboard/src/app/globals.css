@@ -2319,7 +2319,9 @@ th.num {
    at four calls in a working day, one row collides the moment two are within
    an hour of each other. */
 .daystrip {
-  padding: 1.5rem 0 0.2rem;
+  /* Room for two rows above the track: the now label, then the hour ticks.
+     Sharing one row put "NOW" straight through a tick every third hour. */
+  padding: 2.7rem 0 0.2rem;
 }
 /* Tall enough to hold both rows of labels. With a zero-height track they
    overflow it, and the key line underneath renders straight through them. */
@@ -2390,7 +2392,7 @@ th.num {
 }
 .daystrip-now-label {
   position: absolute;
-  top: -1.25rem;
+  top: -2.45rem;
   left: 50%;
   transform: translateX(-50%);
   font-size: 0.65rem;

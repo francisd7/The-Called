@@ -36,10 +36,12 @@ function fractionOfDay(d: Date | null): number {
  *
  * The cards underneath carry the detail. This only has to answer "what does
  * today look like" from across a room.
+ *
+ * It draws on an empty day too. Vanishing on the days with nothing on them
+ * reads as the strip having broken rather than the day being clear - and an
+ * empty day with the time marked on it is still an answer to the question.
  */
 export function DayStrip({ calls }: { calls: Call[] }) {
-  if (calls.length === 0) return null;
-
   const ordered = [...calls].sort(
     (a, b) =>
       (a.callScheduledFor?.getTime() ?? 0) -
@@ -84,10 +86,16 @@ export function DayStrip({ calls }: { calls: Call[] }) {
         ))}
       </div>
       <p className="sub daystrip-key">
-        Filled is confirmed, hollow is not. The line is now.
-        {unconfirmed > 0
-          ? ` ${unconfirmed} still to confirm.`
-          : " All confirmed."}
+        {ordered.length === 0 ? (
+          "Nothing booked today. The red line is the time now."
+        ) : (
+          <>
+            Filled is confirmed, hollow is not. The red line is the time now.
+            {unconfirmed > 0
+              ? ` ${unconfirmed} still to confirm.`
+              : " All confirmed."}
+          </>
+        )}
       </p>
     </div>
   );
