@@ -42,3 +42,19 @@ export function validUuid(
 ): string | undefined {
   return value && UUID.test(value) ? value : undefined;
 }
+
+/**
+ * A setter filter: a real id, or the literal "none" for the unassigned pile.
+ *
+ * "none" is a sentinel the lead queries understand (`isNull(setterId)`), and
+ * it is what the Unassigned option in the filter dropdown sends. Guarding
+ * those params with validUuid alone silently dropped it, so picking Unassigned
+ * quietly showed everybody's leads instead - a filter that looks applied and
+ * is not is worse than one that errors.
+ */
+export function validSetterFilter(
+  value: string | null | undefined,
+): string | undefined {
+  if (value === "none") return "none";
+  return validUuid(value);
+}

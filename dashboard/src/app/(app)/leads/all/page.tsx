@@ -1,5 +1,5 @@
 import { currentUser } from "@/lib/session";
-import { validUuid } from "@/lib/params";
+import { validSetterFilter } from "@/lib/params";
 import {
   LeadBrowser,
   pageSizeFrom,
@@ -42,7 +42,7 @@ export default async function AllLeadsPage({
     await Promise.all([
       searchLeads({
         q: one(params, "q"),
-        setterId: validUuid(one(params, "setterId")),
+        setterId: validSetterFilter(one(params, "setterId")),
         stage: one(params, "stage"),
         quality: one(params, "quality"),
         source: one(params, "source"),

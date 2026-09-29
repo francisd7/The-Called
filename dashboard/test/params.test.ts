@@ -1,6 +1,6 @@
 import { strict as assert } from "node:assert";
 import { test } from "node:test";
-import { validDay, validUuid } from "../src/lib/params.ts";
+import { validDay, validSetterFilter, validUuid } from "../src/lib/params.ts";
 
 const FALLBACK = "2026-01-01";
 
@@ -46,5 +46,20 @@ test("a uuid passes and anything else does not", () => {
     "'; drop table leads;--",
   ]) {
     assert.equal(validUuid(v), undefined);
+  }
+});
+
+test("the unassigned sentinel survives the setter guard", () => {
+  // "none" is what the Unassigned option in the filter dropdown sends, and the
+  // lead queries read it as "setter is null". Running it through validUuid
+  // dropped it, so the filter silently showed every lead instead of none of
+  // them - applied, and doing nothing.
+  assert.equal(validSetterFilter("none"), "none");
+  assert.equal(
+    validSetterFilter("4f31acd9-4ddb-4ad6-8364-07cb5fb32da6"),
+    "4f31acd9-4ddb-4ad6-8364-07cb5fb32da6",
+  );
+  for (const v of ["abc", "", null, undefined, "None", "NONE"]) {
+    assert.equal(validSetterFilter(v), undefined);
   }
 });
