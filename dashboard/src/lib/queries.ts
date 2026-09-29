@@ -16,7 +16,7 @@ import {
   or,
   sql,
 } from "drizzle-orm";
-import { archivedLead, liveLead } from "./leadScope.ts";
+import { archivedLead, liveLead, notArchived } from "./leadScope.ts";
 import { alias } from "drizzle-orm/pg-core";
 import type { PgColumn } from "drizzle-orm/pg-core";
 import { db } from "@/db";
@@ -44,7 +44,9 @@ import { eodBuckets, type Bucket } from "./eodCharts";
 export type LeadRow = typeof leads.$inferSelect;
 
 const liveCall = and(
-  liveLead,
+  // notArchived, not liveLead: a test booking belongs in Calls today, which is
+  // the entire point of the test-booking button, and CallTile badges it TEST.
+  notArchived,
   eq(leads.callBooked, true),
   eq(leads.callCancelled, false),
 );

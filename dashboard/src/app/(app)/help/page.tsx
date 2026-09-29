@@ -639,6 +639,23 @@ export default async function HelpPage() {
             being missed.
           </p>
 
+          <h3>Trying it without telling anyone</h3>
+          <p>
+            <strong>
+              Admin → Setup &amp; imports → Try it without telling anyone
+            </strong>{" "}
+            makes a fake booking so the whole flow can be walked through. The{" "}
+            <strong>When</strong> box is set to now, so the button on its own
+            gives a call happening this minute; change it for later today, later
+            in the week, or earlier. A time in the past is the only way to reach
+            the outcome form.
+          </p>
+          <p>
+            It is labelled TEST everywhere it appears and never posts to
+            Discord. <strong>Delete test data</strong> beside it clears every
+            one.
+          </p>
+
           <h3>Boosted reels</h3>
           <p>
             <strong>Ads</strong> holds one tile per boosted reel with what it

@@ -25,3 +25,13 @@ export const archivedLead = and(
   eq(leads.isTest, false),
   isNotNull(leads.archivedAt),
 );
+
+/**
+ * Not archived, and nothing said about test rows.
+ *
+ * The call queries want this rather than liveLead. A test booking is meant to
+ * show up in Calls today - that is the whole point of "Try it without telling
+ * anyone", and CallTile badges it TEST precisely because it renders there
+ * beside the real ones. Using liveLead here quietly took the test flow away.
+ */
+export const notArchived = isNull(leads.archivedAt);

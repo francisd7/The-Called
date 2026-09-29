@@ -11,7 +11,7 @@ import { db } from "@/db";
 import { calendlyEventTypes, leads, offers, users } from "@/db/schema";
 import { ActionForm } from "@/components/ActionForm";
 import { ReassignFields } from "@/components/ReassignFields";
-import { formatCallTime, formatDay } from "@/lib/dates";
+import { formatCallTime, formatDay, teamDateTimeInputValue } from "@/lib/dates";
 import {
   getAllPostCallReports,
   getRecentCalendlyActivity,
@@ -29,7 +29,7 @@ import {
   saveCountedLinks,
 } from "@/lib/setupActions";
 import { syncPostCall, unlinkReport } from "@/lib/postCallActions";
-import { liveLead } from '@/lib/leadScope';
+import { liveLead } from "@/lib/leadScope";
 
 function Check({
   done,
@@ -691,14 +691,33 @@ export default async function SetupPage() {
       <h2>Try it without telling anyone</h2>
       <div className="card">
         <p className="sub" style={{ marginTop: 0 }}>
-          Creates a fake booking two hours from now so you can walk the whole
-          flow — confirm it, triage it, add notes. It&apos;s labelled TEST
-          everywhere it appears and it never posts to Discord, so nobody gets
-          pinged about a call that isn&apos;t real.
+          Creates a fake booking so you can walk the whole flow — confirm it,
+          triage it, add notes. It&apos;s labelled TEST everywhere it appears
+          and it never posts to Discord, so nobody gets pinged about a call that
+          isn&apos;t real.
+        </p>
+        <p className="sub">
+          The box is set to now, so pressing the button is a call happening this
+          minute. Change it for one later today, later in the week, or earlier —
+          a call that has already been is the only way to reach the outcome
+          form.
         </p>
         <div className="card-row">
           <ActionForm action={createTestBooking}>
-            <button className="btn-primary" type="submit">
+            <div className="field">
+              <label htmlFor="when">When</label>
+              <input
+                id="when"
+                name="when"
+                type="datetime-local"
+                defaultValue={teamDateTimeInputValue(new Date())}
+              />
+            </div>
+            <button
+              className="btn-primary"
+              type="submit"
+              style={{ marginTop: "0.6rem" }}
+            >
               Create a test booking
             </button>
           </ActionForm>

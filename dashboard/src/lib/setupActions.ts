@@ -1,15 +1,22 @@
-'use server';
+"use server";
 
-import { revalidatePath } from 'next/cache';
-import { asc, desc, eq, inArray } from 'drizzle-orm';
-import { requireAdmin } from './session';
-import { db } from '@/db';
-import { calendlyEventTypes, leadEvents, leadNotes, leads, offers, users } from '@/db/schema';
-import { teamDateString } from './dates';
-import { importSetterEod } from './eodImport';
-import { importAirtableLeads } from './airtableImport';
-import { setupCalendly } from './calendlySetup';
-import { backfillCalendly, discoverEventTypes } from './calendlyBackfill';
+import { revalidatePath } from "next/cache";
+import { asc, desc, eq, inArray } from "drizzle-orm";
+import { requireAdmin } from "./session";
+import { db } from "@/db";
+import {
+  calendlyEventTypes,
+  leadEvents,
+  leadNotes,
+  leads,
+  offers,
+  users,
+} from "@/db/schema";
+import { parseTeamDateTime, teamDateString } from "./dates";
+import { importSetterEod } from "./eodImport";
+import { importAirtableLeads } from "./airtableImport";
+import { setupCalendly } from "./calendlySetup";
+import { backfillCalendly, discoverEventTypes } from "./calendlyBackfill";
 
 type Result = { ok: true; message: string } | { ok: false; error: string };
 
@@ -20,64 +27,78 @@ export async function runAirtableImport(formData: FormData): Promise<Result> {
     if (!pat) {
       return {
         ok: false,
-        error: 'AIRTABLE_PAT is not set on this service. Add it in Railway, then redeploy.',
+        error:
+          "AIRTABLE_PAT is not set on this service. Add it in Railway, then redeploy.",
       };
     }
 
-    const dryRun = formData.get('dryRun') === '1';
+    const dryRun = formData.get("dryRun") === "1";
     const stats = await importAirtableLeads(db, { pat, dryRun });
 
     // Written as sentences rather than a row of counts: the numbers that matter
     // most here are the ones about what was *not* overwritten, and "16 kept"
     // on its own reads like something went wrong.
-    const n = (count: number, one: string, many: string) => `${count} ${count === 1 ? one : many}`;
+    const n = (count: number, one: string, many: string) =>
+      `${count} ${count === 1 ? one : many}`;
 
-    const lines = [`${n(stats.loaded, 'row', 'rows')} read from the tracker.`];
-    lines.push(`${n(stats.inserted, 'lead was', 'leads were')} new.`);
+    const lines = [`${n(stats.loaded, "row", "rows")} read from the tracker.`];
+    lines.push(`${n(stats.inserted, "lead was", "leads were")} new.`);
     lines.push(
-      `${n(stats.updated, 'lead', 'leads')} already here ` +
-        `${stats.updated === 1 ? 'was' : 'were'} updated.`
+      `${n(stats.updated, "lead", "leads")} already here ` +
+        `${stats.updated === 1 ? "was" : "were"} updated.`,
     );
     if (stats.adopted > 0) {
       lines.push(
         `${stats.adopted} matched a lead Calendly or a post-call report had already created, ` +
-          'so they were joined up instead of copied.'
+          "so they were joined up instead of copied.",
       );
     }
     if (stats.bookingsKept > 0 || stats.outcomesKept > 0) {
       const kept: string[] = [];
       if (stats.bookingsKept > 0) {
-        kept.push(n(stats.bookingsKept, 'Calendly booking', 'Calendly bookings'));
+        kept.push(
+          n(stats.bookingsKept, "Calendly booking", "Calendly bookings"),
+        );
       }
       if (stats.outcomesKept > 0) {
-        kept.push(n(stats.outcomesKept, 'post-call outcome', 'post-call outcomes'));
+        kept.push(
+          n(stats.outcomesKept, "post-call outcome", "post-call outcomes"),
+        );
       }
-      lines.push(`Left alone, because the tracker is out of date on them: ${kept.join(' and ')}.`);
+      lines.push(
+        `Left alone, because the tracker is out of date on them: ${kept.join(" and ")}.`,
+      );
     }
     if (stats.followedMerge > 0) {
       lines.push(
-        `${n(stats.followedMerge, 'row', 'rows')} belonged to a lead somebody had merged, ` +
-          'and went to the lead that was kept.'
+        `${n(stats.followedMerge, "row", "rows")} belonged to a lead somebody had merged, ` +
+          "and went to the lead that was kept.",
       );
     }
-    if (stats.notes > 0) lines.push(`${n(stats.notes, 'note', 'notes')} brought across.`);
+    if (stats.notes > 0)
+      lines.push(`${n(stats.notes, "note", "notes")} brought across.`);
     if (stats.blankHandle > 0) {
-      lines.push(`${n(stats.blankHandle, 'row has', 'rows have')} no IG handle.`);
+      lines.push(
+        `${n(stats.blankHandle, "row has", "rows have")} no IG handle.`,
+      );
     }
     if (stats.noSetter > 0) {
       lines.push(
-        `${n(stats.noSetter, 'row names', 'rows name')} a setter this dashboard doesn't know.`
+        `${n(stats.noSetter, "row names", "rows name")} a setter this dashboard doesn't know.`,
       );
     }
 
-    revalidatePath('/admin');
-    revalidatePath('/leads');
+    revalidatePath("/admin");
+    revalidatePath("/leads");
     return {
       ok: true,
-      message: `${dryRun ? 'Test run — nothing was written.\n' : ''}${lines.join('\n')}`,
+      message: `${dryRun ? "Test run — nothing was written.\n" : ""}${lines.join("\n")}`,
     };
   } catch (err) {
-    return { ok: false, error: err instanceof Error ? err.message : 'Import failed' };
+    return {
+      ok: false,
+      error: err instanceof Error ? err.message : "Import failed",
+    };
   }
 }
 
@@ -88,7 +109,8 @@ export async function runCalendlySetup(): Promise<Result> {
     if (!pat) {
       return {
         ok: false,
-        error: 'CALENDLY_PAT is not set on this service. Add it in Railway, then redeploy.',
+        error:
+          "CALENDLY_PAT is not set on this service. Add it in Railway, then redeploy.",
       };
     }
 
@@ -99,18 +121,26 @@ export async function runCalendlySetup(): Promise<Result> {
     });
 
     const parts = [`Connected as ${result.account.email}`];
-    parts.push(`${result.linked.length}/${result.linked.length + result.unlinked.length} offers linked`);
+    parts.push(
+      `${result.linked.length}/${result.linked.length + result.unlinked.length} offers linked`,
+    );
     if (result.unlinked.length > 0) {
-      parts.push(`no Calendly match for: ${result.unlinked.map((u) => u.offer).join(', ')}`);
+      parts.push(
+        `no Calendly match for: ${result.unlinked.map((u) => u.offer).join(", ")}`,
+      );
     }
-    if (result.webhook.status === 'created') parts.push('webhook registered');
-    else if (result.webhook.status === 'already_registered') parts.push('webhook already registered');
+    if (result.webhook.status === "created") parts.push("webhook registered");
+    else if (result.webhook.status === "already_registered")
+      parts.push("webhook already registered");
     else parts.push(`webhook skipped (${result.webhook.reason})`);
 
-    revalidatePath('/admin');
-    return { ok: true, message: parts.join(' · ') };
+    revalidatePath("/admin");
+    return { ok: true, message: parts.join(" · ") };
   } catch (err) {
-    return { ok: false, error: err instanceof Error ? err.message : 'Calendly setup failed' };
+    return {
+      ok: false,
+      error: err instanceof Error ? err.message : "Calendly setup failed",
+    };
   }
 }
 
@@ -120,38 +150,45 @@ export async function runCalendlySetup(): Promise<Result> {
  * doesn't exist. Test leads are labelled wherever they appear, never post to
  * Discord, and are cleared in one click.
  */
-export async function createTestBooking(): Promise<Result> {
+export async function createTestBooking(formData?: FormData): Promise<Result> {
   try {
     await requireAdmin();
 
-    const offer = await db.query.offers.findFirst({ orderBy: [asc(offers.sortOrder)] });
-    const setter = await db.query.users.findFirst({ where: eq(users.role, 'setter') });
+    const offer = await db.query.offers.findFirst({
+      orderBy: [asc(offers.sortOrder)],
+    });
+    const setter = await db.query.users.findFirst({
+      where: eq(users.role, "setter"),
+    });
 
-    // Two hours out, so it's imminent without being in the past. Late in the
-    // evening that crosses midnight ET and the booking lands under "Next 7
-    // days" instead - which the message below accounts for rather than sending
-    // someone to look at the wrong list.
-    const scheduledFor = new Date(Date.now() + 2 * 60 * 60 * 1000);
+    // Whatever time the box says, and now if it says nothing. It used to be
+    // fixed at two hours out, which meant the one thing you could not do was
+    // walk the flow for a call happening right now - and a call in the past is
+    // the only way to reach the outcome form, which is half of what there is
+    // to try. The box defaults to now, so the button alone is still one press.
+    const asked = formData ? String(formData.get("when") ?? "") : "";
+    const scheduledFor = parseTeamDateTime(asked) ?? new Date();
     const landsToday = teamDateString(scheduledFor) === teamDateString();
-    const stamp = new Date().toISOString().slice(11, 16).replace(':', '');
+    const inThePast = scheduledFor.getTime() < Date.now() - 60_000;
+    const stamp = new Date().toISOString().slice(11, 16).replace(":", "");
 
     const [lead] = await db
       .insert(leads)
       .values({
         igHandle: `test_booking_${stamp}`,
         igHandleKey: `test_booking_${stamp}`,
-        name: 'Test Prospect (not real)',
+        name: "Test Prospect (not real)",
         email: `test+${stamp}@example.com`,
-        phone: '+1 555 000 0000',
+        phone: "+1 555 000 0000",
         setterId: setter?.id ?? null,
-        conversationStage: 'call_booked',
-        leadQuality: 'good',
+        conversationStage: "call_booked",
+        leadQuality: "good",
         isTest: true,
         callBooked: true,
         callBookedAt: new Date(),
         callScheduledFor: scheduledFor,
         offerId: offer?.id ?? null,
-        closerName: 'Test Closer',
+        closerName: "Test Closer",
         leadCreatedAt: new Date(),
         lastContactAt: new Date(),
       })
@@ -161,45 +198,69 @@ export async function createTestBooking(): Promise<Result> {
       leadId: lead.id,
       authorId: null,
       body:
-        'This is a test lead created from the Admin screen. Confirm it, triage it, ' +
-        'add notes — nothing here reaches Discord, and Admin has a button to delete it.',
+        "This is a test lead created from the Admin screen. Confirm it, triage it, " +
+        "add notes — nothing here reaches Discord, and Admin has a button to delete it.",
     });
-    await db.insert(leadEvents).values({ leadId: lead.id, type: 'call_booked', meta: { test: true } });
+    await db
+      .insert(leadEvents)
+      .values({ leadId: lead.id, type: "call_booked", meta: { test: true } });
 
-    revalidatePath('/');
-    revalidatePath('/admin');
-    const when = scheduledFor.toLocaleTimeString('en-US', {
-      timeZone: 'America/New_York',
-      hour: 'numeric',
-      minute: '2-digit',
+    revalidatePath("/");
+    revalidatePath("/admin");
+    const when = scheduledFor.toLocaleTimeString("en-US", {
+      timeZone: "America/New_York",
+      hour: "numeric",
+      minute: "2-digit",
     });
+    const day = landsToday
+      ? ""
+      : ` on ${scheduledFor.toLocaleDateString("en-US", { timeZone: "America/New_York", month: "short", day: "numeric" })}`;
+    const where = landsToday
+      ? "see it under Today → Calls today"
+      : "see it under Today → Next 7 days";
     return {
       ok: true,
-      message: landsToday
-        ? `Test booking created for ${when} ET — see it under Today → Calls today.`
-        : `Test booking created for ${when} ET tomorrow — see it under Today → Next 7 days.`,
+      message:
+        `Test booking created for ${when} ET${day} — ${where}.` +
+        // Worth saying, because a call that has already happened is the only
+        // way to reach the outcome form and it is not obvious that is why.
+        (inThePast
+          ? " It is in the past, so the lead also has its outcome form open."
+          : ""),
     };
   } catch (err) {
-    return { ok: false, error: err instanceof Error ? err.message : 'Could not create test booking' };
+    return {
+      ok: false,
+      error:
+        err instanceof Error ? err.message : "Could not create test booking",
+    };
   }
 }
 
 export async function clearTestData(): Promise<Result> {
   try {
     await requireAdmin();
-    const removed = await db.delete(leads).where(eq(leads.isTest, true)).returning({ id: leads.id });
-    revalidatePath('/');
-    revalidatePath('/admin');
-    revalidatePath('/leads');
+    const removed = await db
+      .delete(leads)
+      .where(eq(leads.isTest, true))
+      .returning({ id: leads.id });
+    revalidatePath("/");
+    revalidatePath("/admin");
+    revalidatePath("/leads");
     return {
       ok: true,
-      message: removed.length === 0 ? 'No test leads to clear.' : `Removed ${removed.length} test lead(s).`,
+      message:
+        removed.length === 0
+          ? "No test leads to clear."
+          : `Removed ${removed.length} test lead(s).`,
     };
   } catch (err) {
-    return { ok: false, error: err instanceof Error ? err.message : 'Could not clear test data' };
+    return {
+      ok: false,
+      error: err instanceof Error ? err.message : "Could not clear test data",
+    };
   }
 }
-
 
 /**
  * Clears the active-conversation flag on every lead.
@@ -221,7 +282,7 @@ export async function clearTestData(): Promise<Result> {
 export async function clearActiveConvos(formData: FormData): Promise<Result> {
   try {
     await requireAdmin();
-    const dryRun = formData.get('dryRun') === '1';
+    const dryRun = formData.get("dryRun") === "1";
 
     const flagged = await db
       .select({ id: leads.id })
@@ -233,13 +294,16 @@ export async function clearActiveConvos(formData: FormData): Promise<Result> {
         ok: true,
         message:
           flagged.length === 0
-            ? 'Test run \u2014 nothing written. No conversation is marked active.'
+            ? "Test run \u2014 nothing written. No conversation is marked active."
             : `Test run \u2014 nothing written. ${flagged.length} conversations are marked active and would be cleared.`,
       };
     }
 
     if (flagged.length === 0) {
-      return { ok: true, message: 'No conversation was marked active. Nothing to do.' };
+      return {
+        ok: true,
+        message: "No conversation was marked active. Nothing to do.",
+      };
     }
 
     await db
@@ -247,17 +311,20 @@ export async function clearActiveConvos(formData: FormData): Promise<Result> {
       .set({ isActiveConvo: false, updatedAt: new Date() })
       .where(eq(leads.isActiveConvo, true));
 
-    revalidatePath('/');
-    revalidatePath('/admin');
-    revalidatePath('/leads');
+    revalidatePath("/");
+    revalidatePath("/admin");
+    revalidatePath("/leads");
     return {
       ok: true,
       message:
         `${flagged.length} conversations are no longer marked active. ` +
-        'Everyone starts from nothing and ticks their own.',
+        "Everyone starts from nothing and ticks their own.",
     };
   } catch (err) {
-    return { ok: false, error: err instanceof Error ? err.message : 'Could not clear those' };
+    return {
+      ok: false,
+      error: err instanceof Error ? err.message : "Could not clear those",
+    };
   }
 }
 
@@ -274,14 +341,17 @@ export async function runEodImport(formData: FormData): Promise<Result> {
     if (!pat) {
       return {
         ok: false,
-        error: 'AIRTABLE_PAT is not set on this service. Add it in Railway, then redeploy.',
+        error:
+          "AIRTABLE_PAT is not set on this service. Add it in Railway, then redeploy.",
       };
     }
 
-    const dryRun = formData.get('dryRun') === '1';
+    const dryRun = formData.get("dryRun") === "1";
     const stats = await importSetterEod(db, { pat, dryRun });
 
-    const parts = [`${stats.loaded} report${stats.loaded === 1 ? '' : 's'} read`];
+    const parts = [
+      `${stats.loaded} report${stats.loaded === 1 ? "" : "s"} read`,
+    ];
     if (stats.inserted > 0) parts.push(`${stats.inserted} added`);
     if (stats.updated > 0) parts.push(`${stats.updated} updated`);
     if (stats.keptDashboard > 0) {
@@ -289,15 +359,18 @@ export async function runEodImport(formData: FormData): Promise<Result> {
     }
     if (stats.skipped.length > 0) parts.push(`${stats.skipped.length} skipped`);
 
-    revalidatePath('/eod');
-    revalidatePath('/kpis');
-    revalidatePath('/admin');
+    revalidatePath("/eod");
+    revalidatePath("/kpis");
+    revalidatePath("/admin");
     return {
       ok: true,
-      message: `${dryRun ? 'Dry run — nothing written. ' : ''}${parts.join(' · ')}`,
+      message: `${dryRun ? "Dry run — nothing written. " : ""}${parts.join(" · ")}`,
     };
   } catch (err) {
-    return { ok: false, error: err instanceof Error ? err.message : 'Import failed' };
+    return {
+      ok: false,
+      error: err instanceof Error ? err.message : "Import failed",
+    };
   }
 }
 
@@ -315,33 +388,44 @@ export async function runCalendlyBackfill(formData: FormData): Promise<Result> {
     if (!pat) {
       return {
         ok: false,
-        error: 'CALENDLY_PAT is not set on this service. Add it in Railway, then redeploy.',
+        error:
+          "CALENDLY_PAT is not set on this service. Add it in Railway, then redeploy.",
       };
     }
 
-    const dryRun = formData.get('dryRun') === '1';
-    const since = (formData.get('since') as string | null)?.trim();
-    const from = since && /^\d{4}-\d{2}-\d{2}$/.test(since) ? `${since}T00:00:00Z` : undefined;
+    const dryRun = formData.get("dryRun") === "1";
+    const since = (formData.get("since") as string | null)?.trim();
+    const from =
+      since && /^\d{4}-\d{2}-\d{2}$/.test(since)
+        ? `${since}T00:00:00Z`
+        : undefined;
 
     // This action never removes anything - that is its own button below.
     const stats = await backfillCalendly(db, { pat, since: from, dryRun });
 
-    const parts = [`${stats.events} booking${stats.events === 1 ? '' : 's'} read`];
+    const parts = [
+      `${stats.events} booking${stats.events === 1 ? "" : "s"} read`,
+    ];
     if (stats.range) parts.push(`${stats.range.from} to ${stats.range.to}`);
-    if (stats.notOurs > 0) parts.push(`${stats.notOurs} skipped — on links that don't count`);
-    if (stats.removed > 0) parts.push(`${stats.removed} leads removed that an earlier run invented`);
-    if (stats.cleared > 0) parts.push(`${stats.cleared} real leads cleared of one`);
+    if (stats.notOurs > 0)
+      parts.push(`${stats.notOurs} skipped — on links that don't count`);
+    if (stats.removed > 0)
+      parts.push(`${stats.removed} leads removed that an earlier run invented`);
+    if (stats.cleared > 0)
+      parts.push(`${stats.cleared} real leads cleared of one`);
     if (stats.matched > 0) parts.push(`${stats.matched} matched a lead`);
-    if (stats.created > 0) parts.push(`${stats.created} had no lead, so one was created`);
+    if (stats.created > 0)
+      parts.push(`${stats.created} had no lead, so one was created`);
     if (stats.updated > 0) parts.push(`${stats.updated} already here`);
     if (stats.cancelled > 0) parts.push(`${stats.cancelled} cancelled`);
-    if (stats.skipped > 0) parts.push(`${stats.skipped} had nothing to identify them`);
+    if (stats.skipped > 0)
+      parts.push(`${stats.skipped} had nothing to identify them`);
 
     // Split rather than marked with a tick. One list with a symbol on some of
     // the rows reads as "here is what was used", which is the opposite of what
     // it means for half of them.
     const named = (rows: typeof stats.byEventType) =>
-      rows.map((e) => `${e.name} (${e.count})`).join(' · ');
+      rows.map((e) => `${e.name} (${e.count})`).join(" · ");
     const counted = stats.byEventType.filter((e) => e.ours);
     const ignored = stats.byEventType.filter((e) => !e.ours);
     const breakdown = [
@@ -349,20 +433,23 @@ export async function runCalendlyBackfill(formData: FormData): Promise<Result> {
       ignored.length > 0 ? `Ignored: ${named(ignored)}` : null,
     ]
       .filter(Boolean)
-      .join('\n');
+      .join("\n");
 
-    revalidatePath('/');
-    revalidatePath('/leads');
-    revalidatePath('/kpis');
-    revalidatePath('/admin');
+    revalidatePath("/");
+    revalidatePath("/leads");
+    revalidatePath("/kpis");
+    revalidatePath("/admin");
     return {
       ok: true,
-      message: `${dryRun ? 'Dry run — nothing written. ' : ''}${parts.join(' · ')}${
-        breakdown ? `\n\n${breakdown}` : ''
+      message: `${dryRun ? "Dry run — nothing written. " : ""}${parts.join(" · ")}${
+        breakdown ? `\n\n${breakdown}` : ""
       }`,
     };
   } catch (err) {
-    return { ok: false, error: err instanceof Error ? err.message : 'Backfill failed' };
+    return {
+      ok: false,
+      error: err instanceof Error ? err.message : "Backfill failed",
+    };
   }
 }
 
@@ -374,21 +461,33 @@ export async function findCalendlyLinks(formData: FormData): Promise<Result> {
     if (!pat) {
       return {
         ok: false,
-        error: 'CALENDLY_PAT is not set on this service. Add it in Railway, then redeploy.',
+        error:
+          "CALENDLY_PAT is not set on this service. Add it in Railway, then redeploy.",
       };
     }
 
-    const since = (formData.get('since') as string | null)?.trim();
-    const from = since && /^\d{4}-\d{2}-\d{2}$/.test(since) ? `${since}T00:00:00Z` : undefined;
+    const since = (formData.get("since") as string | null)?.trim();
+    const from =
+      since && /^\d{4}-\d{2}-\d{2}$/.test(since)
+        ? `${since}T00:00:00Z`
+        : undefined;
     const stats = await discoverEventTypes(db, { pat, since: from });
 
-    revalidatePath('/admin');
-    const parts = [`${stats.found} link${stats.found === 1 ? '' : 's'} across ${stats.bookings} bookings`];
+    revalidatePath("/admin");
+    const parts = [
+      `${stats.found} link${stats.found === 1 ? "" : "s"} across ${stats.bookings} bookings`,
+    ];
     if (stats.range) parts.push(`${stats.range.from} to ${stats.range.to}`);
     if (stats.added > 0) parts.push(`${stats.added} new`);
-    return { ok: true, message: `${parts.join(' · ')}. Tick the ones that are sales calls.` };
+    return {
+      ok: true,
+      message: `${parts.join(" · ")}. Tick the ones that are sales calls.`,
+    };
   } catch (err) {
-    return { ok: false, error: err instanceof Error ? err.message : 'Could not read Calendly' };
+    return {
+      ok: false,
+      error: err instanceof Error ? err.message : "Could not read Calendly",
+    };
   }
 }
 
@@ -402,7 +501,9 @@ export async function findCalendlyLinks(formData: FormData): Promise<Result> {
 export async function saveCountedLinks(formData: FormData): Promise<Result> {
   try {
     await requireAdmin();
-    const ticked = formData.getAll('counted').filter((v): v is string => typeof v === 'string');
+    const ticked = formData
+      .getAll("counted")
+      .filter((v): v is string => typeof v === "string");
 
     await db.update(calendlyEventTypes).set({ counted: false });
     if (ticked.length > 0) {
@@ -412,16 +513,19 @@ export async function saveCountedLinks(formData: FormData): Promise<Result> {
         .where(inArray(calendlyEventTypes.uri, ticked));
     }
 
-    revalidatePath('/admin');
+    revalidatePath("/admin");
     return {
       ok: true,
       message:
         ticked.length === 0
-          ? 'Nothing counts as a sales call — bookings will be ignored until you tick one.'
-          : `${ticked.length} link${ticked.length === 1 ? '' : 's'} count as sales calls.`,
+          ? "Nothing counts as a sales call — bookings will be ignored until you tick one."
+          : `${ticked.length} link${ticked.length === 1 ? "" : "s"} count as sales calls.`,
     };
   } catch (err) {
-    return { ok: false, error: err instanceof Error ? err.message : 'Could not save' };
+    return {
+      ok: false,
+      error: err instanceof Error ? err.message : "Could not save",
+    };
   }
 }
 
@@ -439,13 +543,17 @@ export async function runCalendlyCleanup(formData: FormData): Promise<Result> {
     if (!pat) {
       return {
         ok: false,
-        error: 'CALENDLY_PAT is not set on this service. Add it in Railway, then redeploy.',
+        error:
+          "CALENDLY_PAT is not set on this service. Add it in Railway, then redeploy.",
       };
     }
 
-    const dryRun = formData.get('dryRun') === '1';
-    const since = (formData.get('since') as string | null)?.trim();
-    const from = since && /^\d{4}-\d{2}-\d{2}$/.test(since) ? `${since}T00:00:00Z` : undefined;
+    const dryRun = formData.get("dryRun") === "1";
+    const since = (formData.get("since") as string | null)?.trim();
+    const from =
+      since && /^\d{4}-\d{2}-\d{2}$/.test(since)
+        ? `${since}T00:00:00Z`
+        : undefined;
 
     const stats = await backfillCalendly(db, {
       pat,
@@ -455,21 +563,29 @@ export async function runCalendlyCleanup(formData: FormData): Promise<Result> {
       apply: false,
     });
 
-    const parts = [`${stats.notOurs} booking${stats.notOurs === 1 ? '' : 's'} on links that don't count`];
+    const parts = [
+      `${stats.notOurs} booking${stats.notOurs === 1 ? "" : "s"} on links that don't count`,
+    ];
     parts.push(
-      stats.removed > 0 ? `${stats.removed} invented leads removed` : 'no invented leads to remove'
+      stats.removed > 0
+        ? `${stats.removed} invented leads removed`
+        : "no invented leads to remove",
     );
-    if (stats.cleared > 0) parts.push(`${stats.cleared} real leads cleared of one`);
+    if (stats.cleared > 0)
+      parts.push(`${stats.cleared} real leads cleared of one`);
 
-    revalidatePath('/');
-    revalidatePath('/leads');
-    revalidatePath('/kpis');
-    revalidatePath('/admin');
+    revalidatePath("/");
+    revalidatePath("/leads");
+    revalidatePath("/kpis");
+    revalidatePath("/admin");
     return {
       ok: true,
-      message: `${dryRun ? 'Dry run — nothing written. ' : ''}${parts.join(' · ')}`,
+      message: `${dryRun ? "Dry run — nothing written. " : ""}${parts.join(" · ")}`,
     };
   } catch (err) {
-    return { ok: false, error: err instanceof Error ? err.message : 'Cleanup failed' };
+    return {
+      ok: false,
+      error: err instanceof Error ? err.message : "Cleanup failed",
+    };
   }
 }
