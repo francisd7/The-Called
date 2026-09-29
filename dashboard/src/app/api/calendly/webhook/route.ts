@@ -1,10 +1,17 @@
-import { NextResponse } from 'next/server';
-import { and, asc, desc, eq, isNull } from 'drizzle-orm';
-import { db } from '@/db';
-import { calendlyEventTypes, calendlyWebhookEvents, leadEvents, leads, offers, users } from '@/db/schema';
-import { notifyBooking } from '@/lib/discord';
-import { recordIssue } from '@/lib/issues';
-import { countedEventTypes, isCountedEventType } from '@/lib/offerScope';
+import { NextResponse } from "next/server";
+import { and, asc, desc, eq, isNull } from "drizzle-orm";
+import { db } from "@/db";
+import {
+  calendlyEventTypes,
+  calendlyWebhookEvents,
+  leadEvents,
+  leads,
+  offers,
+  users,
+} from "@/db/schema";
+import { notifyBooking } from "@/lib/discord";
+import { recordIssue } from "@/lib/issues";
+import { countedEventTypes, isCountedEventType } from "@/lib/offerScope";
 import {
   hostFromPayload,
   igHandleFromAnswers,
@@ -13,12 +20,12 @@ import {
   verifyCalendlySignature,
   type CalendlyInviteePayload,
   type CalendlyWebhookBody,
-} from '@/lib/calendly';
+} from "@/lib/calendly";
 
-export const runtime = 'nodejs';
+export const runtime = "nodejs";
 // The signature covers the exact bytes Calendly sent, so this route must never
 // be statically optimized or have its body re-serialized.
-export const dynamic = 'force-dynamic';
+export const dynamic = "force-dynamic";
 
 type MatchResult = { leadId: string | null; strategy: string };
 
@@ -32,11 +39,15 @@ type MatchResult = { leadId: string | null; strategy: string };
  * nothing stops two leads sharing an email. Most recently active wins, which is
  * the row a setter is actually working.
  */
-async function matchLead(payload: CalendlyInviteePayload): Promise<MatchResult> {
+async function matchLead(
+  payload: CalendlyInviteePayload,
+): Promise<MatchResult> {
   const trackedId = leadIdFromTracking(payload);
   if (trackedId) {
-    const hit = await db.query.leads.findFirst({ where: eq(leads.id, trackedId) });
-    if (hit) return { leadId: hit.id, strategy: 'utm_content' };
+    const hit = await db.query.leads.findFirst({
+      where: eq(leads.id, trackedId),
+    });
+    if (hit) return { leadId: hit.id, strategy: "utm_content" };
   }
 
   const handle = igHandleFromAnswers(payload);
@@ -45,7 +56,7 @@ async function matchLead(payload: CalendlyInviteePayload): Promise<MatchResult> 
       where: eq(leads.igHandleKey, handle),
       orderBy: [desc(leads.lastContactAt), desc(leads.leadCreatedAt)],
     });
-    if (hit) return { leadId: hit.id, strategy: 'ig_handle_answer' };
+    if (hit) return { leadId: hit.id, strategy: "ig_handle_answer" };
   }
 
   const email = payload.email?.trim().toLowerCase();
@@ -54,22 +65,28 @@ async function matchLead(payload: CalendlyInviteePayload): Promise<MatchResult> 
       where: eq(leads.email, email),
       orderBy: [desc(leads.lastContactAt), desc(leads.leadCreatedAt)],
     });
-    if (hit) return { leadId: hit.id, strategy: 'email' };
+    if (hit) return { leadId: hit.id, strategy: "email" };
   }
 
-  return { leadId: null, strategy: 'unmatched' };
+  return { leadId: null, strategy: "unmatched" };
 }
 
 async function resolveOffer(payload: CalendlyInviteePayload) {
   const eventTypeUri = payload.scheduled_event?.event_type;
   if (!eventTypeUri) return null;
-  return (await db.query.offers.findFirst({ where: eq(offers.eventTypeUri, eventTypeUri) })) ?? null;
+  return (
+    (await db.query.offers.findFirst({
+      where: eq(offers.eventTypeUri, eventTypeUri),
+    })) ?? null
+  );
 }
 
 /** Nigel or Andrew, by the email on their Calendly host record. */
 async function resolveCloser(email: string | null) {
   if (!email) return null;
-  return (await db.query.users.findFirst({ where: eq(users.email, email) })) ?? null;
+  return (
+    (await db.query.users.findFirst({ where: eq(users.email, email) })) ?? null
+  );
 }
 
 async function handleCreated(leadId: string, payload: CalendlyInviteePayload) {
@@ -94,6 +111,12 @@ async function handleCreated(leadId: string, payload: CalendlyInviteePayload) {
       responded: true,
       // A booking is a live conversation by definition.
       isActiveConvo: true,
+      // And it un-archives. Somebody who books a call is plainly a real lead,
+      // whatever was thought when the row was archived - and a booking left on
+      // an archived lead would be invisible in every list and every figure,
+      // with no way for anyone to notice it had happened.
+      archivedAt: null,
+      archivedById: null,
       callScheduledFor: startTime,
       offerId: offer?.id ?? null,
       closerId: closer?.id ?? null,
@@ -104,7 +127,8 @@ async function handleCreated(leadId: string, payload: CalendlyInviteePayload) {
       // Kept on the lead so a setter can read what they wrote before the call,
       // instead of it being buried in the raw webhook log.
       calendlyAnswers:
-        payload.questions_and_answers && payload.questions_and_answers.length > 0
+        payload.questions_and_answers &&
+        payload.questions_and_answers.length > 0
           ? payload.questions_and_answers
           : null,
       calendlyCancelUrl: payload.cancel_url ?? null,
@@ -126,7 +150,9 @@ async function handleCreated(leadId: string, payload: CalendlyInviteePayload) {
       // Booking is where a phone number enters the system at all, so never
       // overwrite one we already have with nothing.
       ...(payload.name?.trim() ? { name: payload.name.trim() } : {}),
-      ...(payload.email?.trim() ? { email: payload.email.trim().toLowerCase() } : {}),
+      ...(payload.email?.trim()
+        ? { email: payload.email.trim().toLowerCase() }
+        : {}),
       ...(phone ? { phone } : {}),
       updatedAt: new Date(),
     })
@@ -135,9 +161,13 @@ async function handleCreated(leadId: string, payload: CalendlyInviteePayload) {
 
   await db.insert(leadEvents).values({
     leadId,
-    type: 'call_booked',
+    type: "call_booked",
     toValue: startTime?.toISOString() ?? null,
-    meta: { source: 'calendly', inviteeUri: payload.uri, offer: offer?.label ?? null },
+    meta: {
+      source: "calendly",
+      inviteeUri: payload.uri,
+      offer: offer?.label ?? null,
+    },
   });
 
   if (updated) {
@@ -156,15 +186,19 @@ async function handleCreated(leadId: string, payload: CalendlyInviteePayload) {
         ? db.query.users.findFirst({ where: eq(users.id, updated.setterId) })
         : null,
       db.query.users.findMany({
-        where: and(eq(users.role, 'closer'), eq(users.active, true)),
+        where: and(eq(users.role, "closer"), eq(users.active, true)),
         orderBy: [asc(users.createdAt)],
       }),
     ]);
 
-    const posted = await notifyBooking(updated, offer?.label ?? link?.name ?? null, {
-      setterName: setter?.name ?? null,
-      closers: closers.map((c) => c.name),
-    });
+    const posted = await notifyBooking(
+      updated,
+      offer?.label ?? link?.name ?? null,
+      {
+        setterName: setter?.name ?? null,
+        closers: closers.map((c) => c.name),
+      },
+    );
     // A booking nobody is told about is the one failure this path exists to
     // prevent. postToChannel returns false for a missing token, a missing
     // channel id and a rejected post alike, and used to say so only to a
@@ -172,14 +206,14 @@ async function handleCreated(leadId: string, payload: CalendlyInviteePayload) {
     // team waited for a ping that was never coming.
     if (!posted && !updated.isTest) {
       await recordIssue({
-        title: 'A booking did not reach Discord',
+        title: "A booking did not reach Discord",
         detail:
           `${updated.igHandle} booked a call and the dashboard recorded it, but the Discord ` +
-          'post did not go out. The booking itself is safe - this is only the notification.',
+          "post did not go out. The booking itself is safe - this is only the notification.",
         remedy:
-          'Check DISCORD_BOT_TOKEN and DISCORD_SETTER_CHANNEL_ID are set on this service, and ' +
-          'that the bot can post in that channel. Tell whoever is taking the call in the ' +
-          'meantime.',
+          "Check DISCORD_BOT_TOKEN and DISCORD_SETTER_CHANNEL_ID are set on this service, and " +
+          "that the bot can post in that channel. Tell whoever is taking the call in the " +
+          "meantime.",
         context: { leadId: updated.id, igHandle: updated.igHandle },
       });
     }
@@ -204,38 +238,44 @@ async function handleCanceled(leadId: string, payload: CalendlyInviteePayload) {
 
   await db.insert(leadEvents).values({
     leadId,
-    type: 'call_cancelled',
+    type: "call_cancelled",
     toValue: reason,
-    meta: { source: 'calendly', canceledBy: payload.cancellation?.canceled_by ?? null },
+    meta: {
+      source: "calendly",
+      canceledBy: payload.cancellation?.canceled_by ?? null,
+    },
   });
 }
 
 export async function POST(request: Request) {
   const signingKey = process.env.CALENDLY_WEBHOOK_SIGNING_KEY;
   if (!signingKey) {
-    console.error('CALENDLY_WEBHOOK_SIGNING_KEY is not set - refusing to process webhook');
+    console.error(
+      "CALENDLY_WEBHOOK_SIGNING_KEY is not set - refusing to process webhook",
+    );
     await recordIssue({
-      title: 'Calendly bookings are being dropped',
-      detail: 'A booking arrived but CALENDLY_WEBHOOK_SIGNING_KEY is not set on this service.',
+      title: "Calendly bookings are being dropped",
+      detail:
+        "A booking arrived but CALENDLY_WEBHOOK_SIGNING_KEY is not set on this service.",
       remedy:
-        'Set CALENDLY_WEBHOOK_SIGNING_KEY in Railway to the same value used when the webhook was registered, then press Connect Calendly on this page.',
+        "Set CALENDLY_WEBHOOK_SIGNING_KEY in Railway to the same value used when the webhook was registered, then press Connect Calendly on this page.",
     });
-    return NextResponse.json({ error: 'not configured' }, { status: 500 });
+    return NextResponse.json({ error: "not configured" }, { status: 500 });
   }
 
   const rawBody = await request.text();
   const verdict = verifyCalendlySignature(
     rawBody,
-    request.headers.get('calendly-webhook-signature'),
-    signingKey
+    request.headers.get("calendly-webhook-signature"),
+    signingKey,
   );
   if (!verdict.ok) {
-    console.warn('Rejected Calendly webhook:', verdict.reason);
+    console.warn("Rejected Calendly webhook:", verdict.reason);
     await recordIssue({
-      title: 'Calendly bookings are being rejected',
+      title: "Calendly bookings are being rejected",
       detail: `A delivery failed signature checks (${verdict.reason}). Real bookings are not reaching the dashboard.`,
       remedy:
-        'CALENDLY_WEBHOOK_SIGNING_KEY no longer matches what Calendly was registered with. Delete the subscription in Calendly, then press Connect Calendly on this page to register a fresh one.',
+        "CALENDLY_WEBHOOK_SIGNING_KEY no longer matches what Calendly was registered with. Delete the subscription in Calendly, then press Connect Calendly on this page to register a fresh one.",
     });
     // Recorded so a rejection is visible in the app rather than only in the
     // deploy logs. The most likely cause is a signing key that no longer
@@ -245,15 +285,15 @@ export async function POST(request: Request) {
     // nothing in it is trustworthy.
     try {
       await db.insert(calendlyWebhookEvents).values({
-        eventType: 'rejected',
+        eventType: "rejected",
         payload: { reason: verdict.reason },
         error: `Signature rejected: ${verdict.reason}`,
         processedAt: new Date(),
       });
     } catch (err) {
-      console.error('Could not record the rejected delivery:', err);
+      console.error("Could not record the rejected delivery:", err);
     }
-    return NextResponse.json({ error: 'invalid signature' }, { status: 401 });
+    return NextResponse.json({ error: "invalid signature" }, { status: 401 });
   }
 
   let body: CalendlyWebhookBody;
@@ -262,15 +302,22 @@ export async function POST(request: Request) {
     // JSON.parse accepts `null` and bare arrays, both of which then blow up on
     // the first property access. A signed-but-malformed body is a bad request,
     // not a server error.
-    if (parsed === null || typeof parsed !== 'object' || Array.isArray(parsed)) {
-      return NextResponse.json({ error: 'expected a json object' }, { status: 400 });
+    if (
+      parsed === null ||
+      typeof parsed !== "object" ||
+      Array.isArray(parsed)
+    ) {
+      return NextResponse.json(
+        { error: "expected a json object" },
+        { status: 400 },
+      );
     }
     body = parsed as CalendlyWebhookBody;
   } catch {
-    return NextResponse.json({ error: 'invalid json' }, { status: 400 });
+    return NextResponse.json({ error: "invalid json" }, { status: 400 });
   }
 
-  const eventType = body.event ?? 'unknown';
+  const eventType = body.event ?? "unknown";
   const payload = body.payload ?? {};
   const inviteeUri = payload.uri ?? null;
 
@@ -280,10 +327,11 @@ export async function POST(request: Request) {
     const seen = await db.query.calendlyWebhookEvents.findFirst({
       where: and(
         eq(calendlyWebhookEvents.eventType, eventType),
-        eq(calendlyWebhookEvents.calendlyInviteeUri, inviteeUri)
+        eq(calendlyWebhookEvents.calendlyInviteeUri, inviteeUri),
       ),
     });
-    if (seen?.processedAt) return NextResponse.json({ ok: true, deduped: true });
+    if (seen?.processedAt)
+      return NextResponse.json({ ok: true, deduped: true });
   }
 
   const [logged] = await db
@@ -295,25 +343,28 @@ export async function POST(request: Request) {
     // The webhook fires for every link on the Calendly account, not just the
     // three offers. A booking on anything else is somebody's own meeting, and
     // writing it into the lead tracker is how internal calls ended up in there.
-    const linked = countedEventTypes(await db.select().from(calendlyEventTypes));
+    const linked = countedEventTypes(
+      await db.select().from(calendlyEventTypes),
+    );
     if (!isCountedEventType(payload.scheduled_event?.event_type, linked)) {
       await db
         .update(calendlyWebhookEvents)
         .set({
-          matchStrategy: linked.size === 0 ? 'no_links_counted' : 'not_a_counted_link',
+          matchStrategy:
+            linked.size === 0 ? "no_links_counted" : "not_a_counted_link",
           processedAt: new Date(),
         })
         .where(eq(calendlyWebhookEvents.id, logged.id));
 
       if (linked.size === 0) {
         await recordIssue({
-          title: 'Calendly bookings are being ignored',
+          title: "Calendly bookings are being ignored",
           detail:
-            'A booking arrived but no Calendly link is marked as a sales call, so there is no ' +
-            'way to tell one from a coaching call or a personal appointment.',
+            "A booking arrived but no Calendly link is marked as a sales call, so there is no " +
+            "way to tell one from a coaching call or a personal appointment.",
           remedy:
-            'Open Admin → Setup & imports, press Find Calendly links, and tick the ones whose ' +
-            'bookings are sales calls. The delivery is stored and can be replayed afterwards.',
+            "Open Admin → Setup & imports, press Find Calendly links, and tick the ones whose " +
+            "bookings are sales calls. The delivery is stored and can be replayed afterwards.",
         });
       } else {
         // Some links count and this one doesn't. That is usually correct - a
@@ -322,28 +373,30 @@ export async function POST(request: Request) {
         // vanished: no lead, no Discord, and nothing on the Problems page to
         // say why. Silence is the wrong answer to "did that come through?".
         const uri = payload.scheduled_event?.event_type ?? null;
-        const known = uri ? await db.query.calendlyEventTypes.findFirst({
-          where: eq(calendlyEventTypes.uri, uri),
-        }) : null;
+        const known = uri
+          ? await db.query.calendlyEventTypes.findFirst({
+              where: eq(calendlyEventTypes.uri, uri),
+            })
+          : null;
         await recordIssue({
-          title: 'A booking came in on a link that is not counted',
+          title: "A booking came in on a link that is not counted",
           detail:
-            `${payload.name?.trim() || payload.email || 'Somebody'} booked on ` +
-            `${known ? `"${known.name}"` : 'a link this dashboard has never seen'}, which is not ` +
-            'ticked as a sales call. No lead was touched and nobody was told.',
+            `${payload.name?.trim() || payload.email || "Somebody"} booked on ` +
+            `${known ? `"${known.name}"` : "a link this dashboard has never seen"}, which is not ` +
+            "ticked as a sales call. No lead was touched and nobody was told.",
           remedy: known
-            ? 'If that link is a sales call, tick it under Admin → Setup & imports → Which ' +
-              'Calendly links are sales calls, then pull the Calendly history to bring the ' +
-              'booking in. If it is not, nothing needs doing.'
-            : 'Open Admin → Setup & imports and press Find Calendly links so the dashboard knows ' +
-              'about it, then tick it if its bookings are sales calls.',
+            ? "If that link is a sales call, tick it under Admin → Setup & imports → Which " +
+              "Calendly links are sales calls, then pull the Calendly history to bring the " +
+              "booking in. If it is not, nothing needs doing."
+            : "Open Admin → Setup & imports and press Find Calendly links so the dashboard knows " +
+              "about it, then tick it if its bookings are sales calls.",
           context: { eventTypeUri: uri, inviteeUri: payload.uri },
         });
       }
 
       // Recorded, not acted on. The payload is kept either way, so a booking
       // wrongly filtered out can still be replayed.
-      return NextResponse.json({ ok: true, ignored: 'not_a_counted_link' });
+      return NextResponse.json({ ok: true, ignored: "not_a_counted_link" });
     }
 
     const match = await matchLead(payload);
@@ -356,7 +409,7 @@ export async function POST(request: Request) {
     // is preparing for* - more urgent than a matched one, not less. The
     // Calendly history backfill has always created a lead in this case; the
     // webhook, which is the one that runs while it still matters, did not.
-    if (!leadId && eventType === 'invitee.created') {
+    if (!leadId && eventType === "invitee.created") {
       const handle = igHandleFromAnswers(payload);
       const name = payload.name?.trim() || null;
       const email = payload.email?.trim().toLowerCase() || null;
@@ -366,7 +419,7 @@ export async function POST(request: Request) {
           // Whatever we have to call them by. No handle on the booking form
           // means there is nothing to key on, so a person fills it in rather
           // than the app inventing one.
-          igHandle: handle ?? name ?? email ?? 'unknown booking',
+          igHandle: handle ?? name ?? email ?? "unknown booking",
           igHandleKey: handle ?? null,
           needsHandle: !handle,
           name,
@@ -380,27 +433,28 @@ export async function POST(request: Request) {
         })
         .returning({ id: leads.id });
       leadId = row.id;
-      strategy = 'created_from_booking';
+      strategy = "created_from_booking";
       await db.insert(leadEvents).values({
         leadId,
-        type: 'created',
-        meta: { source: 'calendly_webhook', inviteeUri: payload.uri } as never,
+        type: "created",
+        meta: { source: "calendly_webhook", inviteeUri: payload.uri } as never,
       });
       await recordIssue({
-        title: 'A call was booked by somebody not in the tracker',
+        title: "A call was booked by somebody not in the tracker",
         detail:
-          `${name || email || 'Somebody'} booked a call and matched no lead, so one was created ` +
-          'for them. Nobody owns it and it has no Instagram handle yet.',
+          `${name || email || "Somebody"} booked a call and matched no lead, so one was created ` +
+          "for them. Nobody owns it and it has no Instagram handle yet.",
         remedy:
-          'Open the lead, put the real handle in and set a setter. If they are already in the ' +
-          'tracker under another row, merge the two from Possible duplicates.',
+          "Open the lead, put the real handle in and set a setter. If they are already in the " +
+          "tracker under another row, merge the two from Possible duplicates.",
         context: { leadId, email },
       });
     }
 
     if (leadId) {
-      if (eventType === 'invitee.created') await handleCreated(leadId, payload);
-      else if (eventType === 'invitee.canceled') await handleCanceled(leadId, payload);
+      if (eventType === "invitee.created") await handleCreated(leadId, payload);
+      else if (eventType === "invitee.canceled")
+        await handleCanceled(leadId, payload);
     }
 
     await db
@@ -417,11 +471,12 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: true, matched: Boolean(leadId), strategy });
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
-    console.error('Calendly webhook processing failed:', message);
+    console.error("Calendly webhook processing failed:", message);
     await recordIssue({
-      title: 'A Calendly booking could not be processed',
+      title: "A Calendly booking could not be processed",
       detail: message,
-      remedy: 'Check Calendly deliveries below - the raw payload is stored and Calendly will retry.',
+      remedy:
+        "Check Calendly deliveries below - the raw payload is stored and Calendly will retry.",
       context: { inviteeUri },
     });
     await db
@@ -429,7 +484,7 @@ export async function POST(request: Request) {
       .set({ error: message })
       .where(eq(calendlyWebhookEvents.id, logged.id));
     // 500 so Calendly retries - the raw payload is already stored either way.
-    return NextResponse.json({ error: 'processing failed' }, { status: 500 });
+    return NextResponse.json({ error: "processing failed" }, { status: 500 });
   }
 }
 
@@ -438,7 +493,7 @@ export async function GET() {
   const rows = await db.query.calendlyWebhookEvents.findMany({
     where: and(
       isNull(calendlyWebhookEvents.matchedLeadId),
-      eq(calendlyWebhookEvents.eventType, 'invitee.created')
+      eq(calendlyWebhookEvents.eventType, "invitee.created"),
     ),
     orderBy: [desc(calendlyWebhookEvents.createdAt)],
     limit: 100,
@@ -447,7 +502,9 @@ export async function GET() {
     unmatched: rows.map((r) => ({
       id: r.id,
       createdAt: r.createdAt,
-      invitee: (r.payload as { payload?: { name?: string; email?: string } })?.payload ?? null,
+      invitee:
+        (r.payload as { payload?: { name?: string; email?: string } })
+          ?.payload ?? null,
     })),
   });
 }

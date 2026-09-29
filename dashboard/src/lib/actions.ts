@@ -515,9 +515,11 @@ export async function archiveLead(formData: FormData): Promise<ActionResult> {
       .set({
         archivedAt: new Date(),
         archivedById: user.id,
-        // It cannot be a live conversation and archived at the same time, and
-        // leaving the tick set would have it counted the moment it came back.
-        isActiveConvo: false,
+        // isActiveConvo is deliberately left alone. Clearing it made "put it
+        // back" a lie - the lead returned marked dead, dropped out of the
+        // follow-up queues and nothing on screen said why. Every query that
+        // reads the tick already excludes archived rows, so there is nothing
+        // to protect against by clearing it.
         updatedAt: new Date(),
       })
       .where(eq(leads.id, leadId));

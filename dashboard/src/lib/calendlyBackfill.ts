@@ -11,22 +11,29 @@
  * conversations that were never entered: refusing to create them would be
  * throwing away the record of a real call for the sake of a tidy table.
  */
-import { and, desc, eq, sql } from 'drizzle-orm';
-import type { PostgresJsDatabase } from 'drizzle-orm/postgres-js';
-import { calendlyEventTypes, leadEvents, leadNotes, leads, offers, users } from '../db/schema.ts';
-import * as schema from '../db/schema.ts';
+import { and, desc, eq, sql } from "drizzle-orm";
+import type { PostgresJsDatabase } from "drizzle-orm/postgres-js";
+import {
+  calendlyEventTypes,
+  leadEvents,
+  leadNotes,
+  leads,
+  offers,
+  users,
+} from "../db/schema.ts";
+import * as schema from "../db/schema.ts";
 import {
   hostFromPayload,
   igHandleFromAnswers,
   leadIdFromTracking,
   phoneFromPayload,
   type CalendlyInviteePayload,
-} from './calendly.ts';
-import { countedEventTypes, isCountedEventType } from './offerScope.ts';
+} from "./calendly.ts";
+import { countedEventTypes, isCountedEventType } from "./offerScope.ts";
 
 type Db = PostgresJsDatabase<typeof schema>;
 
-const API = process.env.CALENDLY_API_BASE ?? 'https://api.calendly.com';
+const API = process.env.CALENDLY_API_BASE ?? "https://api.calendly.com";
 
 type ScheduledEvent = {
   uri: string;
@@ -36,8 +43,16 @@ type ScheduledEvent = {
   start_time?: string;
   end_time?: string;
   event_type?: string;
-  event_memberships?: Array<{ user?: string; user_email?: string; user_name?: string }>;
-  cancellation?: { canceled_by?: string; reason?: string; canceler_type?: string };
+  event_memberships?: Array<{
+    user?: string;
+    user_email?: string;
+    user_name?: string;
+  }>;
+  cancellation?: {
+    canceled_by?: string;
+    reason?: string;
+    canceler_type?: string;
+  };
 };
 
 type Invitee = {
@@ -48,8 +63,8 @@ type Invitee = {
   cancel_url?: string;
   reschedule_url?: string;
   text_reminder_number?: string | null;
-  tracking?: CalendlyInviteePayload['tracking'];
-  questions_and_answers?: CalendlyInviteePayload['questions_and_answers'];
+  tracking?: CalendlyInviteePayload["tracking"];
+  questions_and_answers?: CalendlyInviteePayload["questions_and_answers"];
 };
 
 /** One event and its invitee, in the shape the webhook helpers already read. */
@@ -76,15 +91,19 @@ export type BackfillStats = {
 
 async function callUrl<T>(pat: string, url: string): Promise<T> {
   const res = await fetch(url, {
-    headers: { Authorization: `Bearer ${pat}`, 'Content-Type': 'application/json' },
+    headers: {
+      Authorization: `Bearer ${pat}`,
+      "Content-Type": "application/json",
+    },
   });
   const text = await res.text();
   if (!res.ok) {
-    if (res.status === 401) throw new Error('Calendly rejected the token (401). Is it correct?');
+    if (res.status === 401)
+      throw new Error("Calendly rejected the token (401). Is it correct?");
     if (res.status === 403) {
       throw new Error(
-        'Calendly returned 403. This token lacks organization-admin rights — use one from the ' +
-          'account that owns the booking links.'
+        "Calendly returned 403. This token lacks organization-admin rights — use one from the " +
+          "account that owns the booking links.",
       );
     }
     throw new Error(`Calendly GET ${url} failed (${res.status}): ${text}`);
@@ -92,20 +111,27 @@ async function callUrl<T>(pat: string, url: string): Promise<T> {
   return (text ? JSON.parse(text) : {}) as T;
 }
 
-const callApi = <T>(pat: string, path: string) => callUrl<T>(pat, `${API}${path}`);
+const callApi = <T>(pat: string, path: string) =>
+  callUrl<T>(pat, `${API}${path}`);
 
 /**
  * Every scheduled event since `since`, cancelled ones included, each with the
  * person who booked it.
  */
-export async function fetchCalendlyHistory(pat: string, since: string): Promise<BackfillItem[]> {
-  const me = await callApi<{ resource: { current_organization: string } }>(pat, '/users/me');
+export async function fetchCalendlyHistory(
+  pat: string,
+  since: string,
+): Promise<BackfillItem[]> {
+  const me = await callApi<{ resource: { current_organization: string } }>(
+    pat,
+    "/users/me",
+  );
   const org = me.resource.current_organization;
 
   const params = new URLSearchParams({
     organization: org,
     min_start_time: since,
-    count: '100',
+    count: "100",
   });
 
   const events: ScheduledEvent[] = [];
@@ -124,11 +150,11 @@ export async function fetchCalendlyHistory(pat: string, since: string): Promise<
 
   const items: BackfillItem[] = [];
   for (const event of events) {
-    const uuid = event.uri.split('/').pop();
+    const uuid = event.uri.split("/").pop();
     if (!uuid) continue;
     const res = await callApi<{ collection: Invitee[] }>(
       pat,
-      `/scheduled_events/${uuid}/invitees?count=100`
+      `/scheduled_events/${uuid}/invitees?count=100`,
     );
     // A one-to-one call has exactly one invitee; take the first either way.
     const invitee = res.collection[0];
@@ -183,15 +209,17 @@ export async function backfillCalendly(
     cleanup?: boolean;
     /** Whether to write the counted bookings. Off makes this a cleanup only. */
     apply?: boolean;
-  } = {}
+  } = {},
 ): Promise<BackfillStats> {
-  const from = since ?? '2026-06-01T00:00:00Z';
-  const history = items ?? (await fetchCalendlyHistory(pat ?? process.env.CALENDLY_PAT ?? '', from));
+  const from = since ?? "2026-06-01T00:00:00Z";
+  const history =
+    items ??
+    (await fetchCalendlyHistory(pat ?? process.env.CALENDLY_PAT ?? "", from));
 
   // Oldest first, so a lead that booked, cancelled and rebooked ends on its
   // most recent state rather than whichever row came back last.
   const ordered = [...history].sort((a, b) =>
-    (a.event.start_time ?? '').localeCompare(b.event.start_time ?? '')
+    (a.event.start_time ?? "").localeCompare(b.event.start_time ?? ""),
   );
 
   const stats: BackfillStats = {
@@ -208,8 +236,8 @@ export async function backfillCalendly(
     dryRun,
     range: ordered.length
       ? {
-          from: ordered[0].event.start_time?.slice(0, 10) ?? '?',
-          to: ordered[ordered.length - 1].event.start_time?.slice(0, 10) ?? '?',
+          from: ordered[0].event.start_time?.slice(0, 10) ?? "?",
+          to: ordered[ordered.length - 1].event.start_time?.slice(0, 10) ?? "?",
         }
       : null,
   };
@@ -223,20 +251,23 @@ export async function backfillCalendly(
   const linked = countedEventTypes(await db.select().from(calendlyEventTypes));
   if (linked.size === 0) {
     throw new Error(
-      'No Calendly link is marked as a sales call, so a booking cannot be told apart from a ' +
-        'coaching call or a personal appointment. Press Find Calendly links first, tick the ' +
-        'ones that count, then run this again.'
+      "No Calendly link is marked as a sales call, so a booking cannot be told apart from a " +
+        "coaching call or a personal appointment. Press Find Calendly links first, tick the " +
+        "ones that count, then run this again.",
     );
   }
 
   // What the account is actually being used for. Without this, "173 skipped"
   // is a number with no way to tell a personal appointment from a sales call
   // booked on a link that has since been replaced.
-  const seen = new Map<string, { name: string; count: number; ours: boolean }>();
+  const seen = new Map<
+    string,
+    { name: string; count: number; ours: boolean }
+  >();
   for (const item of ordered) {
-    const uri = item.event.event_type ?? 'unknown';
+    const uri = item.event.event_type ?? "unknown";
     const entry = seen.get(uri) ?? {
-      name: item.event.name?.trim() || uri.split('/').pop() || 'unnamed',
+      name: item.event.name?.trim() || uri.split("/").pop() || "unnamed",
       count: 0,
       ours: isCountedEventType(item.event.event_type, linked),
     };
@@ -255,8 +286,8 @@ export async function backfillCalendly(
       // event type it was, not from guessing at the row afterwards.
       if (cleanup) {
         const undone = await undoForeignBooking(db, item.event.uri, dryRun);
-        if (undone === 'removed') stats.removed += 1;
-        if (undone === 'cleared') stats.cleared += 1;
+        if (undone === "removed") stats.removed += 1;
+        if (undone === "cleared") stats.cleared += 1;
       }
       continue;
     }
@@ -264,7 +295,7 @@ export async function backfillCalendly(
       ? new Date(payload.scheduled_event.start_time)
       : null;
     const startTime = start && !Number.isNaN(start.getTime()) ? start : null;
-    const cancelled = item.event.status === 'canceled';
+    const cancelled = item.event.status === "canceled";
     if (cancelled) stats.cancelled += 1;
 
     if (!apply) continue;
@@ -313,8 +344,8 @@ export async function backfillCalendly(
       stats.created += 1;
       await db.insert(leadEvents).values({
         leadId,
-        type: 'created',
-        meta: { source: 'calendly_backfill' } as never,
+        type: "created",
+        meta: { source: "calendly_backfill" } as never,
       });
     } else if (dryRun) {
       if (byEvent) stats.updated += 1;
@@ -333,10 +364,14 @@ export async function backfillCalendly(
       columns: { callBookedAt: true },
     });
 
-    const offer = offerRows.find((o) => o.eventTypeUri === payload.scheduled_event?.event_type);
+    const offer = offerRows.find(
+      (o) => o.eventTypeUri === payload.scheduled_event?.event_type,
+    );
     const host = hostFromPayload(payload);
     const closer = host.email
-      ? (people.find((p) => p.email.toLowerCase() === host.email!.toLowerCase()) ?? null)
+      ? (people.find(
+          (p) => p.email.toLowerCase() === host.email!.toLowerCase(),
+        ) ?? null)
       : null;
     const phone = phoneFromPayload(payload);
     const answers =
@@ -348,6 +383,10 @@ export async function backfillCalendly(
       .update(leads)
       .set({
         callBooked: true,
+        // A real booking un-archives the lead. Left archived, the booking
+        // would sit in no list and no figure, with nobody able to notice.
+        archivedAt: null,
+        archivedById: null,
         callScheduledFor: startTime,
         // The moment of booking isn't on a scheduled event, so the call itself
         // stands in for it - close enough to count it in the right month.
@@ -365,13 +404,17 @@ export async function backfillCalendly(
         calendlyRescheduleUrl: payload.reschedule_url ?? null,
         callCancelled: cancelled,
         callCancelledAt: cancelled ? (startTime ?? new Date()) : null,
-        cancelReason: cancelled ? (item.event.cancellation?.reason ?? null) : null,
+        cancelReason: cancelled
+          ? (item.event.cancellation?.reason ?? null)
+          : null,
         // Confirmed and triaged are deliberately left alone. The live webhook
         // resets them on a rebooking because that is new work for a setter;
         // here the calls are historical, and clearing a flag somebody set by
         // hand would destroy their record of having done the work.
         ...(payload.name?.trim() ? { name: payload.name.trim() } : {}),
-        ...(payload.email?.trim() ? { email: payload.email.trim().toLowerCase() } : {}),
+        ...(payload.email?.trim()
+          ? { email: payload.email.trim().toLowerCase() }
+          : {}),
         ...(phone ? { phone } : {}),
         updatedAt: new Date(),
       })
@@ -379,9 +422,9 @@ export async function backfillCalendly(
 
     await db.insert(leadEvents).values({
       leadId,
-      type: cancelled ? 'call_cancelled' : 'call_booked',
+      type: cancelled ? "call_cancelled" : "call_booked",
       toValue: startTime?.toISOString() ?? null,
-      meta: { source: 'calendly_backfill', eventUri: item.event.uri } as never,
+      meta: { source: "calendly_backfill", eventUri: item.event.uri } as never,
     });
   }
 
@@ -389,7 +432,10 @@ export async function backfillCalendly(
 }
 
 /** The webhook's three strategies, in the same order, against an injected db. */
-async function findLead(db: Db, payload: CalendlyInviteePayload): Promise<string | null> {
+async function findLead(
+  db: Db,
+  payload: CalendlyInviteePayload,
+): Promise<string | null> {
   const trackedId = leadIdFromTracking(payload);
   if (trackedId) {
     const hit = await db.query.leads.findFirst({
@@ -435,8 +481,8 @@ async function findLead(db: Db, payload: CalendlyInviteePayload): Promise<string
 async function undoForeignBooking(
   db: Db,
   eventUri: string,
-  dryRun: boolean
-): Promise<'removed' | 'cleared' | null> {
+  dryRun: boolean,
+): Promise<"removed" | "cleared" | null> {
   const lead = await db.query.leads.findFirst({
     where: eq(leads.calendlyEventUri, eventUri),
     columns: { id: true },
@@ -449,9 +495,9 @@ async function undoForeignBooking(
     .where(
       and(
         eq(leadEvents.leadId, lead.id),
-        eq(leadEvents.type, 'created'),
-        sql`${leadEvents.meta}->>'source' = 'calendly_backfill'`
-      )
+        eq(leadEvents.type, "created"),
+        sql`${leadEvents.meta}->>'source' = 'calendly_backfill'`,
+      ),
     );
   const [notes] = await db
     .select({ n: sql<number>`COUNT(*)::int` })
@@ -459,12 +505,12 @@ async function undoForeignBooking(
     .where(eq(leadNotes.leadId, lead.id));
 
   const invented = createdHere.n > 0 && notes.n === 0;
-  if (dryRun) return invented ? 'removed' : 'cleared';
+  if (dryRun) return invented ? "removed" : "cleared";
 
   if (invented) {
     await db.delete(leadEvents).where(eq(leadEvents.leadId, lead.id));
     await db.delete(leads).where(eq(leads.id, lead.id));
-    return 'removed';
+    return "removed";
   }
 
   await db
@@ -489,10 +535,14 @@ async function undoForeignBooking(
 
   await db.insert(leadEvents).values({
     leadId: lead.id,
-    type: 'call_cancelled',
-    meta: { source: 'calendly_backfill', reason: 'not_an_offer_link', eventUri } as never,
+    type: "call_cancelled",
+    meta: {
+      source: "calendly_backfill",
+      reason: "not_an_offer_link",
+      eventUri,
+    } as never,
   });
-  return 'cleared';
+  return "cleared";
 }
 
 export type DiscoverStats = {
@@ -512,17 +562,23 @@ export type DiscoverStats = {
  */
 export async function discoverEventTypes(
   db: Db,
-  { pat, since, items }: { pat?: string; since?: string; items?: BackfillItem[] } = {}
+  {
+    pat,
+    since,
+    items,
+  }: { pat?: string; since?: string; items?: BackfillItem[] } = {},
 ): Promise<DiscoverStats> {
-  const from = since ?? '2026-06-01T00:00:00Z';
-  const history = items ?? (await fetchCalendlyHistory(pat ?? process.env.CALENDLY_PAT ?? '', from));
+  const from = since ?? "2026-06-01T00:00:00Z";
+  const history =
+    items ??
+    (await fetchCalendlyHistory(pat ?? process.env.CALENDLY_PAT ?? "", from));
 
   const seen = new Map<string, { name: string; count: number }>();
   for (const item of history) {
     const uri = item.event.event_type;
     if (!uri) continue;
     const entry = seen.get(uri) ?? {
-      name: item.event.name?.trim() || uri.split('/').pop() || 'unnamed',
+      name: item.event.name?.trim() || uri.split("/").pop() || "unnamed",
       count: 0,
     };
     entry.count += 1;
@@ -540,17 +596,26 @@ export async function discoverEventTypes(
         // discovery run has no business changing it.
         set: { name, bookingCount: count, lastSeenAt: new Date() },
       })
-      .returning({ createdAt: calendlyEventTypes.createdAt, id: calendlyEventTypes.id });
+      .returning({
+        createdAt: calendlyEventTypes.createdAt,
+        id: calendlyEventTypes.id,
+      });
     if (row && Date.now() - row.createdAt.getTime() < 5_000) added += 1;
   }
 
-  const starts = history.map((h) => h.event.start_time ?? '').filter(Boolean).sort();
+  const starts = history
+    .map((h) => h.event.start_time ?? "")
+    .filter(Boolean)
+    .sort();
   return {
     found: seen.size,
     added,
     bookings: history.length,
     range: starts.length
-      ? { from: starts[0].slice(0, 10), to: starts[starts.length - 1].slice(0, 10) }
+      ? {
+          from: starts[0].slice(0, 10),
+          to: starts[starts.length - 1].slice(0, 10),
+        }
       : null,
   };
 }

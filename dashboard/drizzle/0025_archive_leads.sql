@@ -8,6 +8,4 @@ DO $$ BEGIN
     ON DELETE set null ON UPDATE no action;
 EXCEPTION
   WHEN duplicate_object THEN NULL;
-END $$;--> statement-breakpoint
--- Every list and count filters on this, so it earns an index.
-CREATE INDEX IF NOT EXISTS "leads_archived_at_idx" ON "leads" ("archived_at");
+END $$;

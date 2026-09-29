@@ -44,6 +44,7 @@ import { eodBuckets, type Bucket } from "./eodCharts";
 export type LeadRow = typeof leads.$inferSelect;
 
 const liveCall = and(
+  liveLead,
   eq(leads.callBooked, true),
   eq(leads.callCancelled, false),
 );
@@ -131,7 +132,10 @@ export type LeadFilters = {
 const DEFAULT_PAGE_SIZE = 50;
 
 export async function searchLeads(filters: LeadFilters) {
-  const where = [];
+  // Seeded, not appended: this is the list and the search behind the bulk
+  // actions, so an archived lead reachable here could be ticked and marked
+  // live again - archived and being worked at the same time.
+  const where = [liveLead];
   if (filters.q) {
     const term = `%${filters.q}%`;
     where.push(
