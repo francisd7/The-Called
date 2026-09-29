@@ -31,12 +31,20 @@ Still to do:
 
 ## Watch after launch
 
-**$11,000 of collected cash is on nobody.** Sixteen September leads went
-unassigned in the split, exactly as intended — the company total is unaffected,
-since that figure counts every lead whoever owns it, but no setter is credited.
-If Loui or Alexis says a September deal of theirs is missing, it is in that
-band: Setup & imports → Move a pile of leads by date, source **Unassigned**,
-2026-08-28 to today, to their name. Takes about thirty seconds.
+**Archiving a lead is the newest thing here**, built late on the night before
+launch. A review the morning after found four real holes in it — search and
+the day's calls both still showed archived leads, a Calendly booking could
+land on one invisibly, and the migration had no snapshot, which would have
+failed the boot on the next schema change. All fixed and re-verified by lead
+id across every list. It is sound now, but it is the least-exercised code in
+the dashboard, and if something has to be rolled back it is commits `3afdead`,
+`449287b` and `29f5dbd`, which stand alone.
+
+The thing to watch is the one its own module doc predicts: a query somebody
+forgot. If an archived lead ever shows up somewhere it should not, the list to
+check is every place using `liveLead` in `src/lib/leadScope.ts` — and the two
+that deliberately do not, the Airtable import and the Calendly backfill, both
+of which have to see archived rows or they create a second copy of the person.
 
 ## Waiting on Francis, not blocking
 
