@@ -1,4 +1,5 @@
 import { redirect } from 'next/navigation';
+import { liveLead } from '@/lib/leadScope';
 import { and, count, desc, eq, isNull } from 'drizzle-orm';
 import { currentUser } from '@/lib/session';
 import { db } from '@/db';
@@ -56,7 +57,7 @@ export default async function AdminPage() {
   const [{ unassigned }] = await db
     .select({ unassigned: count() })
     .from(leads)
-    .where(and(eq(leads.isActiveConvo, true), isNull(leads.setterId), eq(leads.isTest, false)));
+    .where(and(eq(leads.isActiveConvo, true), isNull(leads.setterId), liveLead));
 
   return (
     <>

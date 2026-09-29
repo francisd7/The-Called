@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { liveLead } from './leadScope.ts';
 import { eq, inArray, sql } from "drizzle-orm";
 import { db } from "@/db";
 import { leadEvents, leads, users } from "@/db/schema";
@@ -69,7 +70,7 @@ export async function reassignByDate(formData: FormData): Promise<Result> {
         cashCollected: leads.cashCollected,
       })
       .from(leads)
-      .where(eq(leads.isTest, false));
+      .where(liveLead);
 
     const plan = planReassign(rows, { fromSetterId, first, last, toSetterId });
 

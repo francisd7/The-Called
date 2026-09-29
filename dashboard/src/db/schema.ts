@@ -174,6 +174,14 @@ export const leads = pgTable(
     // in one click - so the flow can be rehearsed without anyone being pinged
     // about a call that isn't real.
     isTest: boolean('is_test').notNull().default(false),
+    /**
+     * Set when somebody archives the lead: a spam account, a wrong handle, a
+     * row that should never have been a lead. The row stays so its notes and
+     * history survive and so a re-import matches it rather than creating the
+     * same junk again - it is simply excluded from every list and every count.
+     */
+    archivedAt: timestamp('archived_at', { withTimezone: true }),
+    archivedById: uuid('archived_by_id').references(() => users.id, { onDelete: 'set null' }),
     // Set only for rows imported from Airtable, so re-running the import
     // updates those rows instead of creating a second copy of each.
     airtableRecordId: text('airtable_record_id').unique(),

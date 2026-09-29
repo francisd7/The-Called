@@ -412,6 +412,8 @@ async function findLead(db: Db, payload: CalendlyInviteePayload): Promise<string
   const email = payload.email?.trim().toLowerCase();
   if (email) {
     const hit = await db.query.leads.findFirst({
+      // Not liveLead: an archived lead still owns its email, and a booking
+      // that failed to find it would create a second lead for the same person.
       where: and(eq(leads.email, email), eq(leads.isTest, false)),
       orderBy: [desc(leads.lastContactAt), desc(leads.leadCreatedAt)],
       columns: { id: true },

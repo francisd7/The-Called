@@ -29,6 +29,7 @@ import {
   saveCountedLinks,
 } from "@/lib/setupActions";
 import { syncPostCall, unlinkReport } from "@/lib/postCallActions";
+import { liveLead } from '@/lib/leadScope';
 
 function Check({
   done,
@@ -92,7 +93,7 @@ export default async function SetupPage() {
       cash: sum(leads.cashCollected),
     })
     .from(leads)
-    .where(eq(leads.isTest, false))
+    .where(liveLead)
     .groupBy(leads.setterId);
   const pile = new Map(
     pileRows.map((r) => [

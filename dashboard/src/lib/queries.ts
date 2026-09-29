@@ -1,9 +1,27 @@
-import { and, asc, count, desc, eq, gt, gte, ilike, isNotNull, isNull, lt, lte, ne, notInArray, or, sql } from 'drizzle-orm';
-import { alias } from 'drizzle-orm/pg-core';
-import type { PgColumn } from 'drizzle-orm/pg-core';
-import { db } from '@/db';
-import { awaitingOutcome } from './outcomeRules.ts';
-import { colourOrder, personColour } from './people.ts';
+import {
+  and,
+  asc,
+  count,
+  desc,
+  eq,
+  gt,
+  gte,
+  ilike,
+  isNotNull,
+  isNull,
+  lt,
+  lte,
+  ne,
+  notInArray,
+  or,
+  sql,
+} from "drizzle-orm";
+import { archivedLead, liveLead } from "./leadScope.ts";
+import { alias } from "drizzle-orm/pg-core";
+import type { PgColumn } from "drizzle-orm/pg-core";
+import { db } from "@/db";
+import { awaitingOutcome } from "./outcomeRules.ts";
+import { colourOrder, personColour } from "./people.ts";
 import {
   calendlyEventTypes,
   calendlyWebhookEvents,
@@ -18,14 +36,17 @@ import {
   postCallReports,
   todos,
   users,
-} from '@/db/schema';
-import { teamDateString, teamDayRange, weekDays, weekStart } from './dates';
-import { summariseEodWeek } from './eodMath';
-import { eodBuckets, type Bucket } from './eodCharts';
+} from "@/db/schema";
+import { teamDateString, teamDayRange, weekDays, weekStart } from "./dates";
+import { summariseEodWeek } from "./eodMath";
+import { eodBuckets, type Bucket } from "./eodCharts";
 
 export type LeadRow = typeof leads.$inferSelect;
 
-const liveCall = and(eq(leads.callBooked, true), eq(leads.callCancelled, false));
+const liveCall = and(
+  eq(leads.callBooked, true),
+  eq(leads.callCancelled, false),
+);
 
 /** Calls happening today, soonest first - the first thing a setter should see. */
 export async function getTodaysCalls() {
@@ -33,7 +54,13 @@ export async function getTodaysCalls() {
   return db
     .select()
     .from(leads)
-    .where(and(liveCall, gte(leads.callScheduledFor, start), lt(leads.callScheduledFor, end)))
+    .where(
+      and(
+        liveCall,
+        gte(leads.callScheduledFor, start),
+        lt(leads.callScheduledFor, end),
+      ),
+    )
     .orderBy(asc(leads.callScheduledFor));
 }
 
@@ -44,7 +71,13 @@ export async function getUpcomingCalls() {
   return db
     .select()
     .from(leads)
-    .where(and(liveCall, gte(leads.callScheduledFor, end), lt(leads.callScheduledFor, horizon)))
+    .where(
+      and(
+        liveCall,
+        gte(leads.callScheduledFor, end),
+        lt(leads.callScheduledFor, horizon),
+      ),
+    )
     .orderBy(asc(leads.callScheduledFor));
 }
 
@@ -64,7 +97,7 @@ export async function getDueFollowUps(setterId?: string, limit = 12) {
   const silence = sql`COALESCE(${leads.lastOutreachAt}, ${leads.lastContactAt}, ${leads.leadCreatedAt})`;
   const filters = [
     eq(leads.isActiveConvo, true),
-    eq(leads.isTest, false),
+    liveLead,
     // A booked call isn't waiting on a follow-up; it's waiting on the call.
     or(eq(leads.callBooked, false), eq(leads.callCancelled, true)),
     sql`${silence} <= NOW() - INTERVAL '7 days'`,
@@ -102,26 +135,36 @@ export async function searchLeads(filters: LeadFilters) {
   if (filters.q) {
     const term = `%${filters.q}%`;
     where.push(
-      or(ilike(leads.igHandle, term), ilike(leads.name, term), ilike(leads.email, term))
+      or(
+        ilike(leads.igHandle, term),
+        ilike(leads.name, term),
+        ilike(leads.email, term),
+      ),
     );
   }
   if (filters.setterId) {
     // A named setter, or explicitly nobody.
     where.push(
-      filters.setterId === 'none' ? isNull(leads.setterId) : eq(leads.setterId, filters.setterId)
+      filters.setterId === "none"
+        ? isNull(leads.setterId)
+        : eq(leads.setterId, filters.setterId),
     );
   }
   if (filters.stage) where.push(eq(leads.conversationStage, filters.stage));
   if (filters.quality) where.push(eq(leads.leadQuality, filters.quality));
   if (filters.source) where.push(eq(leads.leadSource, filters.source));
   if (filters.booked) where.push(liveCall);
-  if (filters.activity === 'active') where.push(eq(leads.isActiveConvo, true));
-  if (filters.activity === 'inactive') where.push(eq(leads.isActiveConvo, false));
+  if (filters.activity === "active") where.push(eq(leads.isActiveConvo, true));
+  if (filters.activity === "inactive")
+    where.push(eq(leads.isActiveConvo, false));
 
   const clause = where.length > 0 ? and(...where) : undefined;
   const page = Math.max(1, filters.page ?? 1);
   // Clamped so a hand-edited URL can't ask for every row at once.
-  const pageSize = Math.min(500, Math.max(10, filters.perPage ?? DEFAULT_PAGE_SIZE));
+  const pageSize = Math.min(
+    500,
+    Math.max(10, filters.perPage ?? DEFAULT_PAGE_SIZE),
+  );
 
   const [rows, [{ total }]] = await Promise.all([
     db
@@ -141,22 +184,38 @@ export async function getLead(id: string) {
   const lead = await db.query.leads.findFirst({ where: eq(leads.id, id) });
   if (!lead) return null;
 
-  const [notes, setter, closer, offer, bookingLink] = await Promise.all([
-    db.select().from(leadNotes).where(eq(leadNotes.leadId, id)).orderBy(desc(leadNotes.createdAt)),
-    lead.setterId ? db.query.users.findFirst({ where: eq(users.id, lead.setterId) }) : null,
-    lead.closerId ? db.query.users.findFirst({ where: eq(users.id, lead.closerId) }) : null,
-    lead.offerId ? db.query.offers.findFirst({ where: eq(offers.id, lead.offerId) }) : null,
-    // Only the links live today have an offer row. Most of the history is on
-    // retired ones, so without this the lead says "Offer unknown" about a call
-    // whose link the dashboard can name perfectly well.
-    lead.calendlyEventTypeUri
-      ? db.query.calendlyEventTypes.findFirst({
-          where: eq(calendlyEventTypes.uri, lead.calendlyEventTypeUri),
-        })
-      : null,
-  ]);
+  const [notes, setter, closer, offer, bookingLink, archivedBy] =
+    await Promise.all([
+      db
+        .select()
+        .from(leadNotes)
+        .where(eq(leadNotes.leadId, id))
+        .orderBy(desc(leadNotes.createdAt)),
+      lead.setterId
+        ? db.query.users.findFirst({ where: eq(users.id, lead.setterId) })
+        : null,
+      lead.closerId
+        ? db.query.users.findFirst({ where: eq(users.id, lead.closerId) })
+        : null,
+      lead.offerId
+        ? db.query.offers.findFirst({ where: eq(offers.id, lead.offerId) })
+        : null,
+      // Only the links live today have an offer row. Most of the history is on
+      // retired ones, so without this the lead says "Offer unknown" about a call
+      // whose link the dashboard can name perfectly well.
+      lead.calendlyEventTypeUri
+        ? db.query.calendlyEventTypes.findFirst({
+            where: eq(calendlyEventTypes.uri, lead.calendlyEventTypeUri),
+          })
+        : null,
+      lead.archivedById
+        ? db.query.users.findFirst({ where: eq(users.id, lead.archivedById) })
+        : null,
+    ]);
 
-  const authorIds = [...new Set(notes.map((n) => n.authorId).filter(Boolean))] as string[];
+  const authorIds = [
+    ...new Set(notes.map((n) => n.authorId).filter(Boolean)),
+  ] as string[];
   const authors = authorIds.length > 0 ? await db.select().from(users) : [];
   const authorById = new Map(authors.map((a) => [a.id, a.name]));
 
@@ -166,9 +225,13 @@ export async function getLead(id: string) {
     closer,
     offer,
     bookingLink,
+    /** Who archived it, for the line on the page. Null when it is not archived. */
+    archivedBy: archivedBy?.name ?? null,
     notes: notes.map((n) => ({
       ...n,
-      authorName: n.authorId ? (authorById.get(n.authorId) ?? 'Unknown') : 'Airtable import',
+      authorName: n.authorId
+        ? (authorById.get(n.authorId) ?? "Unknown")
+        : "Airtable import",
     })),
   };
 }
@@ -223,17 +286,20 @@ export async function getUnmatchedBookings() {
     .from(calendlyWebhookEvents)
     .where(
       and(
-        eq(calendlyWebhookEvents.eventType, 'invitee.created'),
+        eq(calendlyWebhookEvents.eventType, "invitee.created"),
         isNull(calendlyWebhookEvents.matchedLeadId),
         or(
           isNull(calendlyWebhookEvents.matchStrategy),
-          notInArray(calendlyWebhookEvents.matchStrategy, ['not_a_counted_link', 'no_links_counted'])
+          notInArray(calendlyWebhookEvents.matchStrategy, [
+            "not_a_counted_link",
+            "no_links_counted",
+          ]),
         ),
         or(
           isNull(calendlyWebhookEvents.calendlyInviteeUri),
-          notInArray(calendlyWebhookEvents.calendlyInviteeUri, booked)
-        )
-      )
+          notInArray(calendlyWebhookEvents.calendlyInviteeUri, booked),
+        ),
+      ),
     )
     .orderBy(desc(calendlyWebhookEvents.createdAt))
     .limit(50);
@@ -266,13 +332,13 @@ export async function getDayStats(setterId: string, dayOffset = 0) {
   return { newLeads: newLeads.n, replies: replies.n, booked: booked.n };
 }
 
-export type Period = 'today' | 'week' | 'month';
+export type Period = "today" | "week" | "month";
 
 /** The window a period covers, anchored to the team's calendar. */
 export function periodStart(period: Period): Date {
   const { start } = teamDayRange(0);
-  if (period === 'today') return start;
-  if (period === 'week') {
+  if (period === "today") return start;
+  if (period === "week") {
     // Back to Monday, not a rolling seven days - "this week" means the week.
     const d = new Date(`${weekStart()}T12:00:00Z`);
     return new Date(Math.min(d.getTime(), start.getTime()));
@@ -284,10 +350,13 @@ export function periodStart(period: Period): Date {
 
 export async function getPeriodSummary(period: Period) {
   const from = periodStart(period);
-  const scope = [eq(leads.isTest, false), gte(leads.callBookedAt, from)];
+  const scope = [liveLead, gte(leads.callBookedAt, from)];
 
   const [[booked], [closedRow], [newLeads]] = await Promise.all([
-    db.select({ n: count() }).from(leads).where(and(...scope)),
+    db
+      .select({ n: count() })
+      .from(leads)
+      .where(and(...scope)),
     db
       .select({
         cash: sql<string>`COALESCE(SUM(${leads.cashCollected}), 0)`,
@@ -295,11 +364,11 @@ export async function getPeriodSummary(period: Period) {
         deals: sql<number>`COUNT(*) FILTER (WHERE ${leads.closed})::int`,
       })
       .from(leads)
-      .where(and(eq(leads.isTest, false), gte(leads.closedDate, from))),
+      .where(and(liveLead, gte(leads.closedDate, from))),
     db
       .select({ n: count() })
       .from(leads)
-      .where(and(eq(leads.isTest, false), gte(leads.leadCreatedAt, from))),
+      .where(and(liveLead, gte(leads.leadCreatedAt, from))),
   ]);
 
   return {
@@ -313,22 +382,41 @@ export async function getPeriodSummary(period: Period) {
 
 export async function getPipelineSummary() {
   const { start, end } = teamDayRange(0);
-  const [[total], [bookedLive], [todayCalls], [unconfirmed], [untriaged]] = await Promise.all([
-    db.select({ n: count() }).from(leads),
-    db.select({ n: count() }).from(leads).where(liveCall),
-    db
-      .select({ n: count() })
-      .from(leads)
-      .where(and(liveCall, gte(leads.callScheduledFor, start), lt(leads.callScheduledFor, end))),
-    db
-      .select({ n: count() })
-      .from(leads)
-      .where(and(liveCall, gte(leads.callScheduledFor, start), eq(leads.confirmed, false))),
-    db
-      .select({ n: count() })
-      .from(leads)
-      .where(and(liveCall, gte(leads.callScheduledFor, start), eq(leads.triaged, false))),
-  ]);
+  const [[total], [bookedLive], [todayCalls], [unconfirmed], [untriaged]] =
+    await Promise.all([
+      db.select({ n: count() }).from(leads),
+      db.select({ n: count() }).from(leads).where(liveCall),
+      db
+        .select({ n: count() })
+        .from(leads)
+        .where(
+          and(
+            liveCall,
+            gte(leads.callScheduledFor, start),
+            lt(leads.callScheduledFor, end),
+          ),
+        ),
+      db
+        .select({ n: count() })
+        .from(leads)
+        .where(
+          and(
+            liveCall,
+            gte(leads.callScheduledFor, start),
+            eq(leads.confirmed, false),
+          ),
+        ),
+      db
+        .select({ n: count() })
+        .from(leads)
+        .where(
+          and(
+            liveCall,
+            gte(leads.callScheduledFor, start),
+            eq(leads.triaged, false),
+          ),
+        ),
+    ]);
 
   return {
     totalLeads: total.n,
@@ -353,7 +441,7 @@ export async function getLeadTotals() {
       unassigned: sql<number>`COUNT(*) FILTER (WHERE ${leads.setterId} IS NULL)::int`,
     })
     .from(leads)
-    .where(eq(leads.isTest, false));
+    .where(liveLead);
   return row;
 }
 
@@ -364,8 +452,8 @@ export async function getLeadTotals() {
 export async function getLeadCardLookups() {
   const [people, stages, qualities] = await Promise.all([
     db.select().from(users),
-    getOptions('conversation_stage'),
-    getOptions('lead_quality'),
+    getOptions("conversation_stage"),
+    getOptions("lead_quality"),
   ]);
   return {
     setterNames: new Map(people.map((p) => [p.id, p.name])),
@@ -373,7 +461,7 @@ export async function getLeadCardLookups() {
     // Admin never gets a colour written, so the column alone leaves them grey
     // for good. Their own value still wins when there is one.
     setterColors: new Map(
-      people.map((p) => [p.id, personColour(p, colourOrder(people))] as const)
+      people.map((p) => [p.id, personColour(p, colourOrder(people))] as const),
     ),
     stageLabels: new Map(stages.map((s) => [s.value, s.label])),
     qualityLabels: new Map(qualities.map((s) => [s.value, s.label])),
@@ -399,9 +487,11 @@ export async function getClosers(keep?: string | null) {
     .from(users)
     .where(
       and(
-        eq(users.role, 'closer'),
-        keep ? or(eq(users.active, true), eq(users.id, keep)) : eq(users.active, true)
-      )
+        eq(users.role, "closer"),
+        keep
+          ? or(eq(users.active, true), eq(users.id, keep))
+          : eq(users.active, true),
+      ),
     )
     .orderBy(asc(users.name));
 }
@@ -411,7 +501,7 @@ export async function getAssignableSetters() {
   return db
     .select()
     .from(users)
-    .where(and(eq(users.active, true), ne(users.role, 'closer')))
+    .where(and(eq(users.active, true), ne(users.role, "closer")))
     .orderBy(asc(users.name));
 }
 
@@ -420,7 +510,9 @@ export type TodoRow = typeof todos.$inferSelect & {
   ownerName: string | null;
 };
 
-async function todosWhere(clause: ReturnType<typeof eq> | undefined): Promise<TodoRow[]> {
+async function todosWhere(
+  clause: ReturnType<typeof eq> | undefined,
+): Promise<TodoRow[]> {
   const rows = await db
     .select({
       todo: todos,
@@ -435,7 +527,11 @@ async function todosWhere(clause: ReturnType<typeof eq> | undefined): Promise<To
     // what's finished stops getting read.
     .orderBy(asc(todos.completedAt), asc(todos.dueDate), desc(todos.createdAt));
 
-  return rows.map((r) => ({ ...r.todo, leadHandle: r.leadHandle, ownerName: r.ownerName }));
+  return rows.map((r) => ({
+    ...r.todo,
+    leadHandle: r.leadHandle,
+    ownerName: r.ownerName,
+  }));
 }
 
 /**
@@ -452,7 +548,7 @@ export async function getWeekBoard() {
     db
       .select()
       .from(users)
-      .where(and(eq(users.active, true), eq(users.role, 'setter')))
+      .where(and(eq(users.active, true), eq(users.role, "setter")))
       // Insertion order, not alphabetical, so the columns keep the order the
       // team was set up in rather than reshuffling when someone is renamed.
       .orderBy(asc(users.createdAt)),
@@ -467,7 +563,7 @@ export async function getWeekBoard() {
 
   return {
     week,
-    team: { id: null, name: 'Team', ...byOwner(null) },
+    team: { id: null, name: "Team", ...byOwner(null) },
     people: people.map((p) => ({ id: p.id, name: p.name, ...byOwner(p.id) })),
   };
 }
@@ -496,24 +592,32 @@ export async function getActiveConvos(perGroup = 25) {
     db
       .select()
       .from(users)
-      .where(and(eq(users.active, true), eq(users.role, 'setter')))
+      .where(and(eq(users.active, true), eq(users.role, "setter")))
       .orderBy(asc(users.createdAt)),
     db
       .select()
       .from(leads)
-      .where(and(eq(leads.isActiveConvo, true), eq(leads.isTest, false)))
+      .where(and(eq(leads.isActiveConvo, true), liveLead))
       .orderBy(desc(leads.lastContactAt), desc(leads.leadCreatedAt)),
   ]);
 
   const groups = setters.map((s) => {
     const owned = rows.filter((r) => r.setterId === s.id);
-    return { id: s.id, name: s.name, total: owned.length, leads: owned.slice(0, perGroup) };
+    return {
+      id: s.id,
+      name: s.name,
+      total: owned.length,
+      leads: owned.slice(0, perGroup),
+    };
   });
   const unassigned = rows.filter((r) => !r.setterId);
 
   return {
     groups,
-    unassigned: { total: unassigned.length, leads: unassigned.slice(0, perGroup) },
+    unassigned: {
+      total: unassigned.length,
+      leads: unassigned.slice(0, perGroup),
+    },
     teamTotal: rows.length,
   };
 }
@@ -528,7 +632,7 @@ export async function getMoneyTotals() {
         closed: count(leads.closed),
       })
       .from(leads)
-      .where(eq(leads.isTest, false)),
+      .where(liveLead),
     db
       .select({
         setterId: leads.setterId,
@@ -536,7 +640,7 @@ export async function getMoneyTotals() {
         contract: sql<string>`COALESCE(SUM(${leads.contractValue}), 0)`,
       })
       .from(leads)
-      .where(and(eq(leads.isTest, false), isNotNull(leads.setterId)))
+      .where(and(liveLead, isNotNull(leads.setterId)))
       .groupBy(leads.setterId),
   ]);
 
@@ -562,37 +666,44 @@ export async function getMoneyTotals() {
  * which is a pile rather than a list to work through.
  */
 export const FOLLOW_UP_BUCKETS = [
-  { key: '1w', label: '1 week', from: 7, to: 30 },
-  { key: '1m', label: '1 month', from: 30, to: 90 },
-  { key: '3m', label: '3 months', from: 90, to: 180 },
-  { key: '6m', label: '6 months', from: 180, to: 365 },
-  { key: '1y', label: '1 year+', from: 365, to: null },
+  { key: "1w", label: "1 week", from: 7, to: 30 },
+  { key: "1m", label: "1 month", from: 30, to: 90 },
+  { key: "3m", label: "3 months", from: 90, to: 180 },
+  { key: "6m", label: "6 months", from: 180, to: 365 },
+  { key: "1y", label: "1 year+", from: 365, to: null },
 ] as const;
 
-export type FollowUpBucket = (typeof FOLLOW_UP_BUCKETS)[number]['key'];
+export type FollowUpBucket = (typeof FOLLOW_UP_BUCKETS)[number]["key"];
 
 const silenceExpr = sql`COALESCE(${leads.lastOutreachAt}, ${leads.lastContactAt}, ${leads.leadCreatedAt})`;
 
 function followUpBase(setterId?: string) {
   const filters = [
     eq(leads.isActiveConvo, true),
-    eq(leads.isTest, false),
+    liveLead,
     // A booked call isn't waiting on a follow-up; it's waiting on the call.
     or(eq(leads.callBooked, false), eq(leads.callCancelled, true)),
   ];
   if (setterId) {
-    filters.push(setterId === 'none' ? isNull(leads.setterId) : eq(leads.setterId, setterId));
+    filters.push(
+      setterId === "none"
+        ? isNull(leads.setterId)
+        : eq(leads.setterId, setterId),
+    );
   }
   return filters;
 }
 
 export async function getFollowUps(bucket: FollowUpBucket, setterId?: string) {
-  const spec = FOLLOW_UP_BUCKETS.find((b) => b.key === bucket) ?? FOLLOW_UP_BUCKETS[0];
+  const spec =
+    FOLLOW_UP_BUCKETS.find((b) => b.key === bucket) ?? FOLLOW_UP_BUCKETS[0];
   const filters = followUpBase(setterId);
 
   // Intervals rather than JS Dates: drizzle can't infer a parameter type inside
   // a raw comparison, and passing a Date fails at request time.
-  filters.push(sql`${silenceExpr} <= NOW() - (${spec.from} * INTERVAL '1 day')`);
+  filters.push(
+    sql`${silenceExpr} <= NOW() - (${spec.from} * INTERVAL '1 day')`,
+  );
   if (spec.to !== null) {
     filters.push(sql`${silenceExpr} > NOW() - (${spec.to} * INTERVAL '1 day')`);
   }
@@ -614,14 +725,23 @@ export async function getFollowUpCounts(setterId?: string) {
       : sql<number>`COUNT(*) FILTER (WHERE ${silenceExpr} <= NOW() - (${from} * INTERVAL '1 day') AND ${silenceExpr} > NOW() - (${to} * INTERVAL '1 day'))::int`;
 
   const [row] = await db
-    .select({ w1: band(7, 30), m1: band(30, 90), m3: band(90, 180), m6: band(180, 365), y1: band(365, null) })
+    .select({
+      w1: band(7, 30),
+      m1: band(30, 90),
+      m3: band(90, 180),
+      m6: band(180, 365),
+      y1: band(365, null),
+    })
     .from(leads)
     .where(and(...base));
 
-  return { '1w': row.w1, '1m': row.m1, '3m': row.m3, '6m': row.m6, '1y': row.y1 } as Record<
-    FollowUpBucket,
-    number
-  >;
+  return {
+    "1w": row.w1,
+    "1m": row.m1,
+    "3m": row.m3,
+    "6m": row.m6,
+    "1y": row.y1,
+  } as Record<FollowUpBucket, number>;
 }
 
 /**
@@ -644,7 +764,12 @@ export async function getCallsAwaitingOutcome(limit = 20) {
   const clause = awaitingOutcome();
 
   const [rows, [{ total }]] = await Promise.all([
-    db.select().from(leads).where(clause).orderBy(desc(leads.callScheduledFor)).limit(limit),
+    db
+      .select()
+      .from(leads)
+      .where(clause)
+      .orderBy(desc(leads.callScheduledFor))
+      .limit(limit),
     db.select({ total: count() }).from(leads).where(clause),
   ]);
   return { rows, total };
@@ -662,12 +787,12 @@ export async function getPostCallInbox() {
     db
       .select()
       .from(postCallReports)
-      .where(eq(postCallReports.status, 'pending'))
+      .where(eq(postCallReports.status, "pending"))
       .orderBy(desc(postCallReports.callDate)),
     db
       .select({ n: count() })
       .from(postCallReports)
-      .where(eq(postCallReports.status, 'linked')),
+      .where(eq(postCallReports.status, "linked")),
     db
       .select({ at: postCallReports.fetchedAt })
       .from(postCallReports)
@@ -706,14 +831,14 @@ export async function getAllPostCallReports() {
 // --- EOD review -------------------------------------------------------------
 
 export type EodReport = typeof eodReports.$inferSelect;
-export { EOD_COUNTS, EOD_MONEY } from './eodMath';
+export { EOD_COUNTS, EOD_MONEY } from "./eodMath";
 
 /** Everyone expected to file one. Closers don't do outreach, so they don't. */
 async function eodPeople() {
   const all = await db.select().from(users);
   const order = colourOrder(all);
   return all
-    .filter((u) => u.active && u.role === 'setter')
+    .filter((u) => u.active && u.role === "setter")
     .sort((a, b) => a.name.localeCompare(b.name))
     .map((u) => ({ id: u.id, name: u.name, color: personColour(u, order) }));
 }
@@ -726,11 +851,21 @@ export async function getEodWeekReview(weekOf: string) {
     db
       .select()
       .from(eodReports)
-      .where(and(gte(eodReports.reportDate, days[0]), lte(eodReports.reportDate, days[6])))
+      .where(
+        and(
+          gte(eodReports.reportDate, days[0]),
+          lte(eodReports.reportDate, days[6]),
+        ),
+      )
       .orderBy(eodReports.reportDate),
   ]);
 
-  return { weekOf, days, today: teamDateString(), ...summariseEodWeek({ people, rows, days }) };
+  return {
+    weekOf,
+    days,
+    today: teamDateString(),
+    ...summariseEodWeek({ people, rows, days }),
+  };
 }
 
 /**
@@ -749,7 +884,7 @@ export async function getEodCharts(bucket: Bucket, count: number) {
     .select({ first: sql<string | null>`MIN(${eodReports.reportDate})` })
     .from(eodReports);
   const firstBucket = first
-    ? bucket === 'day'
+    ? bucket === "day"
       ? first
       : weekStart(new Date(`${first}T12:00:00Z`))
     : null;
@@ -782,7 +917,9 @@ export async function getCalendlyHealth() {
     .limit(1);
 
   const lastAt = last?.at ?? null;
-  const daysQuiet = lastAt ? Math.floor((Date.now() - lastAt.getTime()) / 86_400_000) : null;
+  const daysQuiet = lastAt
+    ? Math.floor((Date.now() - lastAt.getTime()) / 86_400_000)
+    : null;
   return { lastAt, daysQuiet, everDelivered: lastAt !== null };
 }
 
@@ -802,17 +939,21 @@ export type CallFilters = {
  * cannot answer how many fall over.
  */
 export async function getBookedCalls(f: CallFilters = {}, limit = 500) {
-  const setter = alias(users, 'setter');
-  const closer = alias(users, 'closer');
+  const setter = alias(users, "setter");
+  const closer = alias(users, "closer");
 
-  const where = [eq(leads.isTest, false), eq(leads.callBooked, true)];
+  const where = [liveLead, eq(leads.callBooked, true)];
   if (f.setterId) where.push(eq(leads.setterId, f.setterId));
   if (f.closerId) where.push(eq(leads.closerId, f.closerId));
   if (f.from) {
-    where.push(sql`(${leads.callScheduledFor} AT TIME ZONE 'America/New_York')::date >= ${f.from}::date`);
+    where.push(
+      sql`(${leads.callScheduledFor} AT TIME ZONE 'America/New_York')::date >= ${f.from}::date`,
+    );
   }
   if (f.to) {
-    where.push(sql`(${leads.callScheduledFor} AT TIME ZONE 'America/New_York')::date <= ${f.to}::date`);
+    where.push(
+      sql`(${leads.callScheduledFor} AT TIME ZONE 'America/New_York')::date <= ${f.to}::date`,
+    );
   }
 
   const rows = await db
@@ -867,17 +1008,32 @@ export async function getMonthlyTargets(): Promise<Map<string, number>> {
 /** Month-to-date actuals for the things a target can be set against. */
 export async function getMonthToDate() {
   const start = sql`date_trunc('month', (NOW() AT TIME ZONE 'America/New_York'))`;
-  const local = (col: PgColumn) => sql`(${col} AT TIME ZONE 'America/New_York')`;
+  const local = (col: PgColumn) =>
+    sql`(${col} AT TIME ZONE 'America/New_York')`;
 
   const [[calls], [cash]] = await Promise.all([
     db
       .select({ n: sql<number>`COUNT(*)::int` })
       .from(leads)
-      .where(and(eq(leads.isTest, false), eq(leads.callBooked, true), sql`${local(leads.callScheduledFor)} >= ${start}`)),
+      .where(
+        and(
+          liveLead,
+          eq(leads.callBooked, true),
+          sql`${local(leads.callScheduledFor)} >= ${start}`,
+        ),
+      ),
     db
-      .select({ n: sql<number>`COALESCE(SUM(${leads.cashCollected}), 0)::float` })
+      .select({
+        n: sql<number>`COALESCE(SUM(${leads.cashCollected}), 0)::float`,
+      })
       .from(leads)
-      .where(and(eq(leads.isTest, false), sql`${leads.closed} IS TRUE`, sql`${local(leads.closedDate)} >= ${start}`)),
+      .where(
+        and(
+          liveLead,
+          sql`${leads.closed} IS TRUE`,
+          sql`${local(leads.closedDate)} >= ${start}`,
+        ),
+      ),
   ]);
 
   return { calls: Number(calls.n), cash: Number(cash.n) };
@@ -891,4 +1047,10 @@ export async function noticeIsSnoozed(key: string): Promise<boolean> {
     .where(and(eq(noticeSnoozes.key, key), gt(noticeSnoozes.until, new Date())))
     .limit(1);
   return Boolean(row);
+}
+
+/** How many leads are archived, for the link on the Lead Tracker. */
+export async function countArchivedLeads(): Promise<number> {
+  const [row] = await db.select({ n: count() }).from(leads).where(archivedLead);
+  return row?.n ?? 0;
 }

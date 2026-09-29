@@ -8,6 +8,7 @@ import { leadEvents, leadNotes, leads, postCallReports, users } from '@/db/schem
 import { applyToLead, slug, syncPostCallReports } from './postCall';
 import { normalizeIgHandle } from './calendly';
 import { recordIssue } from './issues';
+import { liveLead } from './leadScope.ts';
 
 type Result = { ok: true; message?: string } | { ok: false; error: string };
 
@@ -115,7 +116,9 @@ export async function searchLeadsForReport(query: string): Promise<LeadMatch[]> 
       .leftJoin(users, eq(users.id, leads.setterId))
       .where(
         and(
-          eq(leads.isTest, false),
+          // Never offer a lead somebody archived as the place to put a real
+          // report; archiving it is how they said it is not a real lead.
+          liveLead,
           or(
             sql`LOWER(${leads.igHandle}) LIKE ${like}`,
             sql`${leads.igHandleKey} LIKE ${like}`,

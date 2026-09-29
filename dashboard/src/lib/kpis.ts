@@ -1,4 +1,5 @@
 import { and, asc, eq, gte, isNotNull, lte, sql } from "drizzle-orm";
+import { liveLead } from './leadScope.ts';
 import type { PgColumn } from "drizzle-orm/pg-core";
 import { db } from "@/db";
 import { shiftDateString, teamDateString, teamDayStart } from "./dates.ts";
@@ -42,7 +43,7 @@ function weekBuckets({ from, to }: Range): string[] {
   return out;
 }
 
-const notTest = eq(leads.isTest, false);
+const notTest = liveLead;
 
 /**
  * Leads → replied → call booked → showed → closed, counted over the window by
@@ -278,7 +279,7 @@ export async function periodTrends(period: Period): Promise<{
       value === "count"
         ? sql<number>`COUNT(*)::int`
         : sql<number>`COALESCE(SUM(${leads.cashCollected}), 0)::float`;
-    const base = and(eq(leads.isTest, false), isNotNull(col), extra);
+    const base = and(liveLead, isNotNull(col), extra);
 
     const rows = await db
       .select({ b: sql<string>`${bucketOf(col)}`, n: agg })

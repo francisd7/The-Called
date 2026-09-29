@@ -1,22 +1,24 @@
-'use server';
+"use server";
 
-import { revalidatePath } from 'next/cache';
-import { and, eq, sql } from 'drizzle-orm';
-import { requireUser } from './session';
-import { db } from '@/db';
-import { eodReports, leadEvents, leadNotes, leads, users } from '@/db/schema';
-import { notifyEodSubmitted, notifyTriage } from './discord';
-import { getStreaks } from './streaks';
-import { recordIssue } from './issues';
-import { normalizeIgHandle } from './calendly';
-import { respondedFromStage } from './stages';
-import { parseTeamDateTime, teamDateString } from './dates';
+import { revalidatePath } from "next/cache";
+import { and, eq, sql } from "drizzle-orm";
+import { requireUser } from "./session";
+import { db } from "@/db";
+import { eodReports, leadEvents, leadNotes, leads, users } from "@/db/schema";
+import { notifyEodSubmitted, notifyTriage } from "./discord";
+import { getStreaks } from "./streaks";
+import { recordIssue } from "./issues";
+import { normalizeIgHandle } from "./calendly";
+import { respondedFromStage } from "./stages";
+import { parseTeamDateTime, teamDateString } from "./dates";
 
-type ActionResult = { ok: true; message?: string } | { ok: false; error: string };
+type ActionResult =
+  | { ok: true; message?: string }
+  | { ok: false; error: string };
 
 function str(form: FormData, key: string): string | null {
   const v = form.get(key);
-  if (typeof v !== 'string') return null;
+  if (typeof v !== "string") return null;
   const trimmed = v.trim();
   return trimmed.length > 0 ? trimmed : null;
 }
@@ -24,10 +26,11 @@ function str(form: FormData, key: string): string | null {
 export async function confirmLead(formData: FormData): Promise<ActionResult> {
   try {
     const user = await requireUser();
-    const leadId = str(formData, 'leadId');
-    const method = str(formData, 'method');
-    if (!leadId) return { ok: false, error: 'Missing lead' };
-    if (method !== 'dm' && method !== 'phone') return { ok: false, error: 'Invalid method' };
+    const leadId = str(formData, "leadId");
+    const method = str(formData, "method");
+    if (!leadId) return { ok: false, error: "Missing lead" };
+    if (method !== "dm" && method !== "phone")
+      return { ok: false, error: "Invalid method" };
 
     await db
       .update(leads)
@@ -44,23 +47,23 @@ export async function confirmLead(formData: FormData): Promise<ActionResult> {
     await db.insert(leadEvents).values({
       leadId,
       actorId: user.id,
-      type: 'confirmed',
+      type: "confirmed",
       toValue: method,
     });
 
-    revalidatePath('/');
+    revalidatePath("/");
     revalidatePath(`/leads/${leadId}`);
     return { ok: true };
   } catch (err) {
-    return { ok: false, error: err instanceof Error ? err.message : 'Failed' };
+    return { ok: false, error: err instanceof Error ? err.message : "Failed" };
   }
 }
 
 export async function unconfirmLead(formData: FormData): Promise<ActionResult> {
   try {
     const user = await requireUser();
-    const leadId = str(formData, 'leadId');
-    if (!leadId) return { ok: false, error: 'Missing lead' };
+    const leadId = str(formData, "leadId");
+    if (!leadId) return { ok: false, error: "Missing lead" };
 
     await db
       .update(leads)
@@ -73,12 +76,14 @@ export async function unconfirmLead(formData: FormData): Promise<ActionResult> {
       })
       .where(eq(leads.id, leadId));
 
-    await db.insert(leadEvents).values({ leadId, actorId: user.id, type: 'unconfirmed' });
-    revalidatePath('/');
+    await db
+      .insert(leadEvents)
+      .values({ leadId, actorId: user.id, type: "unconfirmed" });
+    revalidatePath("/");
     revalidatePath(`/leads/${leadId}`);
     return { ok: true };
   } catch (err) {
-    return { ok: false, error: err instanceof Error ? err.message : 'Failed' };
+    return { ok: false, error: err instanceof Error ? err.message : "Failed" };
   }
 }
 
@@ -90,10 +95,14 @@ export async function unconfirmLead(formData: FormData): Promise<ActionResult> {
 export async function saveTriage(formData: FormData): Promise<ActionResult> {
   try {
     const user = await requireUser();
-    const leadId = str(formData, 'leadId');
-    const notes = str(formData, 'triageNotes');
-    if (!leadId) return { ok: false, error: 'Missing lead' };
-    if (!notes) return { ok: false, error: 'Write the notes before marking this triaged' };
+    const leadId = str(formData, "leadId");
+    const notes = str(formData, "triageNotes");
+    if (!leadId) return { ok: false, error: "Missing lead" };
+    if (!notes)
+      return {
+        ok: false,
+        error: "Write the notes before marking this triaged",
+      };
 
     const [updated] = await db
       .update(leads)
@@ -108,14 +117,19 @@ export async function saveTriage(formData: FormData): Promise<ActionResult> {
       .where(eq(leads.id, leadId))
       .returning();
 
-    await db.insert(leadEvents).values({ leadId, actorId: user.id, type: 'triaged' });
+    await db
+      .insert(leadEvents)
+      .values({ leadId, actorId: user.id, type: "triaged" });
 
     // A test lead rehearses the flow; it must not put a brief for a call that
     // doesn't exist in front of the closers.
     if (updated.isTest) {
-      revalidatePath('/');
+      revalidatePath("/");
       revalidatePath(`/leads/${leadId}`);
-      return { ok: true, message: 'Triaged. No Discord post — this is a test lead.' };
+      return {
+        ok: true,
+        message: "Triaged. No Discord post — this is a test lead.",
+      };
     }
 
     // A Discord outage must not cost the setter their notes, so the send is
@@ -125,32 +139,37 @@ export async function saveTriage(formData: FormData): Promise<ActionResult> {
       await db.insert(leadEvents).values({
         leadId,
         actorId: user.id,
-        type: 'triage_notify_failed',
+        type: "triage_notify_failed",
       });
       await recordIssue({
-        title: 'Triage notes are not reaching Discord',
-        detail: 'Notes saved, but the pre-call brief could not be posted. Closers are not being briefed.',
+        title: "Triage notes are not reaching Discord",
+        detail:
+          "Notes saved, but the pre-call brief could not be posted. Closers are not being briefed.",
         remedy:
-          'Check DISCORD_BOT_TOKEN and DISCORD_TRIAGE_CHANNEL_ID in Railway, and that the bot can see that channel.',
+          "Check DISCORD_BOT_TOKEN and DISCORD_TRIAGE_CHANNEL_ID in Railway, and that the bot can see that channel.",
       });
     }
 
-    revalidatePath('/');
+    revalidatePath("/");
     revalidatePath(`/leads/${leadId}`);
     return sent
       ? { ok: true }
-      : { ok: false, error: 'Triage saved, but the Discord post failed — send it manually.' };
+      : {
+          ok: false,
+          error:
+            "Triage saved, but the Discord post failed — send it manually.",
+        };
   } catch (err) {
-    return { ok: false, error: err instanceof Error ? err.message : 'Failed' };
+    return { ok: false, error: err instanceof Error ? err.message : "Failed" };
   }
 }
 
 export async function addNote(formData: FormData): Promise<ActionResult> {
   try {
     const user = await requireUser();
-    const leadId = str(formData, 'leadId');
-    const body = str(formData, 'body');
-    if (!leadId || !body) return { ok: false, error: 'Nothing to save' };
+    const leadId = str(formData, "leadId");
+    const body = str(formData, "body");
+    if (!leadId || !body) return { ok: false, error: "Nothing to save" };
 
     await db.insert(leadNotes).values({ leadId, authorId: user.id, body });
     await db
@@ -161,7 +180,7 @@ export async function addNote(formData: FormData): Promise<ActionResult> {
     revalidatePath(`/leads/${leadId}`);
     return { ok: true };
   } catch (err) {
-    return { ok: false, error: err instanceof Error ? err.message : 'Failed' };
+    return { ok: false, error: err instanceof Error ? err.message : "Failed" };
   }
 }
 
@@ -169,9 +188,9 @@ export async function addNote(formData: FormData): Promise<ActionResult> {
 export async function logFollowUp(formData: FormData): Promise<ActionResult> {
   try {
     const user = await requireUser();
-    const leadId = str(formData, 'leadId');
-    const nextAt = str(formData, 'nextFollowUpAt');
-    if (!leadId) return { ok: false, error: 'Missing lead' };
+    const leadId = str(formData, "leadId");
+    const nextAt = str(formData, "nextFollowUpAt");
+    if (!leadId) return { ok: false, error: "Missing lead" };
 
     await db
       .update(leads)
@@ -183,48 +202,56 @@ export async function logFollowUp(formData: FormData): Promise<ActionResult> {
       })
       .where(eq(leads.id, leadId));
 
-    await db.insert(leadEvents).values({ leadId, actorId: user.id, type: 'follow_up' });
-    revalidatePath('/');
+    await db
+      .insert(leadEvents)
+      .values({ leadId, actorId: user.id, type: "follow_up" });
+    revalidatePath("/");
     revalidatePath(`/leads/${leadId}`);
     return { ok: true };
   } catch (err) {
-    return { ok: false, error: err instanceof Error ? err.message : 'Failed' };
+    return { ok: false, error: err instanceof Error ? err.message : "Failed" };
   }
 }
 
 export async function updateLead(formData: FormData): Promise<ActionResult> {
   try {
     const user = await requireUser();
-    const leadId = str(formData, 'leadId');
-    if (!leadId) return { ok: false, error: 'Missing lead' };
+    const leadId = str(formData, "leadId");
+    if (!leadId) return { ok: false, error: "Missing lead" };
 
-    const before = await db.query.leads.findFirst({ where: eq(leads.id, leadId) });
-    if (!before) return { ok: false, error: 'Lead not found' };
+    const before = await db.query.leads.findFirst({
+      where: eq(leads.id, leadId),
+    });
+    if (!before) return { ok: false, error: "Lead not found" };
 
-    const igHandle = str(formData, 'igHandle');
-    const stage = str(formData, 'conversationStage');
-    const nextAt = str(formData, 'nextFollowUpAt');
+    const igHandle = str(formData, "igHandle");
+    const stage = str(formData, "conversationStage");
+    const nextAt = str(formData, "nextFollowUpAt");
 
     await db
       .update(leads)
       .set({
         // Setting a real handle is what clears the "needs handle" notice.
         ...(igHandle
-          ? { igHandle, igHandleKey: normalizeIgHandle(igHandle), needsHandle: false }
+          ? {
+              igHandle,
+              igHandleKey: normalizeIgHandle(igHandle),
+              needsHandle: false,
+            }
           : {}),
-        name: str(formData, 'name'),
-        email: str(formData, 'email')?.toLowerCase() ?? null,
-        phone: str(formData, 'phone'),
+        name: str(formData, "name"),
+        email: str(formData, "email")?.toLowerCase() ?? null,
+        phone: str(formData, "phone"),
         conversationStage: stage,
         // The stage is the reliable answer to "did they reply?" - see
         // stages.ts. A lead who booked has replied whatever the stage says.
         ...(respondedFromStage(stage) !== null && !before.callBooked
           ? { responded: respondedFromStage(stage) as boolean }
           : {}),
-        leadQuality: str(formData, 'leadQuality'),
-        leadSource: str(formData, 'leadSource'),
-        icp: str(formData, 'icp'),
-        setterId: str(formData, 'setterId'),
+        leadQuality: str(formData, "leadQuality"),
+        leadSource: str(formData, "leadSource"),
+        icp: str(formData, "icp"),
+        setterId: str(formData, "setterId"),
         nextFollowUpAt: nextAt ? new Date(nextAt) : null,
         updatedAt: new Date(),
       })
@@ -236,37 +263,37 @@ export async function updateLead(formData: FormData): Promise<ActionResult> {
       await db.insert(leadEvents).values({
         leadId,
         actorId: user.id,
-        type: 'stage_change',
+        type: "stage_change",
         fromValue: before.conversationStage,
         toValue: stage,
       });
     }
 
-    revalidatePath('/');
+    revalidatePath("/");
     revalidatePath(`/leads/${leadId}`);
     return { ok: true };
   } catch (err) {
-    return { ok: false, error: err instanceof Error ? err.message : 'Failed' };
+    return { ok: false, error: err instanceof Error ? err.message : "Failed" };
   }
 }
 
 export async function createLead(formData: FormData): Promise<ActionResult> {
   try {
     const user = await requireUser();
-    const igHandle = str(formData, 'igHandle');
-    if (!igHandle) return { ok: false, error: 'An IG handle is required' };
+    const igHandle = str(formData, "igHandle");
+    if (!igHandle) return { ok: false, error: "An IG handle is required" };
 
     const [row] = await db
       .insert(leads)
       .values({
         igHandle,
         igHandleKey: normalizeIgHandle(igHandle),
-        leadSource: str(formData, 'leadSource'),
-        opener: str(formData, 'opener'),
-        leadQuality: str(formData, 'leadQuality'),
-        icp: str(formData, 'icp'),
-        conversationStage: str(formData, 'conversationStage') ?? 'outreached',
-        setterId: str(formData, 'setterId') ?? user.id,
+        leadSource: str(formData, "leadSource"),
+        opener: str(formData, "opener"),
+        leadQuality: str(formData, "leadQuality"),
+        icp: str(formData, "icp"),
+        conversationStage: str(formData, "conversationStage") ?? "outreached",
+        setterId: str(formData, "setterId") ?? user.id,
         // A lead you just created is a conversation you're having.
         isActiveConvo: true,
         leadCreatedAt: new Date(),
@@ -274,18 +301,20 @@ export async function createLead(formData: FormData): Promise<ActionResult> {
       })
       .returning({ id: leads.id });
 
-    await db.insert(leadEvents).values({ leadId: row.id, actorId: user.id, type: 'created' });
-    revalidatePath('/leads');
+    await db
+      .insert(leadEvents)
+      .values({ leadId: row.id, actorId: user.id, type: "created" });
+    revalidatePath("/leads");
     return { ok: true };
   } catch (err) {
-    return { ok: false, error: err instanceof Error ? err.message : 'Failed' };
+    return { ok: false, error: err instanceof Error ? err.message : "Failed" };
   }
 }
 
 export async function saveEodReport(formData: FormData): Promise<ActionResult> {
   try {
     const user = await requireUser();
-    const reportDate = str(formData, 'reportDate') ?? teamDateString();
+    const reportDate = str(formData, "reportDate") ?? teamDateString();
 
     const int = (key: string) => {
       const raw = str(formData, key);
@@ -296,32 +325,35 @@ export async function saveEodReport(formData: FormData): Promise<ActionResult> {
     const money = (key: string) => {
       const raw = str(formData, key);
       if (raw === null) return null;
-      const n = Number.parseFloat(raw.replace(/[^0-9.-]/g, ''));
+      const n = Number.parseFloat(raw.replace(/[^0-9.-]/g, ""));
       return Number.isFinite(n) ? n.toFixed(2) : null;
     };
 
     const values = {
       userId: user.id,
       reportDate,
-      totalOutbounds: int('totalOutbounds'),
-      totalFollowUps: int('totalFollowUps'),
-      totalLeadsWithReplies: int('totalLeadsWithReplies'),
-      youtubeVideosSent: int('youtubeVideosSent'),
-      callsPitched: int('callsPitched'),
-      callsBooked: int('callsBooked'),
-      cashCollected: money('cashCollected'),
-      revenueGenerated: money('revenueGenerated'),
-      win: str(formData, 'win'),
-      obstacle: str(formData, 'obstacle'),
-      focusTomorrow: str(formData, 'focusTomorrow'),
-      notes: str(formData, 'notes'),
+      totalOutbounds: int("totalOutbounds"),
+      totalFollowUps: int("totalFollowUps"),
+      totalLeadsWithReplies: int("totalLeadsWithReplies"),
+      youtubeVideosSent: int("youtubeVideosSent"),
+      callsPitched: int("callsPitched"),
+      callsBooked: int("callsBooked"),
+      cashCollected: money("cashCollected"),
+      revenueGenerated: money("revenueGenerated"),
+      win: str(formData, "win"),
+      obstacle: str(formData, "obstacle"),
+      focusTomorrow: str(formData, "focusTomorrow"),
+      notes: str(formData, "notes"),
       updatedAt: new Date(),
     };
 
     // One report per person per day - resubmitting edits it rather than
     // stacking a second row for the same day.
     const existing = await db.query.eodReports.findFirst({
-      where: and(eq(eodReports.userId, user.id), eq(eodReports.reportDate, reportDate)),
+      where: and(
+        eq(eodReports.userId, user.id),
+        eq(eodReports.reportDate, reportDate),
+      ),
       columns: { id: true },
     });
 
@@ -352,22 +384,23 @@ export async function saveEodReport(formData: FormData): Promise<ActionResult> {
 
     if (!sent) {
       await recordIssue({
-        title: 'EOD reports are not reaching Discord',
-        detail: 'A report saved, but the team notification could not be posted.',
+        title: "EOD reports are not reaching Discord",
+        detail:
+          "A report saved, but the team notification could not be posted.",
         remedy:
-          'Check DISCORD_BOT_TOKEN and DISCORD_SETTER_CHANNEL_ID in Railway, and that the bot can see that channel.',
+          "Check DISCORD_BOT_TOKEN and DISCORD_SETTER_CHANNEL_ID in Railway, and that the bot can see that channel.",
       });
     }
 
-    revalidatePath('/eod');
+    revalidatePath("/eod");
     return {
       ok: true,
       message: sent
-        ? `Saved and posted to Discord.${(mine?.eod.current ?? 0) > 1 ? ` ${mine?.eod.current} days in a row.` : ''}`
-        : 'Saved, but the Discord post failed — let the team know manually.',
+        ? `Saved and posted to Discord.${(mine?.eod.current ?? 0) > 1 ? ` ${mine?.eod.current} days in a row.` : ""}`
+        : "Saved, but the Discord post failed — let the team know manually.",
     };
   } catch (err) {
-    return { ok: false, error: err instanceof Error ? err.message : 'Failed' };
+    return { ok: false, error: err instanceof Error ? err.message : "Failed" };
   }
 }
 
@@ -382,25 +415,28 @@ export async function saveEodReport(formData: FormData): Promise<ActionResult> {
 export async function logBooking(formData: FormData): Promise<ActionResult> {
   try {
     const user = await requireUser();
-    const leadId = str(formData, 'leadId');
-    const when = str(formData, 'callScheduledFor');
-    if (!leadId) return { ok: false, error: 'Missing lead' };
-    if (!when) return { ok: false, error: 'Say when the call is' };
+    const leadId = str(formData, "leadId");
+    const when = str(formData, "callScheduledFor");
+    if (!leadId) return { ok: false, error: "Missing lead" };
+    if (!when) return { ok: false, error: "Say when the call is" };
 
     // Typed on the team's clock, like every time shown on the page.
     const scheduledFor = parseTeamDateTime(when);
     if (!scheduledFor) return { ok: false, error: "That date didn't parse" };
 
-    const before = await db.query.leads.findFirst({ where: eq(leads.id, leadId) });
-    if (!before) return { ok: false, error: 'Lead not found' };
+    const before = await db.query.leads.findFirst({
+      where: eq(leads.id, leadId),
+    });
+    if (!before) return { ok: false, error: "Lead not found" };
     if (before.calendlyEventUri) {
       return {
         ok: false,
-        error: 'Calendly owns this booking — reschedule it there and the change comes through.',
+        error:
+          "Calendly owns this booking — reschedule it there and the change comes through.",
       };
     }
 
-    const closerId = str(formData, 'closerId');
+    const closerId = str(formData, "closerId");
     const closer = closerId
       ? await db.query.users.findFirst({ where: eq(users.id, closerId) })
       : null;
@@ -418,14 +454,14 @@ export async function logBooking(formData: FormData): Promise<ActionResult> {
         // Kept in step with the id, so the card and the Discord brief don't
         // disagree about who is taking the call.
         closerName: closer?.name ?? null,
-        offerId: str(formData, 'offerId'),
+        offerId: str(formData, "offerId"),
         callCancelled: false,
         callCancelledAt: null,
         responded: true,
         respondedAt: before.respondedAt ?? scheduledFor,
-        ...(before.conversationStage === 'closed'
+        ...(before.conversationStage === "closed"
           ? {}
-          : { conversationStage: 'call_booked' }),
+          : { conversationStage: "call_booked" }),
         lastContactAt: new Date(),
         updatedAt: new Date(),
       })
@@ -434,16 +470,101 @@ export async function logBooking(formData: FormData): Promise<ActionResult> {
     await db.insert(leadEvents).values({
       leadId,
       actorId: user.id,
-      type: 'call_booked',
+      type: "call_booked",
       toValue: scheduledFor.toISOString(),
-      meta: { source: 'manual' } as never,
+      meta: { source: "manual" } as never,
     });
 
-    revalidatePath('/');
-    revalidatePath('/leads');
+    revalidatePath("/");
+    revalidatePath("/leads");
     revalidatePath(`/leads/${leadId}`);
-    return { ok: true, message: 'Booking recorded' };
+    return { ok: true, message: "Booking recorded" };
   } catch (err) {
-    return { ok: false, error: err instanceof Error ? err.message : 'Failed' };
+    return { ok: false, error: err instanceof Error ? err.message : "Failed" };
+  }
+}
+
+/**
+ * Takes a lead out of every list and every figure, without destroying it.
+ *
+ * For the rows that should never have been leads: a spam account, a handle
+ * typed wrong, somebody who asked to be taken off. Deleting them outright
+ * would take the notes and the history with them, unlink any post-call report
+ * back into the queue it came from, and fail outright on anything Calendly has
+ * touched. None of that is what "get this off my screen" means.
+ *
+ * The row stays, so the next Airtable import matches it instead of creating
+ * the same junk again, and so the reason is still readable a month later.
+ */
+export async function archiveLead(formData: FormData): Promise<ActionResult> {
+  try {
+    const user = await requireUser();
+    const leadId = str(formData, "leadId");
+    if (!leadId) return { ok: false, error: "Missing lead" };
+
+    const lead = await db.query.leads.findFirst({
+      where: eq(leads.id, leadId),
+    });
+    if (!lead) return { ok: false, error: "Lead not found" };
+    if (lead.archivedAt) return { ok: true, message: "Already archived" };
+
+    const why = str(formData, "why");
+
+    await db
+      .update(leads)
+      .set({
+        archivedAt: new Date(),
+        archivedById: user.id,
+        // It cannot be a live conversation and archived at the same time, and
+        // leaving the tick set would have it counted the moment it came back.
+        isActiveConvo: false,
+        updatedAt: new Date(),
+      })
+      .where(eq(leads.id, leadId));
+
+    await db.insert(leadEvents).values({
+      leadId,
+      actorId: user.id,
+      type: "archived",
+      ...(why ? { toValue: why } : {}),
+    });
+
+    revalidatePath("/");
+    revalidatePath("/leads");
+    revalidatePath(`/leads/${leadId}`);
+    return { ok: true, message: "Archived" };
+  } catch (err) {
+    return {
+      ok: false,
+      error: err instanceof Error ? err.message : "Could not archive",
+    };
+  }
+}
+
+/** Puts an archived lead back, exactly as it was. */
+export async function unarchiveLead(formData: FormData): Promise<ActionResult> {
+  try {
+    const user = await requireUser();
+    const leadId = str(formData, "leadId");
+    if (!leadId) return { ok: false, error: "Missing lead" };
+
+    await db
+      .update(leads)
+      .set({ archivedAt: null, archivedById: null, updatedAt: new Date() })
+      .where(eq(leads.id, leadId));
+
+    await db
+      .insert(leadEvents)
+      .values({ leadId, actorId: user.id, type: "unarchived" });
+
+    revalidatePath("/");
+    revalidatePath("/leads");
+    revalidatePath(`/leads/${leadId}`);
+    return { ok: true, message: "Back in the tracker" };
+  } catch (err) {
+    return {
+      ok: false,
+      error: err instanceof Error ? err.message : "Could not restore",
+    };
   }
 }

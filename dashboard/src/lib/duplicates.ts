@@ -12,6 +12,7 @@
  * under them, and a wrong merge is not undoable.
  */
 import { and, desc, eq, inArray, isNotNull, ne, or, sql } from 'drizzle-orm';
+import { liveLead } from './leadScope.ts';
 import type { PostgresJsDatabase } from 'drizzle-orm/postgres-js';
 import * as schema from '../db/schema.ts';
 import {
@@ -49,7 +50,7 @@ async function duplicatedHandleKeys(db: Db): Promise<string[]> {
   const rows = await db
     .select({ key: leads.igHandleKey })
     .from(leads)
-    .where(and(isNotNull(leads.igHandleKey), ne(leads.igHandleKey, ''), eq(leads.isTest, false)))
+    .where(and(isNotNull(leads.igHandleKey), ne(leads.igHandleKey, ''), liveLead))
     .groupBy(leads.igHandleKey)
     .having(sql`COUNT(*) > 1`);
   return rows.map((r) => r.key).filter((k): k is string => k !== null);
@@ -98,7 +99,7 @@ export async function getDuplicateGroups(db: Db): Promise<DuplicateGroup[]> {
     })
     .from(leads)
     .leftJoin(users, eq(users.id, leads.setterId))
-    .where(and(inArray(leads.igHandleKey, keys), eq(leads.isTest, false)))
+    .where(and(inArray(leads.igHandleKey, keys), liveLead))
     .orderBy(leads.igHandleKey, leads.leadCreatedAt);
 
   const byKey = new Map<string, DuplicateLead[]>();
@@ -130,7 +131,7 @@ export async function countDuplicateGroups(db: Db): Promise<number> {
   const rows = await db
     .select({ id: leads.id, key: leads.igHandleKey })
     .from(leads)
-    .where(and(inArray(leads.igHandleKey, keys), eq(leads.isTest, false)));
+    .where(and(inArray(leads.igHandleKey, keys), liveLead));
 
   const byKey = new Map<string, DuplicateLead[]>();
   for (const r of rows) {

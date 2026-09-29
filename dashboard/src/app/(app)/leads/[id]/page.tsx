@@ -1,38 +1,52 @@
-import { notFound } from 'next/navigation';
-import { SetterBadge } from '@/components/SetterBadge';
-import { OutcomeForm } from '@/components/OutcomeForm';
-import { ActionForm } from '@/components/ActionForm';
+import { notFound } from "next/navigation";
+import { SetterBadge } from "@/components/SetterBadge";
+import { OutcomeForm } from "@/components/OutcomeForm";
+import { ActionForm } from "@/components/ActionForm";
 import {
   addNote,
+  archiveLead,
+  unarchiveLead,
   confirmLead,
   logBooking,
   logFollowUp,
   saveTriage,
   unconfirmLead,
   updateLead,
-} from '@/lib/actions';
-import { formatCallTime, formatDay, teamDateTimeInputValue } from '@/lib/dates';
-import { toggleActiveConvo } from '@/lib/assignActions';
-import { getActiveOffers, getClosers, getLead, getOptions, getSetters } from '@/lib/queries';
+} from "@/lib/actions";
+import { formatCallTime, formatDay, teamDateTimeInputValue } from "@/lib/dates";
+import { toggleActiveConvo } from "@/lib/assignActions";
+import {
+  getActiveOffers,
+  getClosers,
+  getLead,
+  getOptions,
+  getSetters,
+} from "@/lib/queries";
 
-export const dynamic = 'force-dynamic';
+export const dynamic = "force-dynamic";
 
 /** Date input values are plain YYYY-MM-DD, with no timezone of their own. */
 function dateInputValue(date: Date | null) {
-  return date ? date.toISOString().slice(0, 10) : '';
+  return date ? date.toISOString().slice(0, 10) : "";
 }
 
-
-export default async function LeadPage({ params }: { params: Promise<{ id: string }> }) {
+export default async function LeadPage({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}) {
   const { id } = await params;
   // Postgres rejects a malformed uuid with a driver error, which surfaced as a
   // 500 rather than a 404 for any mistyped or stale link.
-  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id)) notFound();
+  if (
+    !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id)
+  )
+    notFound();
 
   const data = await getLead(id);
   if (!data) notFound();
 
-  const { lead, setter, offer, bookingLink, notes } = data;
+  const { lead, setter, offer, bookingLink, notes, archivedBy } = data;
   const [
     setters,
     stages,
@@ -48,15 +62,15 @@ export default async function LeadPage({ params }: { params: Promise<{ id: strin
     offers,
   ] = await Promise.all([
     getSetters(),
-    getOptions('conversation_stage'),
-    getOptions('lead_quality'),
-    getOptions('lead_source'),
-    getOptions('icp'),
-    getOptions('call_outcome'),
-    getOptions('tier'),
-    getOptions('payment_method'),
-    getOptions('lost_reason'),
-    getOptions('cancel_reason'),
+    getOptions("conversation_stage"),
+    getOptions("lead_quality"),
+    getOptions("lead_source"),
+    getOptions("icp"),
+    getOptions("call_outcome"),
+    getOptions("tier"),
+    getOptions("payment_method"),
+    getOptions("lost_reason"),
+    getOptions("cancel_reason"),
     getClosers(lead.closerId),
     getActiveOffers(),
   ]);
@@ -80,7 +94,10 @@ export default async function LeadPage({ params }: { params: Promise<{ id: strin
   const bookingAnswers = Array.isArray(lead.calendlyAnswers)
     ? (lead.calendlyAnswers as Array<{ question?: string; answer?: string }>)
         .filter((qa) => qa?.question)
-        .map((qa) => ({ question: String(qa.question), answer: qa.answer ? String(qa.answer) : '' }))
+        .map((qa) => ({
+          question: String(qa.question),
+          answer: qa.answer ? String(qa.answer) : "",
+        }))
     : [];
 
   return (
@@ -92,18 +109,20 @@ export default async function LeadPage({ params }: { params: Promise<{ id: strin
       {lead.needsHandle && (
         <div className="card card-attention">
           <strong>This lead has no Instagram handle</strong>
-          <p className="sub" style={{ margin: '0.3rem 0 0' }}>
-            It came from the Airtable Post Call table, which records a name and nothing else. Put
-            the real handle in under Details and this notice goes away.
+          <p className="sub" style={{ margin: "0.3rem 0 0" }}>
+            It came from the Airtable Post Call table, which records a name and
+            nothing else. Put the real handle in under Details and this notice
+            goes away.
           </p>
         </div>
       )}
       {lead.isTest && (
-        <div className="card" style={{ borderColor: 'var(--danger)' }}>
+        <div className="card" style={{ borderColor: "var(--danger)" }}>
           <strong>This is a test lead</strong>
-          <p className="sub" style={{ margin: '0.3rem 0 0' }}>
-            Nothing here reaches Discord — triage it, confirm it, add notes, and no one is pinged.
-            Admin → Setup has a button to delete it when you&apos;re done.
+          <p className="sub" style={{ margin: "0.3rem 0 0" }}>
+            Nothing here reaches Discord — triage it, confirm it, add notes, and
+            no one is pinged. Admin → Setup has a button to delete it when
+            you&apos;re done.
           </p>
         </div>
       )}
@@ -121,13 +140,13 @@ export default async function LeadPage({ params }: { params: Promise<{ id: strin
           live, there would have been no way to start at all. */}
       <div className="card">
         <div className="card-row" style={{ marginTop: 0 }}>
-          <span className={`pill ${lead.isActiveConvo ? 'ok' : ''}`}>
-            {lead.isActiveConvo ? 'Live conversation' : 'Not being worked'}
+          <span className={`pill ${lead.isActiveConvo ? "ok" : ""}`}>
+            {lead.isActiveConvo ? "Live conversation" : "Not being worked"}
           </span>
           <ActionForm action={toggleActiveConvo}>
             <input type="hidden" name="leadId" value={lead.id} />
             <button type="submit">
-              {lead.isActiveConvo ? 'Mark it finished' : 'This one is live'}
+              {lead.isActiveConvo ? "Mark it finished" : "This one is live"}
             </button>
           </ActionForm>
         </div>
@@ -137,29 +156,36 @@ export default async function LeadPage({ params }: { params: Promise<{ id: strin
         <div className="card">
           <div className="card-head">
             <strong>Call booked</strong>
-            <span className="card-meta">{formatCallTime(lead.callScheduledFor)}</span>
+            <span className="card-meta">
+              {formatCallTime(lead.callScheduledFor)}
+            </span>
           </div>
           <div className="card-meta">
-            {offer?.label ?? bookingLink?.name ?? 'Offer unknown'}
-            {lead.closerName ? ` · with ${lead.closerName}` : ''}
+            {offer?.label ?? bookingLink?.name ?? "Offer unknown"}
+            {lead.closerName ? ` · with ${lead.closerName}` : ""}
           </div>
           <div className="card-row">
             {callStillToCome ? (
               <>
-                <span className={`pill ${lead.confirmed ? 'ok' : 'warn'}`}>
+                <span className={`pill ${lead.confirmed ? "ok" : "warn"}`}>
                   {lead.confirmed
-                    ? `✓ Confirmed${lead.confirmationMethod ? ` (${lead.confirmationMethod})` : ''}`
-                    : 'Not confirmed'}
+                    ? `✓ Confirmed${lead.confirmationMethod ? ` (${lead.confirmationMethod})` : ""}`
+                    : "Not confirmed"}
                 </span>
-                <span className={`pill ${lead.triaged ? 'ok' : 'warn'}`}>
-                  {lead.triaged ? '✓ Triaged' : 'Not triaged'}
+                <span className={`pill ${lead.triaged ? "ok" : "warn"}`}>
+                  {lead.triaged ? "✓ Triaged" : "Not triaged"}
                 </span>
               </>
             ) : (
               <span className="pill">This call has been and gone</span>
             )}
             {callStillToCome && lead.calendlyRescheduleUrl && (
-              <a className="btn" href={lead.calendlyRescheduleUrl} target="_blank" rel="noreferrer">
+              <a
+                className="btn"
+                href={lead.calendlyRescheduleUrl}
+                target="_blank"
+                rel="noreferrer"
+              >
                 Reschedule
               </a>
             )}
@@ -167,7 +193,10 @@ export default async function LeadPage({ params }: { params: Promise<{ id: strin
           {callStillToCome && (
             <div className="card-row">
               {lead.confirmed ? (
-                <ActionForm action={unconfirmLead} successMessage="Confirmation removed">
+                <ActionForm
+                  action={unconfirmLead}
+                  successMessage="Confirmation removed"
+                >
                   <input type="hidden" name="leadId" value={lead.id} />
                   <button type="submit">Undo confirmation</button>
                 </ActionForm>
@@ -195,7 +224,7 @@ export default async function LeadPage({ params }: { params: Promise<{ id: strin
           <strong>Call cancelled</strong>
           <div className="card-meta">
             {formatDay(lead.callCancelledAt)}
-            {lead.cancelReason ? ` · ${lead.cancelReason}` : ''}
+            {lead.cancelReason ? ` · ${lead.cancelReason}` : ""}
           </div>
         </div>
       )}
@@ -207,23 +236,41 @@ export default async function LeadPage({ params }: { params: Promise<{ id: strin
           <div className="grid2">
             <div className="field">
               <label htmlFor="igHandle">IG handle</label>
-              <input id="igHandle" name="igHandle" defaultValue={lead.igHandle} />
+              <input
+                id="igHandle"
+                name="igHandle"
+                defaultValue={lead.igHandle}
+              />
             </div>
             <div className="field">
               <label htmlFor="name">Name</label>
-              <input id="name" name="name" defaultValue={lead.name ?? ''} />
+              <input id="name" name="name" defaultValue={lead.name ?? ""} />
             </div>
             <div className="field">
               <label htmlFor="phone">Phone</label>
-              <input id="phone" name="phone" type="tel" defaultValue={lead.phone ?? ''} />
+              <input
+                id="phone"
+                name="phone"
+                type="tel"
+                defaultValue={lead.phone ?? ""}
+              />
             </div>
             <div className="field">
               <label htmlFor="email">Email</label>
-              <input id="email" name="email" type="email" defaultValue={lead.email ?? ''} />
+              <input
+                id="email"
+                name="email"
+                type="email"
+                defaultValue={lead.email ?? ""}
+              />
             </div>
             <div className="field">
               <label htmlFor="setterId">Setter</label>
-              <select id="setterId" name="setterId" defaultValue={lead.setterId ?? ''}>
+              <select
+                id="setterId"
+                name="setterId"
+                defaultValue={lead.setterId ?? ""}
+              >
                 <option value="">Unassigned</option>
                 {setters.map((s) => (
                   <option key={s.id} value={s.id}>
@@ -237,7 +284,7 @@ export default async function LeadPage({ params }: { params: Promise<{ id: strin
               <select
                 id="conversationStage"
                 name="conversationStage"
-                defaultValue={lead.conversationStage ?? ''}
+                defaultValue={lead.conversationStage ?? ""}
               >
                 <option value="">—</option>
                 {stages.map((s) => (
@@ -249,7 +296,11 @@ export default async function LeadPage({ params }: { params: Promise<{ id: strin
             </div>
             <div className="field">
               <label htmlFor="leadQuality">Quality</label>
-              <select id="leadQuality" name="leadQuality" defaultValue={lead.leadQuality ?? ''}>
+              <select
+                id="leadQuality"
+                name="leadQuality"
+                defaultValue={lead.leadQuality ?? ""}
+              >
                 <option value="">—</option>
                 {qualities.map((s) => (
                   <option key={s.id} value={s.value}>
@@ -260,7 +311,11 @@ export default async function LeadPage({ params }: { params: Promise<{ id: strin
             </div>
             <div className="field">
               <label htmlFor="leadSource">Source</label>
-              <select id="leadSource" name="leadSource" defaultValue={lead.leadSource ?? ''}>
+              <select
+                id="leadSource"
+                name="leadSource"
+                defaultValue={lead.leadSource ?? ""}
+              >
                 <option value="">—</option>
                 {sources.map((s) => (
                   <option key={s.id} value={s.value}>
@@ -271,7 +326,7 @@ export default async function LeadPage({ params }: { params: Promise<{ id: strin
             </div>
             <div className="field">
               <label htmlFor="icp">ICP</label>
-              <select id="icp" name="icp" defaultValue={lead.icp ?? ''}>
+              <select id="icp" name="icp" defaultValue={lead.icp ?? ""}>
                 <option value="">—</option>
                 {icps.map((s) => (
                   <option key={s.id} value={s.value}>
@@ -301,7 +356,11 @@ export default async function LeadPage({ params }: { params: Promise<{ id: strin
         <ActionForm action={addNote} successMessage="Note added">
           <input type="hidden" name="leadId" value={lead.id} />
           <div className="field">
-            <textarea name="body" placeholder="What happened in the conversation?" required />
+            <textarea
+              name="body"
+              placeholder="What happened in the conversation?"
+              required
+            />
           </div>
           <div className="card-row">
             <button className="btn-primary" type="submit">
@@ -327,12 +386,20 @@ export default async function LeadPage({ params }: { params: Promise<{ id: strin
       {bookingAnswers.length > 0 && (
         <>
           <h2>What they said when booking</h2>
-          <p className="sub">Straight from the Calendly form — read this before you call them.</p>
+          <p className="sub">
+            Straight from the Calendly form — read this before you call them.
+          </p>
           <div className="card">
             {bookingAnswers.map((qa, i) => (
-              <div key={i} className="note" style={{ marginBottom: i === bookingAnswers.length - 1 ? 0 : '0.9rem' }}>
+              <div
+                key={i}
+                className="note"
+                style={{
+                  marginBottom: i === bookingAnswers.length - 1 ? 0 : "0.9rem",
+                }}
+              >
                 <div className="note-meta">{qa.question}</div>
-                <div className="note-body">{qa.answer || '—'}</div>
+                <div className="note-body">{qa.answer || "—"}</div>
               </div>
             ))}
           </div>
@@ -342,23 +409,28 @@ export default async function LeadPage({ params }: { params: Promise<{ id: strin
       <h2 id="triage">Triage notes</h2>
       <p className="sub">
         {lead.isTest
-          ? 'On a real lead this posts the brief straight to Discord. On this test lead it saves and posts nothing.'
+          ? "On a real lead this posts the brief straight to Discord. On this test lead it saves and posts nothing."
           : "Saving this posts the pre-call brief straight to Discord — that's how Nigel and Andrew get it, so write it for them."}
       </p>
       <div className="card">
-        <ActionForm action={saveTriage} successMessage="Triaged and posted to Discord">
+        <ActionForm
+          action={saveTriage}
+          successMessage="Triaged and posted to Discord"
+        >
           <input type="hidden" name="leadId" value={lead.id} />
           <div className="field">
             <textarea
               name="triageNotes"
-              defaultValue={lead.triageNotes ?? ''}
+              defaultValue={lead.triageNotes ?? ""}
               placeholder={
-                'What do they actually want?\nWhat have they tried?\nWhat is their budget situation?\nAnything the closer should not step on?'
+                "What do they actually want?\nWhat have they tried?\nWhat is their budget situation?\nAnything the closer should not step on?"
               }
             />
           </div>
           <button className="btn-primary" type="submit">
-            {lead.triaged ? 'Update & repost to Discord' : 'Mark triaged & post to Discord'}
+            {lead.triaged
+              ? "Update & repost to Discord"
+              : "Mark triaged & post to Discord"}
           </button>
         </ActionForm>
       </div>
@@ -370,8 +442,8 @@ export default async function LeadPage({ params }: { params: Promise<{ id: strin
             the next one is" - so it says that rather than repeating the label
             and leaving somebody to work out which of the two counts. */}
         <p className="sub" style={{ marginTop: 0 }}>
-          For when you&apos;ve just reached out. Adds one to the count and sets when to try again.
-          To change the date alone, use Details above.
+          For when you&apos;ve just reached out. Adds one to the count and sets
+          when to try again. To change the date alone, use Details above.
         </p>
         <ActionForm action={logFollowUp} successMessage="Follow-up logged">
           <input type="hidden" name="leadId" value={lead.id} />
@@ -393,18 +465,22 @@ export default async function LeadPage({ params }: { params: Promise<{ id: strin
           entered. Without it there is no way to record a booking at all. */}
       {!lead.calendlyEventUri && (
         <>
-          <h2 id="booking">{lead.callBooked ? 'Booked call' : 'Was a call booked?'}</h2>
+          <h2 id="booking">
+            {lead.callBooked ? "Booked call" : "Was a call booked?"}
+          </h2>
           <p className="sub">
             {lead.callBooked
-              ? 'Entered by hand rather than by Calendly, so it can be corrected here.'
-              : 'Calendly never sent a booking for this lead. If a call happened anyway, record it here and it counts in the funnel.'}
+              ? "Entered by hand rather than by Calendly, so it can be corrected here."
+              : "Calendly never sent a booking for this lead. If a call happened anyway, record it here and it counts in the funnel."}
           </p>
           <div className="card">
             <ActionForm action={logBooking} successMessage="Booking recorded">
               <input type="hidden" name="leadId" value={lead.id} />
               <div className="grid2">
                 <div className="field">
-                  <label htmlFor="callScheduledFor">Call date &amp; time (ET) *</label>
+                  <label htmlFor="callScheduledFor">
+                    Call date &amp; time (ET) *
+                  </label>
                   <input
                     id="callScheduledFor"
                     name="callScheduledFor"
@@ -415,7 +491,11 @@ export default async function LeadPage({ params }: { params: Promise<{ id: strin
                 </div>
                 <div className="field">
                   <label htmlFor="closerId">Closer</label>
-                  <select id="closerId" name="closerId" defaultValue={lead.closerId ?? ''}>
+                  <select
+                    id="closerId"
+                    name="closerId"
+                    defaultValue={lead.closerId ?? ""}
+                  >
                     <option value="">&mdash;</option>
                     {closers.map((c) => (
                       <option key={c.id} value={c.id}>
@@ -426,7 +506,11 @@ export default async function LeadPage({ params }: { params: Promise<{ id: strin
                 </div>
                 <div className="field">
                   <label htmlFor="offerId">Offer</label>
-                  <select id="offerId" name="offerId" defaultValue={lead.offerId ?? ''}>
+                  <select
+                    id="offerId"
+                    name="offerId"
+                    defaultValue={lead.offerId ?? ""}
+                  >
                     <option value="">&mdash;</option>
                     {offers.map((o) => (
                       <option key={o.id} value={o.id}>
@@ -437,7 +521,7 @@ export default async function LeadPage({ params }: { params: Promise<{ id: strin
                 </div>
               </div>
               <button type="submit">
-                {lead.callBooked ? 'Update booking' : 'Record this booking'}
+                {lead.callBooked ? "Update booking" : "Record this booking"}
               </button>
             </ActionForm>
           </div>
@@ -449,10 +533,12 @@ export default async function LeadPage({ params }: { params: Promise<{ id: strin
           <h2 id="outcome">Call outcome</h2>
           <p className="sub">
             {lead.outcomeLoggedAt
-              ? 'Recorded after the call. Saving again updates it and reposts to Discord.'
+              ? "Recorded after the call. Saving again updates it and reposts to Discord."
               : "This call has been and gone. Logging what happened is what keeps the funnel's bottom half honest."}
           </p>
-          <div className={`card${lead.outcomeLoggedAt ? '' : ' card-attention'}`}>
+          <div
+            className={`card${lead.outcomeLoggedAt ? "" : " card-attention"}`}
+          >
             <OutcomeForm
               lead={lead}
               outcomes={outcomes}
@@ -461,6 +547,54 @@ export default async function LeadPage({ params }: { params: Promise<{ id: strin
               lostReasons={lostReasons}
               cancelReasons={cancelReasons}
             />
+          </div>
+        </>
+      )}
+
+      {/* Last on the page, and deliberately undramatic. This is for the rows
+          that should never have been leads, not for a conversation that went
+          nowhere - those stay, because they are what the funnel is measuring. */}
+      <h2 id="archive">{lead.archivedAt ? "Archived" : "Not a real lead?"}</h2>
+      {lead.archivedAt ? (
+        <>
+          <p className="sub">
+            Archived {formatDay(lead.archivedAt)}
+            {archivedBy ? ` by ${archivedBy}` : ""}. It is out of every list and
+            every figure, and its notes and history are untouched.
+          </p>
+          <div className="card">
+            <ActionForm
+              action={unarchiveLead}
+              successMessage="Back in the tracker"
+            >
+              <input type="hidden" name="leadId" value={lead.id} />
+              <button className="btn-primary" type="submit">
+                Put it back
+              </button>
+            </ActionForm>
+          </div>
+        </>
+      ) : (
+        <>
+          <p className="sub">
+            A spam account, a handle typed wrong, somebody who asked to be taken
+            off. Archiving takes it out of every list and every figure and
+            leaves everything on it intact, so it can come back if it turns out
+            to be real. Nothing is deleted.
+          </p>
+          <div className="card">
+            <ActionForm action={archiveLead} successMessage="Archived">
+              <input type="hidden" name="leadId" value={lead.id} />
+              <div className="field">
+                <label htmlFor="why">Why (optional)</label>
+                <input id="why" name="why" placeholder="Spam account" />
+              </div>
+              <div className="btn-row" style={{ marginTop: "0.6rem" }}>
+                <button className="btn-danger" type="submit">
+                  Archive this lead
+                </button>
+              </div>
+            </ActionForm>
           </div>
         </>
       )}

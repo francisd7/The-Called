@@ -1,19 +1,20 @@
-import { BookingLinks } from '@/components/BookingLinks';
-import { StreakStrip } from '@/components/StreakStrip';
-import { one, type Params } from '@/components/LeadBrowser';
+import { BookingLinks } from "@/components/BookingLinks";
+import { StreakStrip } from "@/components/StreakStrip";
+import { one, type Params } from "@/components/LeadBrowser";
 import {
   getActiveConvos,
   getActiveOffers,
   getFollowUpCounts,
+  countArchivedLeads,
   getLeadTotals,
   getSetters,
-} from '@/lib/queries';
-import { colourOrder, personColour } from '@/lib/people';
-import { getStreaks } from '@/lib/streaks';
-import { db } from '@/db';
-import { countDuplicateGroups } from '@/lib/duplicates';
+} from "@/lib/queries";
+import { colourOrder, personColour } from "@/lib/people";
+import { getStreaks } from "@/lib/streaks";
+import { db } from "@/db";
+import { countDuplicateGroups } from "@/lib/duplicates";
 
-export const dynamic = 'force-dynamic';
+export const dynamic = "force-dynamic";
 
 type SearchParams = Promise<Params>;
 
@@ -22,7 +23,7 @@ function Tile({
   n,
   label,
   href,
-  tone = '',
+  tone = "",
 }: {
   n: number;
   label: string;
@@ -45,30 +46,45 @@ function Tile({
  * look at was four screens down, and every press reloaded the lot. Now it
  * carries counts that open the page they stand for, and nothing else.
  */
-export default async function LeadsPage({ searchParams }: { searchParams: SearchParams }) {
+export default async function LeadsPage({
+  searchParams,
+}: {
+  searchParams: SearchParams;
+}) {
   await searchParams;
 
   const setters = await getSetters();
-  const workers = setters.filter((s) => s.role === 'setter');
+  const workers = setters.filter((s) => s.role === "setter");
   // Colour by person rather than by what the row means, so the two rows below
   // do not paint both setters the same twice over.
   const order = colourOrder(setters);
-  const tone = (s: { id: string; color?: string | null }) => `tone-${personColour(s, order)}`;
+  const tone = (s: { id: string; color?: string | null }) =>
+    `tone-${personColour(s, order)}`;
 
-  const [convos, streaks, offers, duplicateCount, totals, followUpsBySetter, teamFollowUps] =
-    await Promise.all([
-      getActiveConvos(),
-      getStreaks(),
-      getActiveOffers(),
-      countDuplicateGroups(db),
-      getLeadTotals(),
-      Promise.all(workers.map((s) => getFollowUpCounts(s.id))),
-      getFollowUpCounts(),
-    ]);
+  const [
+    convos,
+    streaks,
+    offers,
+    duplicateCount,
+    totals,
+    followUpsBySetter,
+    teamFollowUps,
+    archivedCount,
+  ] = await Promise.all([
+    getActiveConvos(),
+    getStreaks(),
+    getActiveOffers(),
+    countDuplicateGroups(db),
+    getLeadTotals(),
+    Promise.all(workers.map((s) => getFollowUpCounts(s.id))),
+    getFollowUpCounts(),
+    countArchivedLeads(),
+  ]);
 
   // The bands are exclusive, so a tile that means "how many are waiting on you"
   // has to add them up rather than show one of them.
-  const sumBands = (b: Record<string, number>) => Object.values(b).reduce((a, n) => a + n, 0);
+  const sumBands = (b: Record<string, number>) =>
+    Object.values(b).reduce((a, n) => a + n, 0);
   const teamDue = sumBands(teamFollowUps);
 
   return (
@@ -90,7 +106,7 @@ export default async function LeadsPage({ searchParams }: { searchParams: Search
 
       <StreakStrip rows={streaks} />
 
-      <div className="card-row" style={{ marginBottom: '0.9rem' }}>
+      <div className="card-row" style={{ marginBottom: "0.9rem" }}>
         <a className="btn" href="/leads/follow-ups">
           Follow Ups
           <span className="pill warn">{teamDue}</span>
@@ -103,18 +119,27 @@ export default async function LeadsPage({ searchParams }: { searchParams: Search
             <span className="pill warn">{duplicateCount}</span>
           </a>
         )}
+        {/* Same rule as duplicates: a link to an empty list is one more thing
+            to read past. It appears once there is something in it. */}
+        {archivedCount > 0 && (
+          <a className="btn" href="/leads/archived">
+            Archived
+            <span className="pill">{archivedCount}</span>
+          </a>
+        )}
       </div>
 
       <h2>Send a booking link</h2>
       <p className="sub">
-        Matched back to a lead by the Instagram handle they type into the booking form — so that
-        question has to stay required on all three.
+        Matched back to a lead by the Instagram handle they type into the
+        booking form — so that question has to stay required on all three.
       </p>
       <BookingLinks offers={offers} />
 
       <h2>Active conversations</h2>
       <p className="sub">
-        What each of you is working right now. Open one to see the conversations and log a message.
+        What each of you is working right now. Open one to see the conversations
+        and log a message.
       </p>
       {/* Both rows walk the same list of people in the same order. The active
           counts come from a query that sorts by when somebody joined and the
@@ -142,8 +167,8 @@ export default async function LeadsPage({ searchParams }: { searchParams: Search
 
       <h2>Follow ups</h2>
       <p className="sub">
-        Live conversations that have gone quiet for a week or more, counted from the last time
-        somebody actually reached out.
+        Live conversations that have gone quiet for a week or more, counted from
+        the last time somebody actually reached out.
       </p>
       <div className="tile-row">
         {workers.map((s, i) => (
@@ -159,8 +184,8 @@ export default async function LeadsPage({ searchParams }: { searchParams: Search
 
       <h2>All leads</h2>
       <p className="sub">
-        Everyone the team has ever talked to, live or not. The list itself is a page of its own so
-        this one stays short.
+        Everyone the team has ever talked to, live or not. The list itself is a
+        page of its own so this one stays short.
       </p>
       <div className="stats">
         <div className="stat tone-blue">
@@ -175,7 +200,7 @@ export default async function LeadsPage({ searchParams }: { searchParams: Search
           <div className="stat-n">{totals.closed}</div>
           <div className="stat-l">closed</div>
         </div>
-        <div className={`stat${totals.unassigned > 0 ? ' alert' : ''}`}>
+        <div className={`stat${totals.unassigned > 0 ? " alert" : ""}`}>
           <div className="stat-n">{totals.unassigned}</div>
           <div className="stat-l">unassigned</div>
         </div>

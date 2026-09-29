@@ -66,6 +66,7 @@ const SETTER_SECTIONS = [
   ["kpis", "Your numbers over a stretch"],
   ["eod", "End of day — every day"],
   ["clean", "Keeping it clean"],
+  ["archive", "A lead that should not be there"],
   ["short", "The short version"],
 ] as const;
 
@@ -468,6 +469,31 @@ export default async function HelpPage() {
           It goes straight to Francis with the page you were on. Use it rather
           than sitting on something odd.
         </p>
+      </Section>
+
+      <Section
+        id="archive"
+        title="A lead that should not be there"
+        lead="Spam, a handle typed wrong, somebody who asked to be taken off."
+      >
+        <p>
+          Open the lead and scroll to the bottom —{" "}
+          <strong>Not a real lead?</strong> → <strong>Archive this lead</strong>
+          . There is a box for the reason; it helps whoever reads it later, but
+          it is optional.
+        </p>
+        <p>
+          Archiving takes the lead out of every list and every figure. Nothing
+          is deleted — the notes, the history and anything the closers recorded
+          all stay on it, and it can be put back from{" "}
+          <strong>Leads → Archived</strong> at any time.
+        </p>
+        <Watch>
+          This is for rows that should never have been leads. A real
+          conversation that went nowhere <em>stays</em>: a lead that said no is
+          exactly what the funnel is measuring, and archiving those makes your
+          numbers look better than they are.
+        </Watch>
       </Section>
 
       <Section id="short" title="The short version">

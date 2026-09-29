@@ -14,6 +14,7 @@
  */
 import { and, eq, isNull, isNotNull, sql } from 'drizzle-orm';
 import { leads } from '../db/schema.ts';
+import { liveLead } from './leadScope.ts';
 
 /**
  * Anything that says how a call went, whoever recorded it.
@@ -36,7 +37,7 @@ export function outcomeIsKnown() {
 /** Calls whose time has passed with nothing known about what happened. */
 export function awaitingOutcome() {
   return and(
-    eq(leads.isTest, false),
+    liveLead,
     eq(leads.callBooked, true),
     eq(leads.callCancelled, false),
     isNotNull(leads.callScheduledFor),

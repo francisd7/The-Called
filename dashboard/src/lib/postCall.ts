@@ -16,6 +16,7 @@ import { leadEvents, leads, postCallReports, users } from '../db/schema.ts';
 import { teamDateString } from './dates.ts';
 import { pickAutoMatch, type Candidate } from './postCallMatch.ts';
 import * as schema from '../db/schema.ts';
+import { liveLead } from './leadScope.ts';
 
 type Db = PostgresJsDatabase<typeof schema>;
 type Report = typeof postCallReports.$inferSelect;
@@ -304,7 +305,8 @@ export async function autoLinkPending(db: Db): Promise<number> {
       )
       .where(
         and(
-          eq(leads.isTest, false),
+          // An archived lead is not a candidate to auto-link a report to.
+          liveLead,
           eq(leads.callBooked, true),
           eq(leads.callCancelled, false),
           sql`(${leads.callScheduledFor} AT TIME ZONE 'America/New_York')::date = ${day}::date`

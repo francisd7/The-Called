@@ -176,6 +176,13 @@
       "when": 1790224325621,
       "tag": "0024_notice_snoozes",
       "breakpoints": true
+    },
+    {
+      "idx": 25,
+      "version": "7",
+      "when": 1790224326621,
+      "tag": "0025_archive_leads",
+      "breakpoints": true
     }
   ]
 }

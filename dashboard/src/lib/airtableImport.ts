@@ -389,6 +389,9 @@ export async function importAirtableLeads(
         where: and(
           eq(leads.igHandleKey, handleKey),
           isNull(leads.airtableRecordId),
+          // Not liveLead: an archived lead must still be found here, or the
+          // next import creates a fresh copy of the junk somebody archived -
+          // and the copy comes back without the notes explaining why.
           eq(leads.isTest, false)
         ),
         columns: EXISTING_COLUMNS,
