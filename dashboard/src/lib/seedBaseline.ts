@@ -1,4 +1,4 @@
-import { count, eq } from "drizzle-orm";
+import { and, count, eq } from "drizzle-orm";
 import { db } from "../db";
 import { offers, optionSets, users } from "../db/schema";
 import { SETTER_EMAILS } from "./people";
@@ -40,20 +40,24 @@ const PEOPLE = [
     active: true,
     color: "blue",
   },
-  // Closers get a row so bookings can be attributed to them, but no sign-in:
-  // they read pre-call notes in Discord. Their email must match the one on
-  // their Calendly account or bookings won't attribute.
+  // Closers get a row so bookings can be attributed to them, and are active
+  // because they are on the team and have to appear in the Closer dropdown.
+  // They still cannot sign in - that is refused by role in src/lib/access.ts,
+  // not by this flag. Marking them inactive to keep them out was what took
+  // their names out of the one place a setter has to pick between them.
+  // Their email must match the one on their Calendly account or bookings
+  // won't attribute.
   {
     email: "CHANGEME.nigel@example.com",
     name: "Nigel",
     role: "closer" as const,
-    active: false,
+    active: true,
   },
   {
     email: "CHANGEME.andrew@example.com",
     name: "Andrew",
     role: "closer" as const,
-    active: false,
+    active: true,
   },
 ];
 
@@ -166,6 +170,15 @@ export async function seedBaseline() {
     if (stale.length > 0)
       console.log(`Set ${stale[0].name}'s address to ${real}.`);
   }
+
+  // Closers seeded before the sign-in rule moved to access.ts are sitting
+  // inactive, which keeps them out of the Closer dropdown. Nothing else turns
+  // a closer inactive on purpose - deactivating one who has left is done by
+  // changing their role or removing them - so this is safe to reconcile.
+  await db
+    .update(users)
+    .set({ active: true })
+    .where(and(eq(users.role, "closer"), eq(users.active, false)));
 
   // The admin row is the exception, always reconciled: it's the only way back
   // in, and locking yourself out of your own dashboard should not be possible.

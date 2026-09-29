@@ -563,6 +563,19 @@ export default async function HelpPage() {
             across. A merge cannot be undone, so back up first.
           </p>
 
+          <h3>Who is taking a call</h3>
+          <p>
+            Triage has a <strong>Closer</strong> box with Nigel and Andrew in it
+            — set it to whichever of them is taking the call, and the pre-call
+            brief in Discord goes out under their name. It can be changed later
+            from the lead&apos;s own page.
+          </p>
+          <p>
+            Closers are on the team and appear in that box, but they have no
+            dashboard sign-in and never will — they work from Discord and the
+            Airtable post-call form. Admin → People says so beside their name.
+          </p>
+
           <h3>Seeing what a setter sees</h3>
           <p>
             <strong>Admin → People → View as</strong>. It swaps the whole app to
