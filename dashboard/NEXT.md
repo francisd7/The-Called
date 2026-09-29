@@ -5,29 +5,38 @@ deliberate, not forgotten.
 
 ## Before launch — Francis only
 
-These cannot be done from a branch. They need the live dashboard.
+Done, in the order they were done:
 
-1. **Check Loui and Alexis's addresses took.** Admin → People — both should
-   read a real address with "can sign in: yes", not *needs a real address*.
-   The deploy sets them (`lalbawab6@gmail.com` for Loui,
-   `alexisleid7@gmail.com` for Alexis) by replacing the placeholder they were
-   seeded with; an address already typed in by hand is never overwritten. If
-   either is wrong, edit it there — sign-in matches on email, so a wrong
-   address is the difference between somebody getting in and not.
-2. **Split the old leads by date.** Admin → Setup & imports → Move a pile of
-   leads by date. The Setter column in the old tracker was blank for most of
-   its life, so a long run of leads sits on one name. Cash follows whoever
-   owns the lead, so until this is done every setter's cash figure is wrong.
-   Pick the pile with the leads in it — the dropdown shows each one's size —
-   dry run, read the three bands, then move.
-3. **Set the monthly targets.** Admin → Setup & imports → Monthly targets.
-   Without them the pace bars on the Dashboard do not draw at all. A target
-   nobody set is not a target being missed, so this is optional — but the
-   bars are most of what makes the Dashboard worth opening in the morning.
-4. **Take a backup.** Admin → Backups → Back up now. One before the team
-   starts writing to it is worth having.
-5. **Send the team the Help link.** `/help` is the manual. It has a setter
-   half and an admin half, so a setter is not shown buttons they do not have.
+- **Addresses.** Loui is `lalbawab6@gmail.com`, Alexis `alexisleid7@gmail.com`,
+  both confirmed signing in. The seed replaces the `CHANGEME` placeholder on
+  boot and never overwrites an address typed in by hand, so a correction made
+  in Admin → People stands.
+- **The old leads are split.** 248 leads and $18,170 moved to Loui, 177 and
+  $17,350 left with Francis, 16 and $11,000 unassigned. Re-running the same
+  dry run reports nothing left in the middle band, which is how to check.
+- **Monthly targets** are set, so the pace bars draw.
+- **The tracker is fully imported.** 592 rows, 0 new — there is nothing
+  waiting in Airtable. Re-running it changes nothing but refreshed fields, and
+  will not disturb the split: the import only writes a setter where Airtable
+  has one, and only two rows before 2026-08-27 do (both Alexis).
+
+Still to do:
+
+- **Take a backup.** Admin → Backups → **Back up now**. It ignores the
+  seven-day timer, so it runs whenever it is pressed. Worth having one from
+  before the team starts writing.
+- **Point them at Help.** `/help` is in the top bar for everybody once they
+  sign in, so there is no link to send — but people do not click what nobody
+  told them about. Mention it when you walk them through.
+
+## Watch after launch
+
+**$11,000 of collected cash is on nobody.** Sixteen September leads went
+unassigned in the split, exactly as intended — the company total is unaffected,
+since that figure counts every lead whoever owns it, but no setter is credited.
+If Loui or Alexis says a September deal of theirs is missing, it is in that
+band: Setup & imports → Move a pile of leads by date, source **Unassigned**,
+2026-08-28 to today, to their name. Takes about thirty seconds.
 
 ## Waiting on Francis, not blocking
 
