@@ -201,8 +201,13 @@ export async function seedBaseline() {
       .values(offer)
       .onConflictDoUpdate({
         target: offers.key,
-        // eventTypeUri is left alone - it's set by the Calendly setup, not here.
-        set: { label: offer.label, schedulingUrl: offer.schedulingUrl },
+        // The label only. schedulingUrl and eventTypeUri are both left alone:
+        // the first is corrected on Admin -> Setup when a link changes in
+        // Calendly, the second is set by Connect Calendly. Rewriting the link
+        // here on every boot meant a wrong one could not be fixed at all - any
+        // correction lasted until the next deploy, and the first thing a
+        // setter reported after launch was one of them 404ing.
+        set: { label: offer.label },
       });
   }
 

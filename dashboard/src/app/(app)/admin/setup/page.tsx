@@ -25,6 +25,7 @@ import {
   runCalendlyBackfill,
   runCalendlyCleanup,
   runCalendlySetup,
+  saveOfferLinks,
   runEodImport,
   saveCountedLinks,
 } from "@/lib/setupActions";
@@ -202,6 +203,41 @@ export default async function SetupPage() {
           </div>
         </>
       )}
+
+      <h2 id="booking-links">The booking links setters hand out</h2>
+      <p className="sub">
+        One per offer. This is the address a lead actually lands on, so if a
+        link is renamed or retired in Calendly it has to be changed here too —
+        otherwise the tracked link a setter copies ends at a 404. Leave a box
+        alone to leave that offer as it is.
+      </p>
+      <div className="card">
+        <ActionForm action={saveOfferLinks}>
+          {offerRows.map((o) => (
+            <div className="field" key={o.id}>
+              <label htmlFor={`url_${o.key}`}>
+                {o.label}
+                {!o.eventTypeUri && (
+                  <span className="pill warn" style={{ marginLeft: "0.4rem" }}>
+                    not linked to Calendly
+                  </span>
+                )}
+              </label>
+              <input
+                id={`url_${o.key}`}
+                name={`url_${o.key}`}
+                type="url"
+                defaultValue={o.schedulingUrl}
+              />
+            </div>
+          ))}
+          <div className="btn-row" style={{ marginTop: "0.6rem" }}>
+            <button className="btn-primary" type="submit">
+              Save booking links
+            </button>
+          </div>
+        </ActionForm>
+      </div>
 
       <h2>Which Calendly links are sales calls</h2>
       <p className="sub">

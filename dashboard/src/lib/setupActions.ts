@@ -589,3 +589,73 @@ export async function runCalendlyCleanup(formData: FormData): Promise<Result> {
     };
   }
 }
+
+/**
+ * The booking link behind each offer.
+ *
+ * These were only ever in the seed, and the seed rewrote them on every boot -
+ * so a link that was wrong stayed wrong, and correcting it in the database
+ * lasted until the next deploy. The first thing a setter reported after launch
+ * was one of them 404ing, which nobody could have fixed from inside the app.
+ *
+ * The seed now fills a gap and leaves a set link alone, and this is where it
+ * gets set. Nothing is guessed: a blank box leaves that offer as it is.
+ */
+export async function saveOfferLinks(formData: FormData): Promise<Result> {
+  try {
+    await requireAdmin();
+
+    const rows = await db.select().from(offers).orderBy(asc(offers.sortOrder));
+    const changed: string[] = [];
+
+    for (const offer of rows) {
+      const raw = formData.get(`url_${offer.key}`);
+      const next = typeof raw === "string" ? raw.trim() : "";
+      if (!next || next === offer.schedulingUrl) continue;
+
+      // A link that will not parse is a link that 404s for a lead, which is
+      // the thing being fixed - so it is refused rather than saved.
+      let parsed: URL;
+      try {
+        parsed = new URL(next);
+      } catch {
+        return {
+          ok: false,
+          error: `${offer.label}: "${next}" is not a web address.`,
+        };
+      }
+      if (parsed.protocol !== "https:") {
+        return {
+          ok: false,
+          error: `${offer.label}: the link has to start with https://`,
+        };
+      }
+
+      await db
+        .update(offers)
+        .set({
+          schedulingUrl: parsed.toString(),
+          // The old link's event type no longer describes this offer. Clearing
+          // it makes "Connect Calendly" re-match rather than leaving a booking
+          // attributed to whatever the previous link pointed at.
+          eventTypeUri: null,
+        })
+        .where(eq(offers.id, offer.id));
+      changed.push(offer.label);
+    }
+
+    if (changed.length === 0) return { ok: true, message: "Nothing changed." };
+
+    revalidatePath("/admin/setup");
+    revalidatePath("/leads");
+    return {
+      ok: true,
+      message: `Updated ${changed.join(", ")}. Press Connect Calendly to re-link the event ${changed.length === 1 ? "type" : "types"}.`,
+    };
+  } catch (err) {
+    return {
+      ok: false,
+      error: err instanceof Error ? err.message : "Could not save the links",
+    };
+  }
+}

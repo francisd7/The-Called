@@ -563,6 +563,23 @@ export default async function HelpPage() {
             across. A merge cannot be undone, so back up first.
           </p>
 
+          <h3>When a booking link stops working</h3>
+          <p>
+            <strong>
+              Admin → Setup &amp; imports → The booking links setters hand out
+            </strong>
+            . One box per offer, holding the address a lead actually lands on.
+            If a link is renamed or retired in Calendly it has to be changed
+            here too, or the tracked link a setter copies ends at a 404.
+          </p>
+          <p>
+            Saving a changed link unlinks that offer from its Calendly event
+            type, because the old one no longer describes it — press{" "}
+            <strong>Connect Calendly</strong> afterwards to re-match, or
+            bookings on it will not attribute. The offer shows{" "}
+            <em>not linked to Calendly</em> until you do.
+          </p>
+
           <h3>Who is taking a call</h3>
           <p>
             Triage has a <strong>Closer</strong> box with Nigel and Andrew in it
