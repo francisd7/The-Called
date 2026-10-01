@@ -1,7 +1,8 @@
-'use client';
+"use client";
 
-import { useState, type ReactNode } from 'react';
-import { useFormStatus } from 'react-dom';
+import { useState, type ReactNode } from "react";
+import { useRouter } from "next/navigation";
+import { useFormStatus } from "react-dom";
 
 type Result = { ok: true; message?: string } | { ok: false; error: string };
 type Message = { ok: boolean; text: string };
@@ -15,7 +16,13 @@ type Message = { ok: boolean; text: string };
  * updates back until the action finishes, so a "pending" flag set that way
  * never paints while it would actually be useful.
  */
-function Body({ children, message }: { children: ReactNode; message: Message | null }) {
+function Body({
+  children,
+  message,
+}: {
+  children: ReactNode;
+  message: Message | null;
+}) {
   const { pending } = useFormStatus();
 
   return (
@@ -35,7 +42,9 @@ function Body({ children, message }: { children: ReactNode; message: Message | n
 
       {/* The previous result disappears while a new run is going, so a stale
           answer can't be mistaken for the new one. */}
-      {!pending && message && <p className={`msg ${message.ok ? 'ok' : 'err'}`}>{message.text}</p>}
+      {!pending && message && (
+        <p className={`msg ${message.ok ? "ok" : "err"}`}>{message.text}</p>
+      )}
     </>
   );
 }
@@ -57,6 +66,7 @@ export function ActionForm({
   className?: string;
 }) {
   const [message, setMessage] = useState<Message | null>(null);
+  const router = useRouter();
 
   return (
     <form
@@ -67,11 +77,17 @@ export function ActionForm({
           const result = await action(formData);
           setMessage(
             result.ok
-              ? { ok: true, text: result.message ?? successMessage ?? 'Saved' }
-              : { ok: false, text: result.error }
+              ? { ok: true, text: result.message ?? successMessage ?? "Saved" }
+              : { ok: false, text: result.error },
           );
+          // Pull the page's own numbers back in step with what just happened.
+          // revalidatePath marks them stale but nothing re-renders while you
+          // stay on the page, so the summary above a result could contradict
+          // it - a checklist reading "3/3 offers linked" directly above a
+          // result reading "2/3". The message is client state and survives.
+          if (result.ok) router.refresh();
         } catch {
-          setMessage({ ok: false, text: 'Something went wrong — try again.' });
+          setMessage({ ok: false, text: "Something went wrong — try again." });
         }
       }}
     >

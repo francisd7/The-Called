@@ -129,13 +129,25 @@ export async function runCalendlySetup(): Promise<Result> {
         `no Calendly match for: ${result.unlinked.map((u) => u.offer).join(", ")}`,
       );
     }
+    // The account's real links, when something failed to match. Saying only
+    // what did not match is a dead end: the question it leaves is "then what
+    // is the right address", and the answer was already fetched and thrown
+    // away. These are copied straight into the boxes below.
+    const candidates =
+      result.unlinked.length > 0
+        ? "\n\nThe links on this Calendly account:\n" +
+          result.eventTypes
+            .map((et) => `  ${et.name} — ${et.schedulingUrl}`)
+            .join("\n") +
+          "\n\nPaste the right one into the booking links below, then press Connect Calendly again."
+        : "";
     if (result.webhook.status === "created") parts.push("webhook registered");
     else if (result.webhook.status === "already_registered")
       parts.push("webhook already registered");
     else parts.push(`webhook skipped (${result.webhook.reason})`);
 
     revalidatePath("/admin");
-    return { ok: true, message: parts.join(" · ") };
+    return { ok: true, message: parts.join(" · ") + candidates };
   } catch (err) {
     return {
       ok: false,
