@@ -12,6 +12,7 @@ import {
 import { notifyBooking } from "@/lib/discord";
 import { recordIssue } from "@/lib/issues";
 import { countedEventTypes, isCountedEventType } from "@/lib/offerScope";
+import { closerPatch } from "@/lib/closerAttribution";
 import {
   hostFromPayload,
   igHandleFromAnswers,
@@ -81,7 +82,14 @@ async function resolveOffer(payload: CalendlyInviteePayload) {
   );
 }
 
-/** Nigel or Andrew, by the email on their Calendly host record. */
+/**
+ * The closer on the Calendly host record, when there is one.
+ *
+ * In practice this is nearly always the same person: the team books through a
+ * single Calendly account, so the host email is the account owner's whoever is
+ * actually taking the call. It is a starting point, not an answer - which is
+ * why a closer already on the lead is never replaced by it.
+ */
 async function resolveCloser(email: string | null) {
   if (!email) return null;
   return (
@@ -93,6 +101,18 @@ async function handleCreated(leadId: string, payload: CalendlyInviteePayload) {
   const offer = await resolveOffer(payload);
   const host = hostFromPayload(payload);
   const closer = await resolveCloser(host.email);
+
+  // Whoever is already down as taking this call stays down as taking it. The
+  // team books through one Calendly account, so the host email names the
+  // account owner on every booking regardless of who the call is actually
+  // for - and a reschedule fires invitee.created again. Setting it every time
+  // meant a call corrected to the other closer in triage quietly reverted the
+  // moment the prospect moved it, and the brief went to the wrong person.
+  const existing = await db.query.leads.findFirst({
+    where: eq(leads.id, leadId),
+    columns: { closerId: true, closerName: true },
+  });
+  const closerFields = closerPatch(existing?.closerId, closer, host.name);
   const rawStart = payload.scheduled_event?.start_time;
   const parsedStart = rawStart ? new Date(rawStart) : null;
   // An unparseable start_time would otherwise reach the driver as an Invalid
@@ -119,8 +139,8 @@ async function handleCreated(leadId: string, payload: CalendlyInviteePayload) {
       archivedById: null,
       callScheduledFor: startTime,
       offerId: offer?.id ?? null,
-      closerId: closer?.id ?? null,
-      closerName: closer?.name ?? host.name,
+
+      ...closerFields,
       calendlyEventUri: payload.scheduled_event?.uri ?? null,
       calendlyEventTypeUri: payload.scheduled_event?.event_type ?? null,
       calendlyInviteeUri: payload.uri ?? null,

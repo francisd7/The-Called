@@ -592,6 +592,17 @@ export default async function HelpPage() {
             dashboard sign-in and never will — they work from Discord and the
             Airtable post-call form. Admin → People says so beside their name.
           </p>
+          <Watch>
+            Both closers book through one Calendly account, so a new booking
+            always arrives under the account owner&apos;s name whoever is
+            actually taking it — Calendly cannot tell them apart.{" "}
+            <strong>
+              If it is the other closer&apos;s call, change the Closer box
+            </strong>
+            , because that is the only thing that knows. Once you have, it
+            stays: a reschedule will not undo it, and neither will re-running
+            the Calendly history.
+          </Watch>
 
           <h3>Seeing what a setter sees</h3>
           <p>

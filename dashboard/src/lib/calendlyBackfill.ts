@@ -30,6 +30,7 @@ import {
   type CalendlyInviteePayload,
 } from "./calendly.ts";
 import { countedEventTypes, isCountedEventType } from "./offerScope.ts";
+import { closerPatch } from "./closerAttribution.ts";
 
 type Db = PostgresJsDatabase<typeof schema>;
 
@@ -361,7 +362,7 @@ export async function backfillCalendly(
     // throws at request time.
     const current = await db.query.leads.findFirst({
       where: eq(leads.id, leadId),
-      columns: { callBookedAt: true },
+      columns: { callBookedAt: true, closerId: true },
     });
 
     const offer = offerRows.find(
@@ -394,8 +395,7 @@ export async function backfillCalendly(
         // Anyone who books has replied, whatever the tracker says.
         responded: true,
         offerId: offer?.id ?? null,
-        closerId: closer?.id ?? null,
-        closerName: closer?.name ?? host.name,
+        ...closerPatch(current?.closerId, closer, host.name),
         calendlyEventUri: item.event.uri,
         calendlyEventTypeUri: payload.scheduled_event?.event_type ?? null,
         calendlyInviteeUri: payload.uri ?? null,
