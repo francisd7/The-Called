@@ -280,6 +280,14 @@ export async function getSetters() {
  *
  * The second is answered by looking for the lead now rather than trusting what
  * was written at the time, so the list clears itself the moment one appears.
+ *
+ * "The lead now" means two things, and it used to mean only the first. A lead
+ * carrying the booking's own invitee URI is the same booking beyond doubt. But
+ * a lead reconciled by hand, by the Airtable import, or across a reschedule
+ * never picks that URI up - so the person sat on this list permanently while
+ * their call showed as linked everywhere else, which is how it was reported.
+ * A booked call on a lead with the same email is the same reconciliation by
+ * the same rule the webhook itself matches on.
  */
 export async function getUnmatchedBookings() {
   const booked = db
@@ -305,6 +313,14 @@ export async function getUnmatchedBookings() {
           isNull(calendlyWebhookEvents.calendlyInviteeUri),
           notInArray(calendlyWebhookEvents.calendlyInviteeUri, booked),
         ),
+        // Lead emails are stored lowercased and trimmed, so the payload's is
+        // put through the same treatment rather than hoping they match.
+        sql`NOT EXISTS (
+          SELECT 1 FROM ${leads}
+          WHERE ${leads.callBooked} = true
+            AND ${leads.email} IS NOT NULL
+            AND ${leads.email} = lower(trim(${calendlyWebhookEvents.payload}->'payload'->>'email'))
+        )`,
       ),
     )
     .orderBy(desc(calendlyWebhookEvents.createdAt))
