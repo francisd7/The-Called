@@ -1,15 +1,21 @@
 import { getLocalTimeParts, getLocalDateString } from '../reminders/schedule.js';
 
-// Weekly group-call announcements (Masterclass, Sales Call), posted to the
-// announcements channel ahead of each call with its Google Meet link.
+// Weekly group-call announcements (Masterclass, Sales Training), posted to the
+// announcements channel twice per call: a heads-up a couple of hours before,
+// then a "we're live" right before it starts, each with its Google Meet link.
 //
 // The Meet link comes from an env var, not Google Calendar: a recurring
 // Calendar event keeps the same Meet link for every occurrence, so there's
 // nothing to look up week to week. The one exception: editing the series
 // with "This and following events" (new time or recurrence) gives the new
-// half of the series a new link - update the env var when that happens.
+// half of the series a new link - update the env var when that happens. It's
+// an env var rather than a code default because this repo is public.
 
 export const CALL_ANNOUNCEMENT_TIMEZONE = 'America/New_York';
+
+// Shown as-is year-round (even during daylight time, technically EDT) - one
+// fixed label is less confusing for clients than per-viewer local times.
+export const CALL_ANNOUNCEMENT_TIMEZONE_LABEL = 'EST';
 
 // How late an announcement may still go out after its scheduled minute - covers
 // a redeploy or a briefly blocked tick landing on the exact minute. Kept short
@@ -46,34 +52,21 @@ function parseTime(text) {
   return { hour, minute };
 }
 
-// "Tue 19:00" / "Tuesday 7pm" / "Tue 7:00 PM, Thu 12:00" -> [{ weekday, hour, minute }].
-// Times are Eastern (CALL_ANNOUNCEMENT_TIMEZONE). Throws on anything it can't
-// read, so a typo in the env var fails loudly at startup instead of silently
-// never announcing.
+// "Fri 12:00" / "Friday 12pm" / "Tue 7pm, Thu 7pm" -> [{ weekday, hour, minute }].
+// Times are Eastern. "none" (or blank) -> no announcements for that call.
+// Throws on anything it can't read, so a typo fails the deploy loudly instead
+// of silently never announcing.
 export function parseWeeklySchedule(text) {
+  if ((text ?? '').trim().toLowerCase() === 'none') return [];
   const entries = (text ?? '').split(',').map((entry) => entry.trim()).filter(Boolean);
   return entries.map((entry) => {
     const [dayText, ...timeParts] = entry.split(/\s+/);
     const weekday = parseWeekday(dayText);
     const time = parseTime(timeParts.join(' '));
     if (!weekday || !time) {
-      throw new Error(`Can't read schedule entry "${entry}" - expected something like "Tue 19:00" or "Tue 7pm"`);
+      throw new Error(`Can't read schedule entry "${entry}" - expected something like "Fri 12:00" or "Fri 12pm"`);
     }
     return { weekday, ...time };
-  });
-}
-
-// "60" / "60,0" -> [60] / [60, 0]. One announcement per value, that many
-// minutes before the call starts (0 = at start time).
-export function parseLeadMinutes(text) {
-  const values = (text ?? '').split(',').map((value) => value.trim()).filter(Boolean);
-  if (values.length === 0) return [60];
-  return values.map((value) => {
-    const minutes = Number(value);
-    if (!Number.isInteger(minutes) || minutes < 0 || minutes >= MINUTES_PER_WEEK) {
-      throw new Error(`Can't read announcement lead time "${value}" - expected whole minutes, e.g. 60`);
-    }
-    return minutes;
   });
 }
 
@@ -88,27 +81,27 @@ export function parsePing(value) {
   throw new Error(`Can't read announcement ping "${value}" - expected everyone, here, none, or a role ID`);
 }
 
-// The calls this hub announces. A call with no schedule set is simply not
-// announced; a schedule without a Meet link throws, since an announcement
-// with nothing to click is worse than none.
+// The calls this hub announces. A scheduled call with no Meet link throws,
+// since an announcement with nothing to click is worse than none.
 export function buildConfiguredCalls({
   masterclassSchedule,
   masterclassMeetLink,
-  salesCallSchedule,
-  salesCallMeetLink,
+  salesTrainingSchedule,
+  salesTrainingMeetLink,
 }) {
   const calls = [
-    { key: 'masterclass', name: 'Weekly Masterclass', envPrefix: 'MASTERCLASS', scheduleText: masterclassSchedule, meetLink: masterclassMeetLink },
-    { key: 'salesCall', name: 'Weekly Sales Call', envPrefix: 'SALES_CALL', scheduleText: salesCallSchedule, meetLink: salesCallMeetLink },
+    { key: 'masterclass', name: 'The Called Masterclass', envPrefix: 'MASTERCLASS', scheduleText: masterclassSchedule, meetLink: masterclassMeetLink },
+    { key: 'salesTraining', name: 'The Called Sales Training', envPrefix: 'SALES_TRAINING', scheduleText: salesTrainingSchedule, meetLink: salesTrainingMeetLink },
   ];
   return calls
-    .filter((call) => (call.scheduleText ?? '').trim())
+    .map((call) => ({ ...call, schedule: parseWeeklySchedule(call.scheduleText) }))
+    .filter((call) => call.schedule.length > 0)
     .map((call) => {
       const meetLink = (call.meetLink ?? '').trim();
       if (!meetLink) {
-        throw new Error(`${call.envPrefix}_SCHEDULE_ET is set but ${call.envPrefix}_MEET_LINK is missing`);
+        throw new Error(`${call.envPrefix}_MEET_LINK is missing (set ${call.envPrefix}_SCHEDULE_ET=none to skip this call)`);
       }
-      return { key: call.key, name: call.name, schedule: parseWeeklySchedule(call.scheduleText), meetLink };
+      return { key: call.key, name: call.name, schedule: call.schedule, meetLink };
     });
 }
 
@@ -116,25 +109,36 @@ function minuteOfWeek({ weekday, hour, minute }) {
   return WEEKDAYS.indexOf(weekday) * MINUTES_PER_DAY + hour * 60 + minute;
 }
 
-function formatClock(hour, minute) {
+function formatClock24(hour, minute) {
   return `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
 }
 
-// One slot per (call, scheduled time, lead time) - each is announced at most
-// once per week. calls: [{ key, name, schedule: [{ weekday, hour, minute }], meetLink }]
-export function buildAnnouncementSlots(calls, leadMinutesList) {
+// Two slots per scheduled call time - a heads-up and a "we're live" - each
+// announced at most once per week.
+export function buildAnnouncementSlots(calls, { headsUpMinutes, liveMinutes }) {
+  for (const [name, value] of [['heads-up', headsUpMinutes], ['live', liveMinutes]]) {
+    if (!Number.isInteger(value) || value < 0 || value >= MINUTES_PER_WEEK) {
+      throw new Error(`Can't use ${value} as the ${name} announcement lead time - expected whole minutes, e.g. 120`);
+    }
+  }
+  if (liveMinutes >= headsUpMinutes) {
+    throw new Error('The "live" announcement must go out closer to the call than the heads-up');
+  }
+
   const slots = [];
   for (const call of calls) {
     for (const time of call.schedule) {
-      for (const leadMinutes of leadMinutesList) {
-        const startMinuteOfWeek = minuteOfWeek(time);
+      for (const [kind, leadMinutes] of [['headsUp', headsUpMinutes], ['live', liveMinutes]]) {
         slots.push({
-          key: `${call.key}:${time.weekday} ${formatClock(time.hour, time.minute)}:${leadMinutes}`,
+          key: `${call.key}:${time.weekday} ${formatClock24(time.hour, time.minute)}:${kind}`,
+          kind,
           callName: call.name,
           meetLink: call.meetLink,
           leadMinutes,
+          startHour: time.hour,
+          startMinute: time.minute,
           announceMinuteOfWeek:
-            (startMinuteOfWeek - leadMinutes + MINUTES_PER_WEEK) % MINUTES_PER_WEEK,
+            (minuteOfWeek(time) - leadMinutes + MINUTES_PER_WEEK) % MINUTES_PER_WEEK,
         });
       }
     }
@@ -159,24 +163,32 @@ export function findDueAnnouncements(
       (nowMinuteOfWeek - slot.announceMinuteOfWeek + MINUTES_PER_WEEK) % MINUTES_PER_WEEK;
     if (minutesLate >= graceMinutes) continue;
     const announceAt = new Date(nowMinute - minutesLate * 60_000);
-    due.push({
-      slot,
-      occurrenceDate: getLocalDateString(announceAt, timeZone),
-      startsAt: new Date(announceAt.getTime() + slot.leadMinutes * 60_000),
-    });
+    due.push({ slot, occurrenceDate: getLocalDateString(announceAt, timeZone) });
   }
   return due;
 }
 
-// Discord renders <t:...> timestamps in each viewer's own timezone, so clients
-// outside Eastern see their local start time without any conversion here.
-export function formatAnnouncement({ callName, meetLink, startsAt, leadMinutes, ping }) {
-  const unix = Math.floor(startsAt.getTime() / 1000);
+function formatClock12(hour, minute) {
+  const hour12 = ((hour + 11) % 12) + 1;
+  return `${hour12}:${String(minute).padStart(2, '0')} ${hour < 12 ? 'AM' : 'PM'}`;
+}
+
+// 120 -> "2 hours", 90 -> "1 hour 30 minutes", 45 -> "45 minutes"
+function formatDuration(totalMinutes) {
+  const hours = Math.floor(totalMinutes / 60);
+  const minutes = totalMinutes % 60;
+  const parts = [];
+  if (hours > 0) parts.push(`${hours} hour${hours === 1 ? '' : 's'}`);
+  if (minutes > 0 || hours === 0) parts.push(`${minutes} minute${minutes === 1 ? '' : 's'}`);
+  return parts.join(' ');
+}
+
+export function formatAnnouncement({ kind, callName, meetLink, leadMinutes, startHour, startMinute, ping }) {
   const prefix = ping ? `${ping} ` : '';
   const headline =
-    leadMinutes === 0
-      ? `🔴 **${callName}** is starting now!`
-      : `📣 **${callName}** starts <t:${unix}:R> — <t:${unix}:t> your time.`;
+    kind === 'live'
+      ? `🔴 **${callName}** is live!`
+      : `📣 **${callName}** starts in ${formatDuration(leadMinutes)} — ${formatClock12(startHour, startMinute)} ${CALL_ANNOUNCEMENT_TIMEZONE_LABEL}.`;
   return `${prefix}${headline}\nJoin here: ${meetLink}`;
 }
 
@@ -196,7 +208,7 @@ export async function postDueCallAnnouncements({
   const sentLog = state[stateKey] ?? {};
   state[stateKey] = sentLog;
 
-  for (const { slot, occurrenceDate, startsAt } of findDueAnnouncements(now, slots)) {
+  for (const { slot, occurrenceDate } of findDueAnnouncements(now, slots)) {
     if (sentLog[slot.key] === occurrenceDate) continue;
 
     // Mark before sending, same as the weekly reminder, so a send that runs
@@ -206,7 +218,7 @@ export async function postDueCallAnnouncements({
     await saveState(state);
 
     try {
-      await discord.sendToChannel(channelId, formatAnnouncement({ ...slot, startsAt, ping }));
+      await discord.sendToChannel(channelId, formatAnnouncement({ ...slot, ping }));
       log.info(`[callAnnouncements] posted ${slot.key} for ${occurrenceDate}`);
     } catch (err) {
       log.error(`[callAnnouncements] failed to post ${slot.key}:`, err);

@@ -33,11 +33,14 @@ export const config = {
   // posts in the announcements channel." Must be explicitly set to "true".
   callAnnouncementsEnabled: process.env.CALL_ANNOUNCEMENTS_ENABLED === 'true',
   announcementsChannelId: process.env.DISCORD_ANNOUNCEMENTS_CHANNEL_ID,
-  masterclassSchedule: process.env.MASTERCLASS_SCHEDULE_ET || '',
+  // Schedules default to the current recurring Calendar events (Eastern).
+  // Meet links have no default on purpose - this repo is public.
+  masterclassSchedule: process.env.MASTERCLASS_SCHEDULE_ET || 'Fri 12:00',
   masterclassMeetLink: process.env.MASTERCLASS_MEET_LINK || '',
-  salesCallSchedule: process.env.SALES_CALL_SCHEDULE_ET || '',
-  salesCallMeetLink: process.env.SALES_CALL_MEET_LINK || '',
-  callAnnouncementLeadMinutes: process.env.CALL_ANNOUNCEMENT_LEAD_MINUTES || '',
+  salesTrainingSchedule: process.env.SALES_TRAINING_SCHEDULE_ET || 'Sat 12:00',
+  salesTrainingMeetLink: process.env.SALES_TRAINING_MEET_LINK || '',
+  callAnnouncementHeadsUpMinutes: numberOrDefault(process.env.CALL_ANNOUNCEMENT_HEADS_UP_MINUTES, 120),
+  callAnnouncementLiveMinutes: numberOrDefault(process.env.CALL_ANNOUNCEMENT_LIVE_MINUTES, 2),
   callAnnouncementPing: process.env.CALL_ANNOUNCEMENT_PING,
 };
 

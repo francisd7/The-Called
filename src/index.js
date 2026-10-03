@@ -13,7 +13,6 @@ import { registerNewMemberOnboarding } from './onboarding/newMemberOnboarding.js
 import {
   buildConfiguredCalls,
   buildAnnouncementSlots,
-  parseLeadMinutes,
   parsePing,
   postDueCallAnnouncements,
 } from './announcements/weeklyCalls.js';
@@ -38,17 +37,17 @@ async function main() {
   let callAnnouncementSlots = [];
   let callAnnouncementPing = '';
   if (config.callAnnouncementsEnabled) {
-    callAnnouncementSlots = buildAnnouncementSlots(
-      buildConfiguredCalls(config),
-      parseLeadMinutes(config.callAnnouncementLeadMinutes)
-    );
+    callAnnouncementSlots = buildAnnouncementSlots(buildConfiguredCalls(config), {
+      headsUpMinutes: config.callAnnouncementHeadsUpMinutes,
+      liveMinutes: config.callAnnouncementLiveMinutes,
+    });
     callAnnouncementPing = parsePing(config.callAnnouncementPing);
     if (!config.announcementsChannelId) {
       throw new Error('CALL_ANNOUNCEMENTS_ENABLED is true but DISCORD_ANNOUNCEMENTS_CHANNEL_ID is missing');
     }
     if (callAnnouncementSlots.length === 0) {
       throw new Error(
-        'CALL_ANNOUNCEMENTS_ENABLED is true but neither MASTERCLASS_SCHEDULE_ET nor SALES_CALL_SCHEDULE_ET is set'
+        'CALL_ANNOUNCEMENTS_ENABLED is true but both MASTERCLASS_SCHEDULE_ET and SALES_TRAINING_SCHEDULE_ET are "none"'
       );
     }
   }
