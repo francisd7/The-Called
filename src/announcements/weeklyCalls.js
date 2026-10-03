@@ -105,6 +105,42 @@ export function buildConfiguredCalls({
     });
 }
 
+// Everything announcements need, validated. Throws with a message naming the
+// Railway variable to fix.
+export function buildCallAnnouncementSetup(config) {
+  if (!config.announcementsChannelId) {
+    throw new Error('DISCORD_ANNOUNCEMENTS_CHANNEL_ID is missing');
+  }
+  const slots = buildAnnouncementSlots(buildConfiguredCalls(config), {
+    headsUpMinutes: config.callAnnouncementHeadsUpMinutes,
+    liveMinutes: config.callAnnouncementLiveMinutes,
+  });
+  if (slots.length === 0) {
+    throw new Error('MASTERCLASS_SCHEDULE_ET and SALES_TRAINING_SCHEDULE_ET are both "none"');
+  }
+  return { slots, ping: parsePing(config.callAnnouncementPing) };
+}
+
+const PERMISSION_LABELS = {
+  ViewChannel: 'View Channel',
+  SendMessages: 'Send Messages',
+  MentionEveryone: 'Mention @everyone, @here, and All Roles',
+};
+
+// Checked once at startup, so a permissions gap in the announcements channel
+// shows up on deploy instead of at the first scheduled post. Returns a
+// staff-facing description of the problem, or null if the bot can post.
+export async function findAnnouncementChannelProblem({ discord, channelId, ping }) {
+  const needed = ['ViewChannel', 'SendMessages', ...(ping ? ['MentionEveryone'] : [])];
+  try {
+    const missing = await discord.getMissingChannelPermissions(channelId, needed);
+    if (missing.length === 0) return null;
+    return `the bot is missing ${missing.map((name) => `**${PERMISSION_LABELS[name]}**`).join(', ')} in <#${channelId}>`;
+  } catch (err) {
+    return `the bot can't open the announcements channel (${channelId}): ${err.message}`;
+  }
+}
+
 function minuteOfWeek({ weekday, hour, minute }) {
   return WEEKDAYS.indexOf(weekday) * MINUTES_PER_DAY + hour * 60 + minute;
 }

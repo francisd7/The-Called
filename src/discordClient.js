@@ -42,5 +42,16 @@ export function createDiscordClient(botToken, { extraIntents = [] } = {}) {
     });
   }
 
-  return { client, ready, sendToChannel, sendDM, createPrivateChannel };
+  // Which of the given permission names (e.g. 'SendMessages') the bot lacks
+  // in a server channel.
+  async function getMissingChannelPermissions(channelId, permissions) {
+    const channel = await client.channels.fetch(channelId);
+    const granted = channel?.permissionsFor?.(client.user);
+    if (!granted) {
+      throw new Error(`Discord channel ${channelId} was not found or isn't a server channel`);
+    }
+    return permissions.filter((permission) => !granted.has(permission));
+  }
+
+  return { client, ready, sendToChannel, sendDM, createPrivateChannel, getMissingChannelPermissions };
 }

@@ -109,8 +109,13 @@ Design notes:
 
 Gated by `CALL_ANNOUNCEMENTS_ENABLED` (unset/false by default — nothing gets
 posted, and none of the variables below are even read, until it's exactly
-`true`). Once enabled, a missing or unreadable value stops the deploy with an
-error naming the variable, rather than silently never announcing.
+`true`). On every startup with it enabled, the server checks the settings and
+the bot's permissions in the announcements channel. A problem (missing or
+unreadable variable, or a missing permission) is posted to the staff flag
+channel (`DISCORD_ONBOARDING_FLAG_CHANNEL_ID`) as "⚠️ Weekly call
+announcements …" naming exactly what to fix — it never stops the rest of the
+hub from running. No message there means it's set up correctly; the deploy
+logs also show `Call announcements enabled: …` (or `… disabled …`).
 
 What gets posted each week (all times Eastern):
 

@@ -11,9 +11,8 @@ import { isTargetMinute, getLocalDateString } from './reminders/schedule.js';
 import { sendWeeklyCheckinReminders } from './reminders/sendWeeklyCheckinReminders.js';
 import { registerNewMemberOnboarding } from './onboarding/newMemberOnboarding.js';
 import {
-  buildConfiguredCalls,
-  buildAnnouncementSlots,
-  parsePing,
+  buildCallAnnouncementSetup,
+  findAnnouncementChannelProblem,
   postDueCallAnnouncements,
 } from './announcements/weeklyCalls.js';
 
@@ -31,24 +30,16 @@ async function main() {
     );
   }
 
-  // Only parsed once enabled, so a half-filled-in schedule can't take down the
-  // already-live automations. Once enabled, a bad value fails the deploy
-  // loudly rather than silently never announcing.
-  let callAnnouncementSlots = [];
-  let callAnnouncementPing = '';
+  // A bad announcement setting never takes down the rest of the hub - the
+  // announcements just stay off, and staff get told why in the flag channel
+  // once Discord is connected (see below).
+  let callAnnouncements = null;
+  let callAnnouncementConfigError = null;
   if (config.callAnnouncementsEnabled) {
-    callAnnouncementSlots = buildAnnouncementSlots(buildConfiguredCalls(config), {
-      headsUpMinutes: config.callAnnouncementHeadsUpMinutes,
-      liveMinutes: config.callAnnouncementLiveMinutes,
-    });
-    callAnnouncementPing = parsePing(config.callAnnouncementPing);
-    if (!config.announcementsChannelId) {
-      throw new Error('CALL_ANNOUNCEMENTS_ENABLED is true but DISCORD_ANNOUNCEMENTS_CHANNEL_ID is missing');
-    }
-    if (callAnnouncementSlots.length === 0) {
-      throw new Error(
-        'CALL_ANNOUNCEMENTS_ENABLED is true but both MASTERCLASS_SCHEDULE_ET and SALES_TRAINING_SCHEDULE_ET are "none"'
-      );
+    try {
+      callAnnouncements = buildCallAnnouncementSetup(config);
+    } catch (err) {
+      callAnnouncementConfigError = err;
     }
   }
 
@@ -139,16 +130,16 @@ async function main() {
 
   let isCheckingCallAnnouncements = false;
   async function runCallAnnouncementCheckCycle() {
-    if (!config.callAnnouncementsEnabled || isCheckingCallAnnouncements) return;
+    if (!callAnnouncements || isCheckingCallAnnouncements) return;
     isCheckingCallAnnouncements = true;
     try {
       await postDueCallAnnouncements({
-        slots: callAnnouncementSlots,
+        slots: callAnnouncements.slots,
         state,
         saveState,
         discord,
         channelId: config.announcementsChannelId,
-        ping: callAnnouncementPing,
+        ping: callAnnouncements.ping,
         stateKey: CALL_ANNOUNCEMENTS_STATE_KEY,
       });
     } catch (err) {
@@ -158,9 +149,9 @@ async function main() {
     }
   }
   setInterval(runCallAnnouncementCheckCycle, 60_000);
-  if (config.callAnnouncementsEnabled) {
-    console.log(`Call announcements enabled: ${callAnnouncementSlots.map((slot) => slot.key).join(', ')}`);
-  }
+  reportCallAnnouncementStatus({ discord, callAnnouncements, configError: callAnnouncementConfigError }).catch(
+    (err) => console.error('Call announcement status check failed:', err)
+  );
 
   if (config.newMemberOnboardingEnabled) {
     registerNewMemberOnboarding({
@@ -189,6 +180,36 @@ async function main() {
     discord.client.destroy();
     process.exit(0);
   });
+}
+
+async function reportCallAnnouncementStatus({ discord, callAnnouncements, configError }) {
+  if (!config.callAnnouncementsEnabled) {
+    console.log('Call announcements disabled (CALL_ANNOUNCEMENTS_ENABLED is not exactly "true").');
+    return;
+  }
+
+  let problem = null;
+  if (configError) {
+    problem = `are **OFF** — ${configError.message}. Fix that variable on Railway and redeploy.`;
+  } else {
+    const channelProblem = await findAnnouncementChannelProblem({
+      discord,
+      channelId: config.announcementsChannelId,
+      ping: callAnnouncements.ping,
+    });
+    if (channelProblem) {
+      problem = `can't post yet — ${channelProblem}. Fix the channel permissions (no redeploy needed).`;
+    }
+    console.log(`Call announcements enabled: ${callAnnouncements.slots.map((slot) => slot.key).join(', ')}`);
+  }
+  if (!problem) return;
+
+  console.error(`Call announcements ${problem}`);
+  try {
+    await discord.sendToChannel(config.onboardingFlagChannelId, `⚠️ Weekly call announcements ${problem}`);
+  } catch (err) {
+    console.error('Could not post the call announcement warning:', err);
+  }
 }
 
 main().catch((err) => {

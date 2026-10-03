@@ -5,6 +5,8 @@ import {
   parsePing,
   buildConfiguredCalls,
   buildAnnouncementSlots,
+  buildCallAnnouncementSetup,
+  findAnnouncementChannelProblem,
   findDueAnnouncements,
   formatAnnouncement,
   postDueCallAnnouncements,
@@ -180,4 +182,66 @@ test('a failed post is retried on the next tick inside the grace window', async 
 
   await postDueCallAnnouncements({ ...args, now: new Date('2026-10-09T14:01:00Z') });
   assert.equal(posts.length, 1);
+});
+
+const fullConfig = {
+  announcementsChannelId: '1262213160321028176',
+  masterclassSchedule: 'Fri 12:00',
+  masterclassMeetLink: LINK,
+  salesTrainingSchedule: 'Sat 12:00',
+  salesTrainingMeetLink: 'https://meet.google.com/ddd-eeee-fff',
+  callAnnouncementHeadsUpMinutes: 120,
+  callAnnouncementLiveMinutes: 2,
+  callAnnouncementPing: undefined,
+};
+
+test('buildCallAnnouncementSetup returns 4 weekly slots with the defaults, and names the variable to fix', () => {
+  const setup = buildCallAnnouncementSetup(fullConfig);
+  assert.equal(setup.ping, '@everyone');
+  assert.deepEqual(setup.slots.map((slot) => slot.key), [
+    'masterclass:Fri 12:00:headsUp',
+    'masterclass:Fri 12:00:live',
+    'salesTraining:Sat 12:00:headsUp',
+    'salesTraining:Sat 12:00:live',
+  ]);
+
+  assert.throws(
+    () => buildCallAnnouncementSetup({ ...fullConfig, announcementsChannelId: undefined }),
+    /DISCORD_ANNOUNCEMENTS_CHANNEL_ID is missing/
+  );
+  assert.throws(
+    () => buildCallAnnouncementSetup({ ...fullConfig, masterclassMeetLink: '' }),
+    /MASTERCLASS_MEET_LINK is missing/
+  );
+  assert.throws(
+    () => buildCallAnnouncementSetup({ ...fullConfig, masterclassSchedule: 'none', salesTrainingSchedule: 'none' }),
+    /both "none"/
+  );
+});
+
+test('findAnnouncementChannelProblem reports missing permissions in plain names', async () => {
+  const discordMissing = (missing) => ({ getMissingChannelPermissions: async () => missing });
+
+  assert.equal(
+    await findAnnouncementChannelProblem({ discord: discordMissing([]), channelId: '123', ping: '@everyone' }),
+    null
+  );
+  assert.equal(
+    await findAnnouncementChannelProblem({ discord: discordMissing(['SendMessages']), channelId: '123', ping: '@everyone' }),
+    'the bot is missing **Send Messages** in <#123>'
+  );
+
+  let asked;
+  await findAnnouncementChannelProblem({
+    discord: { getMissingChannelPermissions: async (_id, needed) => { asked = needed; return []; } },
+    channelId: '123',
+    ping: '',
+  });
+  assert.deepEqual(asked, ['ViewChannel', 'SendMessages']); // no ping -> no Mention @everyone needed
+
+  const unreachable = { getMissingChannelPermissions: async () => { throw new Error('Missing Access'); } };
+  assert.match(
+    await findAnnouncementChannelProblem({ discord: unreachable, channelId: '123', ping: '@everyone' }),
+    /can't open the announcements channel \(123\): Missing Access/
+  );
 });
