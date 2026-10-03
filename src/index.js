@@ -10,10 +10,18 @@ import * as weeklyCheckin from './automations/weeklyCheckin.js';
 import { isTargetMinute, getLocalDateString } from './reminders/schedule.js';
 import { sendWeeklyCheckinReminders } from './reminders/sendWeeklyCheckinReminders.js';
 import { registerNewMemberOnboarding } from './onboarding/newMemberOnboarding.js';
+import {
+  buildConfiguredCalls,
+  buildAnnouncementSlots,
+  parseLeadMinutes,
+  parsePing,
+  postDueCallAnnouncements,
+} from './announcements/weeklyCalls.js';
 
 const WEEKLY_REMINDER_TIMEZONE = 'America/New_York';
 const WEEKLY_REMINDER_WEEKDAY = 'Fri';
 const WEEKLY_REMINDER_STATE_KEY = 'weeklyCheckinReminderLastRunDate';
+const CALL_ANNOUNCEMENTS_STATE_KEY = 'callAnnouncementsLastPosted';
 
 async function main() {
   assertRequiredConfig();
@@ -22,6 +30,27 @@ async function main() {
     throw new Error(
       'NEW_MEMBER_ONBOARDING_ENABLED is true but DISCORD_CLIENT_GUILD_ID or DISCORD_CSM_ROLE_ID is missing'
     );
+  }
+
+  // Only parsed once enabled, so a half-filled-in schedule can't take down the
+  // already-live automations. Once enabled, a bad value fails the deploy
+  // loudly rather than silently never announcing.
+  let callAnnouncementSlots = [];
+  let callAnnouncementPing = '';
+  if (config.callAnnouncementsEnabled) {
+    callAnnouncementSlots = buildAnnouncementSlots(
+      buildConfiguredCalls(config),
+      parseLeadMinutes(config.callAnnouncementLeadMinutes)
+    );
+    callAnnouncementPing = parsePing(config.callAnnouncementPing);
+    if (!config.announcementsChannelId) {
+      throw new Error('CALL_ANNOUNCEMENTS_ENABLED is true but DISCORD_ANNOUNCEMENTS_CHANNEL_ID is missing');
+    }
+    if (callAnnouncementSlots.length === 0) {
+      throw new Error(
+        'CALL_ANNOUNCEMENTS_ENABLED is true but neither MASTERCLASS_SCHEDULE_ET nor SALES_CALL_SCHEDULE_ET is set'
+      );
+    }
   }
 
   const airtableClient = createAirtableClient(config.airtablePat);
@@ -108,6 +137,31 @@ async function main() {
     }
   }
   setInterval(runWeeklyReminderCheckCycle, 60_000);
+
+  let isCheckingCallAnnouncements = false;
+  async function runCallAnnouncementCheckCycle() {
+    if (!config.callAnnouncementsEnabled || isCheckingCallAnnouncements) return;
+    isCheckingCallAnnouncements = true;
+    try {
+      await postDueCallAnnouncements({
+        slots: callAnnouncementSlots,
+        state,
+        saveState,
+        discord,
+        channelId: config.announcementsChannelId,
+        ping: callAnnouncementPing,
+        stateKey: CALL_ANNOUNCEMENTS_STATE_KEY,
+      });
+    } catch (err) {
+      console.error('Call announcement check failed:', err);
+    } finally {
+      isCheckingCallAnnouncements = false;
+    }
+  }
+  setInterval(runCallAnnouncementCheckCycle, 60_000);
+  if (config.callAnnouncementsEnabled) {
+    console.log(`Call announcements enabled: ${callAnnouncementSlots.map((slot) => slot.key).join(', ')}`);
+  }
 
   if (config.newMemberOnboardingEnabled) {
     registerNewMemberOnboarding({

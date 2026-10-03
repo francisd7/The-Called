@@ -15,6 +15,7 @@ build status: [`docs/STATUS.md`](docs/STATUS.md).
 | Weekly Check-in → Discord | New record in **Weekly Check-ins** (`Client Success` base) | Posts "✅ **[Client Name]** submitted their Weekly Check-in — Momentum: [X]/10" to the `DISCORD_WEEKLY_CHECKIN_CHANNEL_ID` channel |
 | Weekly Check-in reminder DMs | Every Friday, `WEEKLY_REMINDER_HOUR_ET`:`WEEKLY_REMINDER_MINUTE_ET` ET (default noon) | DMs every `Status = Active` Client with a Discord ID and no opt-out: "Hey [First Name], time for your Weekly Check-in — [prefilled link]". Posts a send/skip summary to `DISCORD_WEEKLY_CHECKIN_CHANNEL_ID` right after. |
 | New-member onboarding | Someone joins the client-facing Discord server (`DISCORD_CLIENT_GUILD_ID`) | Creates a private `firstname-lastname` channel (visible to them, the bot, and the CSM role), posts the welcome message, then waits for their reply. A reply that looks like an email is matched against the Clients table's `Email` field — matched → writes their Discord ID back to that record; no match (the common case for a genuinely new signup) → creates a starter Client record (Name, Email, Discord ID, Start Date, Status Active) and flags `DISCORD_ONBOARDING_FLAG_CHANNEL_ID` so staff fills in Package/CSM/Contract Value. |
+| Weekly call announcements | Each scheduled Masterclass / Sales Call time (Eastern), minus `CALL_ANNOUNCEMENT_LEAD_MINUTES` (default 60) | Posts "@everyone 📣 **Weekly Masterclass** starts in 1 hour — [start time in each viewer's own timezone]. Join here: [Meet link]" to `DISCORD_ANNOUNCEMENTS_CHANNEL_ID`. Built, gated off by default — see below. |
 
 The first two notifications go to separate Discord channels (and can be in
 separate servers) — the bot just needs to be a member of whichever server
@@ -103,6 +104,53 @@ Design notes:
   means this client is immediately eligible for the Friday Weekly Check-in
   reminder DM (automation #3), even before a CSM is assigned — a deliberate
   choice, not an oversight.
+
+## Weekly call announcements — built, gated off by default
+
+Gated by `CALL_ANNOUNCEMENTS_ENABLED` (unset/false by default — nothing gets
+posted, and none of the variables below are even read, until it's exactly
+`true`). Once enabled, a missing or unreadable value stops the deploy with an
+error naming the variable, rather than silently never announcing.
+
+| Variable | Required to go live | Notes |
+|---|---|---|
+| `CALL_ANNOUNCEMENTS_ENABLED` | Yes | Must be exactly `true` (string). |
+| `DISCORD_ANNOUNCEMENTS_CHANNEL_ID` | Yes | Right-click the announcements channel → **Copy Channel ID**. |
+| `MASTERCLASS_SCHEDULE_ET` | At least one of the two schedules | Day + Eastern start time, e.g. `Tue 19:00` or `Tuesday 7pm`. Several per week: `Tue 7pm, Thu 7pm`. Leave unset to not announce this call. |
+| `MASTERCLASS_MEET_LINK` | If its schedule is set | e.g. `https://meet.google.com/abc-defg-hij` |
+| `SALES_CALL_SCHEDULE_ET` | At least one of the two schedules | Same format as above. |
+| `SALES_CALL_MEET_LINK` | If its schedule is set | Can be the same link as the Masterclass if both calls use one room. |
+| `CALL_ANNOUNCEMENT_LEAD_MINUTES` | No | How long before the call to post. Default `60`. A list posts several times, e.g. `60,0` = an hour before and again at start ("is starting now!"). |
+| `CALL_ANNOUNCEMENT_PING` | No | `everyone` (default), `here`, `none`, or a role ID to ping just that role. |
+
+**Why the Meet link is a setting, not pulled from Google Calendar:** a
+recurring Calendar event keeps the same Meet link for every occurrence, so
+there's nothing to look up week to week, and skipping the Calendar API means
+no Google Cloud project/OAuth to set up and maintain. The one catch: since
+Google's November 2025 change, editing the series with **"This and following
+events"** (new time or new recurrence) gives the new half of the series a
+**new** Meet link — if that happens, update the `*_MEET_LINK` variable (and the
+`*_SCHEDULE_ET` one if the time moved). Editing a single occurrence ("This
+event") doesn't change the link. A week the call is cancelled still gets
+announced; set `CALL_ANNOUNCEMENTS_ENABLED` to anything else for that week.
+
+The start time is posted as a Discord timestamp, so every viewer sees it in
+their own timezone ("in 1 hour — 7:00 PM") with no conversion needed.
+
+Bot permissions in the announcements channel: **View Channel** and **Send
+Messages**, plus **Mention @everyone, @here, and All Roles** — without that
+last one the `@everyone` text still appears but nobody actually gets pinged.
+If the channel's category is locked down, the same "Missing Access" fix below
+applies.
+
+To test safely before going live: point `DISCORD_ANNOUNCEMENTS_CHANNEL_ID` at
+a test channel, set `CALL_ANNOUNCEMENT_PING=none` and a schedule about 65
+minutes from now (so the post lands ~5 minutes after the deploy), enable, and
+watch it post. Then swap in the real channel, schedule, and ping.
+
+Same state-file caveat as everything else (see "State persistence" below):
+the "already posted this week" record lives in `data/state.json`, so a
+redeploy within 5 minutes after an announcement can repost it once.
 
 ## How it works
 
@@ -227,6 +275,8 @@ src/
     weeklyCheckinReminder.js       who gets a reminder DM, and the message
     schedule.js                     DST-aware "is it Friday at HH:MM ET" helpers
     sendWeeklyCheckinReminders.js   the real send path
+  announcements/
+    weeklyCalls.js       Masterclass / Sales Call schedule parsing + announcement posts
   onboarding/
     channelName.js       display name -> Discord-safe channel name
     email.js              email-shaped-text detection + normalization

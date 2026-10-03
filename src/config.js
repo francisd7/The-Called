@@ -29,6 +29,16 @@ export const config = {
   onboardingFlagChannelId:
     process.env.DISCORD_ONBOARDING_FLAG_CHANNEL_ID || process.env.DISCORD_WEEKLY_CHECKIN_CHANNEL_ID,
   notionDashboardUrl: process.env.NOTION_DASHBOARD_URL || '',
+  // Same off-by-default gate - the switch between "code exists" and "real
+  // posts in the announcements channel." Must be explicitly set to "true".
+  callAnnouncementsEnabled: process.env.CALL_ANNOUNCEMENTS_ENABLED === 'true',
+  announcementsChannelId: process.env.DISCORD_ANNOUNCEMENTS_CHANNEL_ID,
+  masterclassSchedule: process.env.MASTERCLASS_SCHEDULE_ET || '',
+  masterclassMeetLink: process.env.MASTERCLASS_MEET_LINK || '',
+  salesCallSchedule: process.env.SALES_CALL_SCHEDULE_ET || '',
+  salesCallMeetLink: process.env.SALES_CALL_MEET_LINK || '',
+  callAnnouncementLeadMinutes: process.env.CALL_ANNOUNCEMENT_LEAD_MINUTES || '',
+  callAnnouncementPing: process.env.CALL_ANNOUNCEMENT_PING,
 };
 
 export function assertRequiredConfig() {
