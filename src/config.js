@@ -21,8 +21,8 @@ export const config = {
   stateFilePath: process.env.STATE_FILE_PATH || 'data/state.json',
   // WEEKLY_REMINDER_ENABLED / _HOUR_ET / _MINUTE_ET / WEEKLY_CHECKIN_FORM_URL
   // were read here and are deliberately gone. The Friday reminder was removed
-  // on 2026-09-15 at the CSM's request, so nothing the bot runs sends a client
-  // anything on a schedule. Safe to delete from Railway.
+  // on 2026-09-15 at the CSM's request. Safe to delete from Railway. The only
+  // scheduled post clients see now is the weekly call announcements below.
   //
   // Saturday's missing-check-in report. Off by default, though it only ever
   // posts to a staff channel - no client ever sees it.
@@ -61,6 +61,19 @@ export const config = {
   // role change in Discord rewrites Package / Tier in Airtable - so this
   // stays off until the roles themselves are correct.
   tierSyncEnabled: process.env.TIER_SYNC_ENABLED === 'true',
+  // Weekly Masterclass / Sales Training announcements. Off by default - this
+  // posts where every client sees it, so it must be explicitly "true".
+  callAnnouncementsEnabled: process.env.CALL_ANNOUNCEMENTS_ENABLED === 'true',
+  announcementsChannelId: process.env.DISCORD_ANNOUNCEMENTS_CHANNEL_ID,
+  // Schedules default to the current recurring Calendar events (Eastern).
+  // Meet links have no default on purpose - this repo is public.
+  masterclassSchedule: process.env.MASTERCLASS_SCHEDULE_ET || 'Fri 12:00',
+  masterclassMeetLink: process.env.MASTERCLASS_MEET_LINK || '',
+  salesTrainingSchedule: process.env.SALES_TRAINING_SCHEDULE_ET || 'Sat 12:00',
+  salesTrainingMeetLink: process.env.SALES_TRAINING_MEET_LINK || '',
+  callAnnouncementHeadsUpMinutes: numberOrDefault(process.env.CALL_ANNOUNCEMENT_HEADS_UP_MINUTES, 120),
+  callAnnouncementLiveMinutes: numberOrDefault(process.env.CALL_ANNOUNCEMENT_LIVE_MINUTES, 2),
+  callAnnouncementPing: process.env.CALL_ANNOUNCEMENT_PING,
 };
 
 // Both of these default to the ops notifications channel. Overridable if the

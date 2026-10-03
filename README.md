@@ -15,6 +15,7 @@ build status: [`docs/STATUS.md`](docs/STATUS.md).
 | Weekly Check-in → Discord | New record in **Weekly Check-ins** (`Client Success` base) | Posts "✅ **[Client Name]** submitted their Weekly Check-in — Momentum: [X]/10" to the `DISCORD_WEEKLY_CHECKIN_CHANNEL_ID` channel |
 | New-member onboarding | Someone joins the client-facing Discord server (`DISCORD_CLIENT_GUILD_ID`) | Works out which package invite they used, assigns the matching brand + tier roles, creates a private `firstname-lastname` channel under that tier's category (visible to them, the bot, and the staff that tier is entitled to), posts the welcome message, then waits for their reply. A reply that looks like an email is matched against the Clients table's `Email` field — matched → writes their Discord ID back to that record; no match (the common case for a genuinely new signup) → creates a starter Client record (Name, Email, Discord ID, Start Date, Status Active, plus Brand and Package/Tier from the invite) and flags `DISCORD_ONBOARDING_FLAG_CHANNEL_ID` so staff fills in CSM and Contract Value. |
 | Tier sync | A tier role is added or removed on a member in the client server | Writes the new `Package / Tier` to the matching Client record, moves their private channel to the new tier's category (rewriting its permission overwrites so the new tier's staff actually gain access), and posts the change to `DISCORD_TIER_CHANGES_CHANNEL_ID` as an audit trail. |
+| Weekly call announcements | 2 hours and 2 minutes before each Masterclass (Fri 12:00 PM ET) and Sales Training (Sat 12:00 PM ET) | Posts "@everyone 📣 **The Called Masterclass** starts in 2 hours — 12:00 PM EST. Join here: [Meet link]", then "@everyone 🔴 **The Called Masterclass** is live! Join here: [Meet link]", to `DISCORD_ANNOUNCEMENTS_CHANNEL_ID`. See below. |
 
 The first two notifications go to separate Discord channels (and can be in
 separate servers) — the bot just needs to be a member of whichever server
@@ -353,6 +354,63 @@ those set on Railway does nothing; delete them when convenient.
 read only by the Saturday report, where it means "not expected to check in at
 all" — someone with it checked never appears as a miss.
 
+## Weekly call announcements
+
+Gated by `CALL_ANNOUNCEMENTS_ENABLED` (off unless it's exactly `true` — this
+posts where every client sees it). The boot log says either `Weekly call
+announcements armed …` or `… are off …`. With it on, every startup checks the
+settings and the bot's permissions in the announcements channel; a problem
+(missing or unreadable variable, missing permission) is posted to the ops
+notifications channel as "⚠️ Weekly call announcements …" naming exactly what
+to fix, and never stops the rest of the hub. No warning there means it's set
+up correctly.
+
+What gets posted each week (all times Eastern):
+
+| When | Message |
+|---|---|
+| Fri 10:00 AM | @everyone 📣 **The Called Masterclass** starts in 2 hours — 12:00 PM EST. Join here: [link] |
+| Fri 11:58 AM | @everyone 🔴 **The Called Masterclass** is live! Join here: [link] |
+| Sat 10:00 AM | @everyone 📣 **The Called Sales Training** starts in 2 hours — 12:00 PM EST. Join here: [link] |
+| Sat 11:58 AM | @everyone 🔴 **The Called Sales Training** is live! Join here: [link] |
+
+"EST" is a fixed label on purpose (one time for everyone, no per-viewer
+conversion), shown year-round even though it's technically EDT in summer.
+
+| Variable | Required | Notes |
+|---|---|---|
+| `CALL_ANNOUNCEMENTS_ENABLED` | Yes | Must be exactly `true`. |
+| `DISCORD_ANNOUNCEMENTS_CHANNEL_ID` | Yes | The client server's `#announcements` (`1262213160321028176` as of 2026-10-03). |
+| `MASTERCLASS_MEET_LINK` | Yes | From the recurring Calendar event. **Not** in the code because this repo is public. |
+| `SALES_TRAINING_MEET_LINK` | Yes | Same. |
+| `MASTERCLASS_SCHEDULE_ET` | No | Default `Fri 12:00`. Day + Eastern start time, e.g. `Fri 12pm`; several per week: `Tue 7pm, Fri 12pm`; `none` to stop announcing this call. |
+| `SALES_TRAINING_SCHEDULE_ET` | No | Default `Sat 12:00`. Same format. |
+| `CALL_ANNOUNCEMENT_HEADS_UP_MINUTES` | No | Default `120`. |
+| `CALL_ANNOUNCEMENT_LIVE_MINUTES` | No | Default `2`. Must be less than the heads-up. |
+| `CALL_ANNOUNCEMENT_PING` | No | `everyone` (default), `here`, `none`, or a role ID to ping just that role. |
+
+**Why the Meet link is a setting, not pulled from Google Calendar:** a
+recurring Calendar event keeps the same Meet link for every occurrence, so
+there's nothing to look up week to week, and skipping the Calendar API means
+no Google Cloud project/OAuth to set up and maintain. The one catch: since
+Google's November 2025 change, editing the series with **"This and following
+events"** (new time or new recurrence) gives the new half of the series a
+**new** Meet link — if that happens, update the `*_MEET_LINK` variable (and the
+`*_SCHEDULE_ET` one if the time moved). Editing a single occurrence ("This
+event") doesn't change the link. A week the call is cancelled still gets
+announced; set that call's `*_SCHEDULE_ET` to `none` for that week.
+
+Bot permissions in the announcements channel: **View Channel**, **Send
+Messages** (`#announcements` is read-only for clients, so the bot needs its
+own allow), and **Mention @everyone, @here, and All Roles** — without that
+last one the `@everyone` text still appears but nobody gets pinged. The
+startup check reports whichever of these is missing.
+
+Each post goes out within 5 minutes of its time — late enough to survive a
+redeploy or a skipped tick, early enough that "starts in 2 hours" is still
+true. Same state-file caveat as everything else (see "State persistence"
+below): a redeploy within those 5 minutes after a post can repost it once.
+
 ## New-member onboarding — built, gated off by default
 
 Gated by `NEW_MEMBER_ONBOARDING_ENABLED` (unset/false by default — no channel
@@ -532,6 +590,8 @@ src/
     schedule.js                     DST-aware "is it <day> at HH:MM ET" helpers
     weeklyCheckinReport.js          who hasn't checked in, grouped by CSM
     sendWeeklyCheckinReport.js      the Saturday report's send path
+  announcements/
+    weeklyCalls.js       Masterclass / Sales Training schedule + announcement posts
   onboarding/
     channelName.js       display name -> Discord-safe channel name
     email.js              email-shaped-text detection + normalization

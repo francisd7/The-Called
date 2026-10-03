@@ -14,11 +14,17 @@ import { registerNewMemberOnboarding } from './onboarding/newMemberOnboarding.js
 import { createInviteTracker } from './discord/inviteTracker.js';
 import { parseInviteRoleMap, findUnmappedSlots, getInviteSlot } from './discord/inviteRoles.js';
 import { registerTierSync } from './discord/tierSync.js';
+import {
+  buildCallAnnouncementSetup,
+  findAnnouncementChannelProblem,
+  postDueCallAnnouncements,
+} from './announcements/weeklyCalls.js';
 
 // Saturday, so a client has the whole working week plus Friday to submit
 // before the team is asked to chase them.
 const WEEKLY_REPORT_WEEKDAY = 'Sat';
 const WEEKLY_REPORT_STATE_KEY = 'weeklyCheckinReportLastRunDate';
+const CALL_ANNOUNCEMENTS_STATE_KEY = 'callAnnouncementsLastPosted';
 
 async function main() {
   assertRequiredConfig();
@@ -124,7 +130,8 @@ async function main() {
   // The Friday reminder that posted into every client's private channel was
   // removed on 2026-09-15 at the CSM's request - clients are prompted in their
   // 1:1s instead. Only the Saturday report below survives, so the team still
-  // sees who has not checked in; nothing is sent to clients automatically.
+  // sees who has not checked in. (The weekly call announcements further down
+  // are the one scheduled post clients see, added separately on 2026-10-03.)
   // `git revert` the commit that removed it to bring it back.
 
   // One date-stamped state key, so a tick that overlaps a slow run can't post
@@ -178,6 +185,63 @@ async function main() {
         }`
       : 'Weekly Check-in missing report is off — set WEEKLY_REPORT_ENABLED=true to arm it.'
   );
+
+  // Weekly call announcements. A bad setting never takes the rest of the hub
+  // down - announcements just stay off and the ops channel is told what to
+  // fix. The channel's permissions are checked here too, so a gap shows up on
+  // deploy rather than at the first scheduled post.
+  let callAnnouncements = null;
+  if (config.callAnnouncementsEnabled) {
+    let problem = null;
+    try {
+      callAnnouncements = buildCallAnnouncementSetup(config);
+      const channelProblem = await findAnnouncementChannelProblem({
+        discord,
+        channelId: config.announcementsChannelId,
+        ping: callAnnouncements.ping,
+      });
+      if (channelProblem) {
+        problem = `can't post yet — ${channelProblem}. Fix the channel permissions (no redeploy needed).`;
+      }
+      console.log(
+        `Weekly call announcements armed (${BUSINESS_TIMEZONE}): ${callAnnouncements.slots
+          .map((slot) => slot.key)
+          .join(', ')}, posting to ${config.announcementsChannelId}`
+      );
+    } catch (err) {
+      problem = `are **OFF** — ${err.message}. Fix that variable on Railway and redeploy.`;
+    }
+    if (problem) {
+      console.error(`Weekly call announcements ${problem}`);
+      discord
+        .sendToChannel(config.opsNotificationsChannelId, `⚠️ Weekly call announcements ${problem}`)
+        .catch((err) => console.error('Could not post the call announcement warning:', err));
+    }
+  } else {
+    console.log('Weekly call announcements are off — set CALL_ANNOUNCEMENTS_ENABLED=true to arm them.');
+  }
+
+  let isCheckingCallAnnouncements = false;
+  async function runCallAnnouncementCheckCycle() {
+    if (!callAnnouncements || isCheckingCallAnnouncements) return;
+    isCheckingCallAnnouncements = true;
+    try {
+      await postDueCallAnnouncements({
+        slots: callAnnouncements.slots,
+        state,
+        saveState,
+        discord,
+        channelId: config.announcementsChannelId,
+        ping: callAnnouncements.ping,
+        stateKey: CALL_ANNOUNCEMENTS_STATE_KEY,
+      });
+    } catch (err) {
+      console.error('Call announcement check failed:', err);
+    } finally {
+      isCheckingCallAnnouncements = false;
+    }
+  }
+  setInterval(runCallAnnouncementCheckCycle, 60_000);
 
   if (config.newMemberOnboardingEnabled) {
     const { map: inviteRoleMap, unknownSlots } = parseInviteRoleMap(config.inviteRoleMap);
