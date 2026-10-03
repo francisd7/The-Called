@@ -700,10 +700,29 @@ export default async function HelpPage() {
           <h3>Boosted reels</h3>
           <p>
             <strong>Ads</strong> holds one tile per boosted reel with what it
-            cost and what came back. Everything is typed in — spend and views
-            come from Ads Manager and Instagram, and the calls and closes only
-            exist here. Cost per lead and the rest are worked out, so there is
-            nothing to keep in step by hand.
+            cost and what came back. Cost per lead and the rest are worked out,
+            so there is nothing to keep in step by hand. Likes, comments,
+            shares, saves and the calls and closes are typed in — nothing else
+            reports those.
+          </p>
+          <p>
+            <strong>Import from Ads Manager</strong> takes the CSV that{' '}
+            <strong>Reports &rarr; Export</strong> gives you and fills spend,
+            impressions, reach and profile visits, so those do not have to be
+            copied across by hand. Press <strong>Dry run</strong> first: it
+            lists every number it would change, old to new, and every one it
+            would leave alone.
+          </p>
+          <p>
+            Two things to know about it. An ad is matched to a reel by{' '}
+            <strong>Ad name in Ads Manager</strong> on the reel — paste the name
+            from the export in there once and every later import lands on the
+            same reel, even if the reel gets renamed. And numbers only ever go
+            up, because the export covers whichever dates were picked in Ads
+            Manager: a two-day export of a month-long boost would otherwise cut
+            the spend down to two days of it. If a figure really was entered
+            wrong, tick <strong>Replace numbers that are already here</strong>{' '}
+            to let it come down.
           </p>
         </Section>
       )}

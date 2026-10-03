@@ -539,6 +539,12 @@ export const boostedReels = pgTable('boosted_reels', {
   shortcode: text('shortcode'),
   /** The opening line, so the pattern behind a winner is visible next to it. */
   hook: text('hook'),
+  /**
+   * What this reel is called in Meta Ads Manager, so a CSV export of the ad
+   * performance lands on the right reel every time it is imported rather than
+   * being matched on a title somebody might rename.
+   */
+  adName: text('ad_name'),
   postedOn: text('posted_on'), // YYYY-MM-DD in ET, like every other plain date here
 
   // --- the boost ---
@@ -556,6 +562,13 @@ export const boostedReels = pgTable('boosted_reels', {
 
   // --- what Instagram reports ---
   views: integer('views'),
+  /**
+   * Times it was on screen, counting repeats - what Ads Manager calls
+   * impressions. Kept apart from views on purpose: views is Instagram's own
+   * plays count, and the ads export does not carry it, so filing impressions
+   * there would quietly replace one number with a different one.
+   */
+  impressions: integer('impressions'),
   reach: integer('reach'),
   likes: integer('likes'),
   comments: integer('comments'),

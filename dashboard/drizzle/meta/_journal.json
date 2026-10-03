@@ -183,6 +183,13 @@
       "when": 1790656487719,
       "tag": "0025_archive_leads",
       "breakpoints": true
+    },
+    {
+      "idx": 26,
+      "version": "7",
+      "when": 1791046637349,
+      "tag": "0026_ads_export_columns",
+      "breakpoints": true
     }
   ]
 }

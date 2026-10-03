@@ -3,7 +3,7 @@ import { db } from '@/db';
 import { boostedReels } from '@/db/schema';
 import { currentUser } from '@/lib/session';
 import { ActionForm } from '@/components/ActionForm';
-import { addReel, deleteReel, updateReel } from '@/lib/reelActions';
+import { addReel, deleteReel, importAdsExport, updateReel } from '@/lib/reelActions';
 import { embedUrl, permalink, reelMetrics, summariseReels, REEL_STATUSES } from '@/lib/reelMetrics';
 
 export const dynamic = 'force-dynamic';
@@ -101,6 +101,15 @@ function ReelForm({ reel, canEdit }: { reel?: Reel; canEdit: boolean }) {
         />
       </div>
       <div className="field">
+        <label htmlFor={`adName-${d?.id ?? 'new'}`}>Ad name in Ads Manager</label>
+        <input
+          id={`adName-${d?.id ?? 'new'}`}
+          name="adName"
+          defaultValue={d?.adName ?? ''}
+          placeholder="Paste it from the CSV so imports land here"
+        />
+      </div>
+      <div className="field">
         <label htmlFor={`hook-${d?.id ?? 'new'}`}>Hook</label>
         <input
           id={`hook-${d?.id ?? 'new'}`}
@@ -150,6 +159,10 @@ function ReelForm({ reel, canEdit }: { reel?: Reel; canEdit: boolean }) {
       <div className="field">
         <label htmlFor={`views-${d?.id ?? 'new'}`}>Views</label>
         <input id={`views-${d?.id ?? 'new'}`} name="views" inputMode="numeric" defaultValue={d?.views ?? ''} />
+      </div>
+      <div className="field">
+        <label htmlFor={`impressions-${d?.id ?? 'new'}`}>Impressions</label>
+        <input id={`impressions-${d?.id ?? 'new'}`} name="impressions" inputMode="numeric" defaultValue={d?.impressions ?? ''} />
       </div>
       <div className="field">
         <label htmlFor={`reach-${d?.id ?? 'new'}`}>Accounts reached</label>
@@ -291,6 +304,7 @@ export default async function DataPage() {
                     <Figure label="per call" value={money(m.costPerCall, cur, 2)} />
                     <Figure label="return" value={m.roas === null ? '—' : `${m.roas.toFixed(1)}×`} />
                     <Figure label="views" value={n0(reel.views)} />
+                    <Figure label="impressions" value={n0(reel.impressions)} />
                     <Figure label="convos" value={n0(reel.leadsGenerated)} />
                     <Figure label="calls" value={n0(reel.callsBooked)} />
                     <Figure label="closes" value={n0(reel.closes)} />
@@ -331,6 +345,7 @@ export default async function DataPage() {
                   <th>Status</th>
                   <th>Spend</th>
                   <th>Views</th>
+                  <th>Impr.</th>
                   <th>Reach</th>
                   <th>Eng.</th>
                   <th>Convos</th>
@@ -361,6 +376,7 @@ export default async function DataPage() {
                       <td>{reel.status}</td>
                       <td>{money(reel.spend === null ? null : Number(reel.spend), cur)}</td>
                       <td>{n0(reel.views)}</td>
+                      <td>{n0(reel.impressions)}</td>
                       <td>{n0(reel.reach)}</td>
                       <td>{pct(m.engagementRate)}</td>
                       <td>{n0(reel.leadsGenerated)}</td>
@@ -382,6 +398,42 @@ export default async function DataPage() {
 
       {canEdit && (
         <>
+          <h2>Import from Ads Manager</h2>
+          <p className="sub">
+            In Ads Manager, open the ads, press <strong>Reports &rarr; Export</strong>{' '}
+            and save the CSV, then pick it here. It fills spend, impressions,
+            reach and profile visits; conversations, calls, closes and cash
+            stay as the dashboard has them, because the export knows nothing
+            about those.
+          </p>
+          <p className="sub">
+            Press <strong>Dry run</strong> first. The export only covers the
+            dates picked in Ads Manager, and a shorter window than the boost
+            would otherwise cut a figure down — so numbers only ever go up,
+            and anything left alone is listed.
+          </p>
+          <div className="card">
+            <ActionForm action={importAdsExport} successMessage="Done">
+              <div className="field">
+                <label htmlFor="ads-file">Ads Manager export</label>
+                <input id="ads-file" name="file" type="file" accept=".csv,text/csv" />
+              </div>
+              <label className="check">
+                <input type="checkbox" name="replace" value="1" /> Replace numbers
+                that are already here, even when the export is lower (for fixing
+                a figure that was entered wrong)
+              </label>
+              <div className="btn-row">
+                <button type="submit" name="dryRun" value="1">
+                  Dry run
+                </button>
+                <button className="btn-primary" type="submit">
+                  Import
+                </button>
+              </div>
+            </ActionForm>
+          </div>
+
           <h2>Add a reel</h2>
           <div className="card">
             <ActionForm action={addReel} successMessage="Added">
