@@ -18,11 +18,34 @@ function money(v: number | null, currency: string, digits = 0) {
     style: 'currency',
     currency,
     maximumFractionDigits: digits,
-    minimumFractionDigits: 0,
+    // Matched to the maximum rather than left at 0, or a spend of 57.70 prints
+    // as CA$57.7 and reads like a figure that has been cut short.
+    minimumFractionDigits: digits,
   });
 }
 
 const pct = (v: number | null) => (v === null ? '—' : `${(v * 100).toFixed(1)}%`);
+
+/**
+ * A cost per profile visit is a fraction of a cent either side of two cents,
+ * and rounding it to two decimals turns an ad that costs 1.9c and one that
+ * costs 3.4c into the same number - nearly twice the price, reading identical.
+ * Anything under a dime gets the digits it needs to be told apart.
+ */
+function unitCost(v: number | null, currency: string) {
+  if (v === null) return '—';
+  return v.toLocaleString('en-US', {
+    style: 'currency',
+    currency,
+    maximumFractionDigits: v < 0.1 ? 4 : 2,
+    minimumFractionDigits: 2,
+  });
+}
+
+const times = (v: number | null) => (v === null ? '—' : `${v.toFixed(2)}×`);
+
+/** Keeps a long figure inside its tile instead of over the one beside it. */
+const statN = (text: string) => (text.length > 8 ? 'stat-n stat-n-long' : 'stat-n');
 
 /**
  * The preview.
@@ -189,6 +212,10 @@ function ReelForm({ reel, canEdit }: { reel?: Reel; canEdit: boolean }) {
         <input id={`profileVisits-${d?.id ?? 'new'}`} name="profileVisits" inputMode="numeric" defaultValue={d?.profileVisits ?? ''} />
       </div>
       <div className="field">
+        <label htmlFor={`linkClicks-${d?.id ?? 'new'}`}>Link clicks</label>
+        <input id={`linkClicks-${d?.id ?? 'new'}`} name="linkClicks" inputMode="numeric" defaultValue={d?.linkClicks ?? ''} />
+      </div>
+      <div className="field">
         <label htmlFor={`followsGained-${d?.id ?? 'new'}`}>Follows gained</label>
         <input id={`followsGained-${d?.id ?? 'new'}`} name="followsGained" inputMode="numeric" defaultValue={d?.followsGained ?? ''} />
       </div>
@@ -233,13 +260,45 @@ export default async function DataPage() {
 
   const totals = summariseReels(reels);
 
+  /**
+   * Which figures are worth a column.
+   *
+   * Everything on this page used to be typed in by hand, and most of it stopped
+   * being typed once the Ads Manager export started filling the rest - leaving
+   * a page of dashes with the imported numbers hidden among them. A figure
+   * shows when at least one reel actually has it, so the page is the numbers
+   * there are rather than the numbers there could be.
+   */
+  const has = (pick: (r: Reel) => string | number | null) =>
+    reels.some((r) => {
+      const v = pick(r);
+      return v !== null && v !== undefined && v !== '';
+    });
+
+  const show = {
+    reach: has((r) => r.reach),
+    linkClicks: has((r) => r.linkClicks),
+    views: has((r) => r.views),
+    engagement: reels.some((r) => reelMetrics(r).engagementRate !== null),
+    convos: has((r) => r.leadsGenerated),
+    followsGained: has((r) => r.followsGained),
+  };
+  /** Whether anything at all is known about what the boosting turned into. */
+  const anyOutcome =
+    show.convos ||
+    has((r) => r.callsBooked) ||
+    has((r) => r.closes) ||
+    has((r) => r.cashCollected);
+
   return (
     <>
       <h1>Ads</h1>
       <p className="sub">
-        Boosted reels and what each one returned. Cost per lead, return and the
-        rates below are worked out from the numbers on the right, so there is
-        nothing to keep in step by hand.
+        What each boosted reel cost and what it returned. Spend, impressions,
+        reach and profile visits come across from Ads Manager; conversations,
+        calls, closes and cash are entered here. Every rate — cost per profile
+        visit, CPM, return — is worked out from those, so there is nothing to
+        keep in step by hand.
       </p>
 
       {totals.map((t) => (
@@ -248,28 +307,49 @@ export default async function DataPage() {
             <div className="stat-n">{money(t.spend, t.currency)}</div>
             <div className="stat-l">spent{totals.length > 1 ? ` (${t.currency})` : ''}</div>
           </div>
-          <div className="stat tone-green">
-            <div className="stat-n">{money(t.cash, t.currency)}</div>
-            <div className="stat-l">cash collected</div>
-          </div>
-          <div className={`stat ${t.net >= 0 ? 'tone-green' : 'tone-amber'}`}>
-            <div className="stat-n">{money(t.net, t.currency)}</div>
-            <div className="stat-l">net</div>
+          <div className="stat tone-blue">
+            <div className="stat-n">{n0(t.impressions)}</div>
+            <div className="stat-l">impressions</div>
           </div>
           <div className="stat tone-violet">
-            <div className="stat-n">{money(t.costPerLead, t.currency, 2)}</div>
-            <div className="stat-l">per conversation</div>
+            <div className="stat-n">{n0(t.profileVisits)}</div>
+            <div className="stat-l">profile visits</div>
           </div>
           <div className="stat tone-violet">
-            <div className="stat-n">{money(t.costPerCall, t.currency, 2)}</div>
-            <div className="stat-l">per call booked</div>
+            <div className={statN(unitCost(t.costPerProfileVisit, t.currency))}>
+              {unitCost(t.costPerProfileVisit, t.currency)}
+            </div>
+            <div className="stat-l">per profile visit</div>
           </div>
-          <div className="stat tone-green">
-            <div className="stat-n">{t.roas === null ? '—' : `${t.roas.toFixed(1)}×`}</div>
-            <div className="stat-l">return on spend</div>
-          </div>
+          {/* The other half of the row is what the boosting turned into, and
+              until somebody has recorded any of it these are four tiles saying
+              nothing. Worse than nothing before the totals stopped summing
+              blanks to zero: they read as a boost that returned no money. */}
+          {anyOutcome && (
+            <>
+              <div className="stat tone-violet">
+                <div className="stat-n">{money(t.costPerCall, t.currency, 2)}</div>
+                <div className="stat-l">per call booked</div>
+              </div>
+              <div className="stat tone-green">
+                <div className="stat-n">{money(t.cash, t.currency)}</div>
+                <div className="stat-l">cash collected</div>
+              </div>
+              <div className={`stat ${t.net === null || t.net >= 0 ? 'tone-green' : 'tone-amber'}`}>
+                <div className="stat-n">{money(t.net, t.currency)}</div>
+                <div className="stat-l">net</div>
+              </div>
+              <div className="stat tone-green">
+                <div className="stat-n">{t.roas === null ? '—' : `${t.roas.toFixed(1)}×`}</div>
+                <div className="stat-l">return on spend</div>
+              </div>
+            </>
+          )}
         </div>
       ))}
+      {/* Reach is missing from the row above on purpose: it counts people, and
+          two reels shown to overlapping audiences do not reach the sum of their
+          two numbers. It is per reel only. */}
       {totals.length > 1 && (
         <p className="sub">
           Totalled separately per currency. Adding {totals.map((t) => t.currency).join(' and ')}{' '}
@@ -297,18 +377,33 @@ export default async function DataPage() {
                   <p className="reel-hook">{reel.hook ? `“${reel.hook}”` : ''}</p>
                   <span className={`reel-status reel-status-${reel.status}`}>{reel.status}</span>
 
+                  <p className="reel-group">What the ad did</p>
                   <div className="reel-figures">
-                    <Figure label="spend" value={money(reel.spend === null ? null : Number(reel.spend), cur)} />
-                    <Figure label="cash in" value={money(reel.cashCollected === null ? null : Number(reel.cashCollected), cur)} />
-                    <Figure label="per lead" value={money(m.costPerLead, cur, 2)} />
-                    <Figure label="per call" value={money(m.costPerCall, cur, 2)} />
-                    <Figure label="return" value={m.roas === null ? '—' : `${m.roas.toFixed(1)}×`} />
-                    <Figure label="views" value={n0(reel.views)} />
+                    <Figure label="spend" value={money(reel.spend === null ? null : Number(reel.spend), cur, 2)} />
                     <Figure label="impressions" value={n0(reel.impressions)} />
-                    <Figure label="convos" value={n0(reel.leadsGenerated)} />
-                    <Figure label="calls" value={n0(reel.callsBooked)} />
-                    <Figure label="closes" value={n0(reel.closes)} />
+                    {show.reach && <Figure label="reach" value={n0(reel.reach)} />}
+                    {show.reach && <Figure label="frequency" value={times(m.frequency)} />}
+                    <Figure label="profile visits" value={n0(reel.profileVisits)} />
+                    <Figure label="per visit" value={unitCost(m.costPerProfileVisit, cur)} />
+                    <Figure label="CPM" value={unitCost(m.cpm, cur)} />
+                    {show.linkClicks && <Figure label="CTR" value={pct(m.ctr)} />}
+                    {show.views && <Figure label="views" value={n0(reel.views)} />}
+                    {show.engagement && <Figure label="engagement" value={pct(m.engagementRate)} />}
                   </div>
+
+                  {anyOutcome && (
+                    <>
+                      <p className="reel-group">What came back</p>
+                      <div className="reel-figures">
+                        {show.convos && <Figure label="convos" value={n0(reel.leadsGenerated)} />}
+                        <Figure label="calls" value={n0(reel.callsBooked)} />
+                        <Figure label="closes" value={n0(reel.closes)} />
+                        <Figure label="cash in" value={money(reel.cashCollected === null ? null : Number(reel.cashCollected), cur)} />
+                        <Figure label="per call" value={money(m.costPerCall, cur, 2)} />
+                        <Figure label="return" value={m.roas === null ? '—' : `${m.roas.toFixed(1)}×`} />
+                      </div>
+                    </>
+                  )}
 
                   {reel.notes && <p className="reel-notes">{reel.notes}</p>}
 
@@ -342,20 +437,22 @@ export default async function DataPage() {
               <thead>
                 <tr>
                   <th>Reel</th>
-                  <th>Status</th>
                   <th>Spend</th>
-                  <th>Views</th>
                   <th>Impr.</th>
-                  <th>Reach</th>
-                  <th>Eng.</th>
-                  <th>Convos</th>
-                  <th>Calls</th>
-                  <th>Closes</th>
-                  <th>Per lead</th>
-                  <th>Per call</th>
-                  <th>Cash in</th>
-                  <th>Net</th>
-                  <th>Return</th>
+                  {show.reach && <th>Reach</th>}
+                  <th>Visits</th>
+                  <th>Per visit</th>
+                  <th>CPM</th>
+                  {show.linkClicks && <th>CTR</th>}
+                  {show.views && <th>Views</th>}
+                  {show.engagement && <th>Eng.</th>}
+                  {show.convos && <th>Convos</th>}
+                  {anyOutcome && <th>Calls</th>}
+                  {anyOutcome && <th>Closes</th>}
+                  {anyOutcome && <th>Per call</th>}
+                  {anyOutcome && <th>Cash in</th>}
+                  {anyOutcome && <th>Net</th>}
+                  {anyOutcome && <th>Return</th>}
                 </tr>
               </thead>
               <tbody>
@@ -372,27 +469,45 @@ export default async function DataPage() {
                         ) : (
                           reel.title
                         )}
+                        {reel.status !== 'running' && (
+                          <span className={`reel-status reel-status-${reel.status}`}>
+                            {reel.status}
+                          </span>
+                        )}
                       </td>
-                      <td>{reel.status}</td>
-                      <td>{money(reel.spend === null ? null : Number(reel.spend), cur)}</td>
-                      <td>{n0(reel.views)}</td>
+                      <td>{money(reel.spend === null ? null : Number(reel.spend), cur, 2)}</td>
                       <td>{n0(reel.impressions)}</td>
-                      <td>{n0(reel.reach)}</td>
-                      <td>{pct(m.engagementRate)}</td>
-                      <td>{n0(reel.leadsGenerated)}</td>
-                      <td>{n0(reel.callsBooked)}</td>
-                      <td>{n0(reel.closes)}</td>
-                      <td>{money(m.costPerLead, cur, 2)}</td>
-                      <td>{money(m.costPerCall, cur, 2)}</td>
-                      <td>{money(reel.cashCollected === null ? null : Number(reel.cashCollected), cur)}</td>
-                      <td>{money(m.net, cur)}</td>
-                      <td>{m.roas === null ? '—' : `${m.roas.toFixed(1)}×`}</td>
+                      {show.reach && <td>{n0(reel.reach)}</td>}
+                      <td>{n0(reel.profileVisits)}</td>
+                      <td>{unitCost(m.costPerProfileVisit, cur)}</td>
+                      <td>{unitCost(m.cpm, cur)}</td>
+                      {show.linkClicks && <td>{pct(m.ctr)}</td>}
+                      {show.views && <td>{n0(reel.views)}</td>}
+                      {show.engagement && <td>{pct(m.engagementRate)}</td>}
+                      {show.convos && <td>{n0(reel.leadsGenerated)}</td>}
+                      {anyOutcome && <td>{n0(reel.callsBooked)}</td>}
+                      {anyOutcome && <td>{n0(reel.closes)}</td>}
+                      {anyOutcome && <td>{money(m.costPerCall, cur, 2)}</td>}
+                      {anyOutcome && (
+                        <td>{money(reel.cashCollected === null ? null : Number(reel.cashCollected), cur)}</td>
+                      )}
+                      {anyOutcome && <td>{money(m.net, cur)}</td>}
+                      {anyOutcome && <td>{m.roas === null ? '—' : `${m.roas.toFixed(1)}×`}</td>}
                     </tr>
                   );
                 })}
               </tbody>
             </table>
           </div>
+          {!anyOutcome && (
+            <p className="sub">
+              Nothing has been recorded yet for what these turned into. Open{' '}
+              <strong>Edit numbers</strong> on a reel and fill in conversations
+              started, calls booked, closes and cash collected — the export
+              cannot know those, and cost per call and return on spend appear
+              once they are there.
+            </p>
+          )}
         </>
       )}
 
@@ -402,9 +517,15 @@ export default async function DataPage() {
           <p className="sub">
             In Ads Manager, open the ads, press <strong>Reports &rarr; Export</strong>{' '}
             and save the CSV, then pick it here. It fills spend, impressions,
-            reach and profile visits; conversations, calls, closes and cash
-            stay as the dashboard has them, because the export knows nothing
-            about those.
+            reach, profile visits and link clicks; conversations, calls, closes
+            and cash stay as the dashboard has them, because the export knows
+            nothing about those.
+          </p>
+          <p className="sub">
+            <strong>Set the breakdown to none before exporting.</strong> With a
+            day-by-day breakdown everything else still comes across, but reach
+            is left out: it counts people rather than views, so adding thirty
+            days of it together counts anyone who saw the reel twice.
           </p>
           <p className="sub">
             Press <strong>Dry run</strong> first. The export only covers the

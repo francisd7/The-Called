@@ -26,6 +26,7 @@ const reel = (over: Partial<ReelForMatch> = {}): ReelForMatch => ({
   impressions: null,
   reach: null,
   profileVisits: null,
+  linkClicks: null,
   boostStartedOn: null,
   ...over,
 });
@@ -138,6 +139,7 @@ const oneAd = (over: Partial<ReturnType<typeof parseAdsExport>['ads'][number]> =
       impressions: 126860,
       reach: null,
       profileVisits: 3108,
+      linkClicks: 3304,
       ...over,
     },
   ],
@@ -211,7 +213,15 @@ test('ticking replace lets a wrong number be corrected downwards', () => {
 
 test('a number that has not moved is not reported as a change', () => {
   const plan = planAdsImport(
-    [reel({ title: 'Comment HOOKS...', spend: '57.70', impressions: 126860, profileVisits: 3108 })],
+    [
+      reel({
+        title: 'Comment HOOKS...',
+        spend: '57.70',
+        impressions: 126860,
+        profileVisits: 3108,
+        linkClicks: 3304,
+      }),
+    ],
     oneAd()
   );
   assert.deepEqual(plan.ads[0].changes, [{ label: 'boost started', from: null, to: '2026-10-01' }]);
@@ -238,7 +248,7 @@ test('a boost start somebody typed is a fact and is left as typed', () => {
 test('an ad that did not run over these dates is left out entirely', () => {
   const plan = planAdsImport(
     [reel({ title: 'Comment HOOKS...', spend: '40.00', impressions: 5 })],
-    oneAd({ spend: 0, impressions: 0, profileVisits: 0 })
+    oneAd({ spend: 0, impressions: 0, profileVisits: 0, linkClicks: 0 })
   );
   assert.equal(plan.ads.length, 0);
   assert.ok(plan.notes.some((n) => n.includes('spent nothing')));
@@ -248,4 +258,16 @@ test('the boosted-post prefix comes off a name used as a reel title', () => {
   assert.equal(tidyAdName('Instagram post: Comment HOOKS'), 'Comment HOOKS');
   assert.equal(tidyAdName('Facebook post: Thing'), 'Thing');
   assert.equal(tidyAdName('  A plain ad name '), 'A plain ad name');
+});
+
+test('an export without the daily breakdown reports its real window', () => {
+  // One row per ad: the window's end is in Reporting ends, not in a later row.
+  // Reading only the starts made a month-long export say it covered one day.
+  const { ads } = parseAdsExport(
+    'Reporting starts,Reporting ends,Ad name,Amount spent (CAD),Impressions\n' +
+      '2026-09-03,2026-10-02,Ad A,57.70,126860'
+  );
+  assert.equal(ads[0].firstDay, '2026-09-03');
+  assert.equal(ads[0].lastDay, '2026-10-02');
+  assert.equal(ads[0].days, 1);
 });

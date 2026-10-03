@@ -62,6 +62,7 @@ function fieldsFrom(formData: FormData) {
     spendCurrency: str(formData, 'spendCurrency') ?? 'USD',
     views: int(formData, 'views'),
     impressions: int(formData, 'impressions'),
+    linkClicks: int(formData, 'linkClicks'),
     reach: int(formData, 'reach'),
     likes: int(formData, 'likes'),
     comments: int(formData, 'comments'),
@@ -187,6 +188,7 @@ export async function importAdsExport(formData: FormData): Promise<Result> {
         impressions: boostedReels.impressions,
         reach: boostedReels.reach,
         profileVisits: boostedReels.profileVisits,
+        linkClicks: boostedReels.linkClicks,
         boostStartedOn: boostedReels.boostStartedOn,
       })
       .from(boostedReels);

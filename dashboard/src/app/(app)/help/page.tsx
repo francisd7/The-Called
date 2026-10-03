@@ -708,10 +708,21 @@ export default async function HelpPage() {
           <p>
             <strong>Import from Ads Manager</strong> takes the CSV that{' '}
             <strong>Reports &rarr; Export</strong> gives you and fills spend,
-            impressions, reach and profile visits, so those do not have to be
-            copied across by hand. Press <strong>Dry run</strong> first: it
-            lists every number it would change, old to new, and every one it
-            would leave alone.
+            impressions, reach, profile visits and link clicks, so those do not
+            have to be copied across by hand. Set the breakdown to none before
+            exporting, or reach is left out — it counts people rather than
+            views, and thirty days of it added together counts anyone who saw
+            the reel twice. Press <strong>Dry run</strong> first: it lists every
+            number it would change, old to new, and every one it would leave
+            alone.
+          </p>
+          <p>
+            The tiles and the table show the figures the export actually
+            carries, so a column only appears once something is in it. Cost per
+            profile visit, CPM and CTR are worked out rather than entered.
+            Calls, closes, cash and return stay hidden until somebody records
+            what a reel turned into, because the export cannot know that and a
+            row of zeroes would read as a boost that paid for nothing.
           </p>
           <p>
             Two things to know about it. An ad is matched to a reel by{' '}

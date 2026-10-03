@@ -45,6 +45,8 @@ export type AdTotals = {
   reach: number | null;
   /** Null unless Result indicator says these results are profile visits. */
   profileVisits: number | null;
+  /** Null when the export carries no link clicks column at all. */
+  linkClicks: number | null;
 };
 
 export type AdsExport = {
@@ -76,11 +78,13 @@ export function parseAdsExport(csvText: string): AdsExport {
 
   const iName = at('Ad name');
   const iStart = at('Reporting starts');
+  const iEnd = at('Reporting ends');
   const iSpend = startsWith('Amount spent');
   const iReach = at('Reach');
   const iImpr = at('Impressions');
   const iResults = at('Results');
   const iIndicator = at('Result indicator');
+  const iClicks = at('Link clicks');
 
   const notes: string[] = [];
   if (iName === -1) {
@@ -90,13 +94,14 @@ export function parseAdsExport(csvText: string): AdsExport {
   const currency = iSpend === -1 ? null : currencyFrom(header[iSpend]);
   if (iSpend === -1) notes.push('No spend column, so spend was not filled.');
 
-  const byAd = new Map<string, { rows: string[][]; days: Set<string> }>();
+  const byAd = new Map<string, { rows: string[][]; days: Set<string>; ends: Set<string> }>();
   for (const row of rows.slice(1)) {
     const name = (row[iName] ?? '').trim();
     if (!name) continue;
-    const entry = byAd.get(name) ?? { rows: [], days: new Set<string>() };
+    const entry = byAd.get(name) ?? { rows: [], days: new Set<string>(), ends: new Set<string>() };
     entry.rows.push(row);
     if (iStart !== -1 && row[iStart]) entry.days.add(row[iStart]);
+    if (iEnd !== -1 && row[iEnd]) entry.ends.add(row[iEnd]);
     byAd.set(name, entry);
   }
 
@@ -128,11 +133,17 @@ export function parseAdsExport(csvText: string): AdsExport {
             .filter(Boolean)
             .sort();
 
+    // Without the daily breakdown there is one row per ad, and its Reporting
+    // starts is the window's start - the end lives in Reporting ends, not in
+    // another row. Reading only the starts made a month-long export report
+    // itself as covering a single day.
+    const ends = [...entry.ends].sort();
+
     ads.push({
       adName,
       days: entry.days.size,
       firstDay: days[0] ?? null,
-      lastDay: days[days.length - 1] ?? null,
+      lastDay: ends[ends.length - 1] ?? days[days.length - 1] ?? null,
       // Only a day-by-day export knows which days money went out on. Without
       // the breakdown the only date available is the window that was picked,
       // and a window of "Maximum" starts at the account's first ever day -
@@ -151,6 +162,7 @@ export function parseAdsExport(csvText: string): AdsExport {
         resultsAreVisits && iResults !== -1
           ? entry.rows.reduce((a, r) => a + num(r[iResults]), 0)
           : null,
+      linkClicks: iClicks === -1 ? null : entry.rows.reduce((a, r) => a + num(r[iClicks]), 0),
     });
   }
 
@@ -203,6 +215,7 @@ export type ReelForMatch = {
   impressions: number | null;
   reach: number | null;
   profileVisits: number | null;
+  linkClicks: number | null;
   boostStartedOn: string | null;
 };
 
@@ -214,6 +227,7 @@ export type ReelPatch = {
   impressions?: number;
   reach?: number;
   profileVisits?: number;
+  linkClicks?: number;
   boostStartedOn?: string;
 };
 
@@ -276,7 +290,7 @@ export function planAdsImport(
     // or creating a reel for it, would both be wrong. Only the numbers the
     // export actually carried count towards that: a column the file does not
     // have says nothing about the ad either way.
-    const measured = [ad.spend, ad.impressions, ad.reach, ad.profileVisits].filter(
+    const measured = [ad.spend, ad.impressions, ad.reach, ad.profileVisits, ad.linkClicks].filter(
       (n): n is number => n !== null
     );
     if (measured.length > 0 && measured.every((n) => n === 0)) {
@@ -389,6 +403,7 @@ export function planAdsImport(
       (v) => (patch.profileVisits = v),
       n0
     );
+    raise('link clicks', reel?.linkClicks ?? null, ad.linkClicks, (v) => (patch.linkClicks = v), n0);
 
     // A date somebody typed is a fact about the boost; this is a guess from
     // which day money first went out, so it only ever fills a blank.

@@ -42,7 +42,10 @@ export function permalink(shortcode: string): string {
 type Counts = {
   spend: string | number | null;
   views: number | null;
+  impressions: number | null;
   reach: number | null;
+  profileVisits: number | null;
+  linkClicks: number | null;
   likes: number | null;
   comments: number | null;
   shares: number | null;
@@ -71,6 +74,14 @@ function per(cost: number | null, count: number | null): number | null {
 }
 
 export type ReelMetrics = {
+  /** What a profile visit cost. The number a boost lives or dies on. */
+  costPerProfileVisit: number | null;
+  /** Cost of a thousand impressions - what delivery is being charged at. */
+  cpm: number | null;
+  /** Link clicks over impressions, as a fraction. */
+  ctr: number | null;
+  /** Impressions over reach: how many times the average person saw it. */
+  frequency: number | null;
   costPerLead: number | null;
   costPerCall: number | null;
   costPerClose: number | null;
@@ -90,12 +101,20 @@ export function reelMetrics(r: Counts): ReelMetrics {
   const spend = num(r.spend);
   const cash = num(r.cashCollected);
   const reach = num(r.reach);
+  const impressions = num(r.impressions);
 
   const interactions = [r.likes, r.comments, r.shares, r.saves]
     .map(num)
     .filter((n): n is number => n !== null);
 
   return {
+    costPerProfileVisit: per(spend, num(r.profileVisits)),
+    // Per thousand, which is how every ad platform quotes it.
+    cpm: spend === null || impressions === null || impressions === 0
+      ? null
+      : (spend / impressions) * 1000,
+    ctr: ratio(num(r.linkClicks), impressions),
+    frequency: ratio(impressions, reach),
     costPerLead: per(spend, num(r.leadsGenerated)),
     costPerCall: per(spend, num(r.callsBooked)),
     costPerClose: per(spend, num(r.closes)),
@@ -125,12 +144,16 @@ type Summable = Counts & { spendCurrency: string };
 export type ReelTotals = {
   currency: string;
   reels: number;
-  spend: number;
-  cash: number;
-  net: number;
-  leads: number;
-  calls: number;
-  closes: number;
+  spend: number | null;
+  cash: number | null;
+  net: number | null;
+  impressions: number | null;
+  profileVisits: number | null;
+  leads: number | null;
+  calls: number | null;
+  closes: number | null;
+  costPerProfileVisit: number | null;
+  cpm: number | null;
   costPerLead: number | null;
   costPerCall: number | null;
   costPerClose: number | null;
@@ -154,16 +177,28 @@ export function summariseReels(reels: Summable[]): ReelTotals[] {
     byCurrency.set(key, [...(byCurrency.get(key) ?? []), r]);
   }
 
-  // A sum of nothing is zero, but a sum of things nobody has filled in is not:
-  // a reel with no spend entered contributes nothing rather than dragging a
-  // total down to a number somebody would act on.
-  const total = (rows: Summable[], pick: (r: Summable) => string | number | null) =>
-    rows.reduce((acc, r) => acc + (num(pick(r)) ?? 0), 0);
+  /**
+   * A sum of nothing is not zero.
+   *
+   * A reel with no spend entered contributes nothing rather than dragging the
+   * total down, but when *no* reel has the number at all the answer is that
+   * nobody knows it - not that it is zero. That distinction stopped being
+   * academic when the Ads Manager import started filling spend and leaving
+   * cash to be entered by hand: summing nulls to zero turned a page where the
+   * cash had simply not been recorded yet into one reading "net -CA$115,
+   * 0.0x return on spend", which is a loss nobody made.
+   */
+  const total = (rows: Summable[], pick: (r: Summable) => string | number | null) => {
+    const known = rows.map(pick).map(num).filter((n): n is number => n !== null);
+    return known.length === 0 ? null : known.reduce((a, b) => a + b, 0);
+  };
 
   return [...byCurrency.entries()]
     .map(([currency, rows]) => {
       const spend = total(rows, (r) => r.spend);
       const cash = total(rows, (r) => r.cashCollected);
+      const impressions = total(rows, (r) => r.impressions);
+      const profileVisits = total(rows, (r) => r.profileVisits);
       const leads = total(rows, (r) => r.leadsGenerated);
       const calls = total(rows, (r) => r.callsBooked);
       const closes = total(rows, (r) => r.closes);
@@ -173,15 +208,27 @@ export function summariseReels(reels: Summable[]): ReelTotals[] {
         reels: rows.length,
         spend,
         cash,
-        net: cash - spend,
+        // Spend is known and cash is not: that is a reel whose outcome has not
+        // been recorded, and neither its net nor its return is a number yet.
+        net: spend === null || cash === null ? null : cash - spend,
+        impressions,
+        profileVisits,
         leads,
         calls,
         closes,
+        // Reach is not totalled anywhere on purpose. It counts people, and two
+        // reels shown to overlapping audiences do not reach the sum of their
+        // two numbers - the same mistake as adding a reel's days together.
+        costPerProfileVisit: per(spend, profileVisits),
+        cpm:
+          spend === null || impressions === null || impressions === 0
+            ? null
+            : (spend / impressions) * 1000,
         costPerLead: per(spend, leads),
         costPerCall: per(spend, calls),
         costPerClose: per(spend, closes),
-        roas: spend === 0 ? null : cash / spend,
+        roas: spend === null || spend === 0 || cash === null ? null : cash / spend,
       };
     })
-    .sort((a, b) => b.spend - a.spend);
+    .sort((a, b) => (b.spend ?? 0) - (a.spend ?? 0));
 }

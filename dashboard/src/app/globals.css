@@ -276,6 +276,13 @@ h2:first-of-type {
   font-variant-numeric: tabular-nums;
   line-height: 1.15;
 }
+/* A cost per profile visit runs to four decimals - CA$0.0239 is nine
+   characters, and at the full size it ran straight over the tile beside it.
+   Long values step down rather than overflow; the label underneath is what
+   says which number it is, so a slightly smaller one still reads. */
+.stat-n-long {
+  font-size: 1.15rem;
+}
 .stat-l {
   color: var(--muted);
   font-size: 0.78rem;
@@ -1819,6 +1826,10 @@ main.has-viewas {
   color: var(--muted);
 }
 
+/* Inside a table cell it sits after the name rather than on its own line. */
+td > .reel-status {
+  margin-left: 0.4rem;
+}
 .reel-status {
   display: inline-block;
   font-size: 0.72rem;
@@ -1843,11 +1854,25 @@ main.has-viewas {
 
 /* Two columns of small figures rather than the full-width stat tiles the
    dashboard uses: at this width a stat tile fits one number per row. */
+/* Which half of the funnel the numbers under it belong to - what the ad did,
+   and what came back. Without it the two sets read as one list and a cost per
+   profile visit sits beside a cost per call as though they measured the same
+   thing. */
+.reel-group {
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--muted);
+  margin: 0.75rem 0 0;
+  padding-bottom: 0.2rem;
+  border-bottom: 1px solid var(--border);
+}
 .reel-figures {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 0.3rem 0.5rem;
-  margin-top: 0.55rem;
+  margin-top: 0.45rem;
 }
 .reel-figure {
   display: flex;

@@ -190,6 +190,13 @@
       "when": 1791046637349,
       "tag": "0026_ads_export_columns",
       "breakpoints": true
+    },
+    {
+      "idx": 27,
+      "version": "7",
+      "when": 1791059885931,
+      "tag": "0027_reel_link_clicks",
+      "breakpoints": true
     }
   ]
 }

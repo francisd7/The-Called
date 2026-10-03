@@ -3,9 +3,9 @@ import { test } from 'node:test';
 import { reelMetrics, shortcodeFromUrl } from '../src/lib/reelMetrics.ts';
 
 const blank = {
-  spend: null, views: null, reach: null, likes: null, comments: null,
-  shares: null, saves: null, leadsGenerated: null, callsBooked: null,
-  closes: null, cashCollected: null,
+  spend: null, views: null, impressions: null, reach: null, profileVisits: null,
+  linkClicks: null, likes: null, comments: null, shares: null, saves: null,
+  leadsGenerated: null, callsBooked: null, closes: null, cashCollected: null,
 };
 
 test('a reel link gives up its shortcode', () => {
@@ -163,4 +163,73 @@ test('a currency nobody set falls back to USD rather than its own row', () => {
   const rows = summariseReels([reel({ spend: '100' }), reel({ spendCurrency: '', spend: '50' })]);
   assert.equal(rows.length, 1);
   assert.equal(rows[0].spend, 150);
+});
+
+test('what a profile visit cost is spend over visits', () => {
+  const m = reelMetrics({ ...blank, spend: '57.70', profileVisits: 3108 });
+  assert.ok(m.costPerProfileVisit !== null);
+  assert.equal(m.costPerProfileVisit!.toFixed(4), '0.0186');
+});
+
+test('CPM is quoted per thousand impressions, the way the platforms do', () => {
+  const m = reelMetrics({ ...blank, spend: '57.70', impressions: 126860 });
+  assert.ok(m.cpm !== null);
+  assert.equal(m.cpm!.toFixed(4), '0.4548');
+});
+
+test('click-through is clicks over impressions', () => {
+  const m = reelMetrics({ ...blank, impressions: 1000, linkClicks: 26 });
+  assert.equal(m.ctr, 0.026);
+});
+
+test('frequency is how many times the average person saw it', () => {
+  const m = reelMetrics({ ...blank, impressions: 1200, reach: 1000 });
+  assert.equal(m.frequency, 1.2);
+});
+
+test('a half nobody imported leaves the rate unknown rather than zero', () => {
+  const m = reelMetrics({ ...blank, spend: '57.70' });
+  assert.equal(m.costPerProfileVisit, null);
+  assert.equal(m.cpm, null);
+  assert.equal(m.ctr, null);
+  assert.equal(m.frequency, null);
+});
+
+test('the totals add up what adds up and leave reach out of it', () => {
+  const [t] = summariseReels([
+    { ...blank, spendCurrency: 'CAD', spend: '57.70', impressions: 126860, reach: 108895, profileVisits: 3108 },
+    { ...blank, spendCurrency: 'CAD', spend: '56.87', impressions: 148274, reach: 112745, profileVisits: 1691 },
+  ]);
+  assert.equal(t.impressions, 275134);
+  assert.equal(t.profileVisits, 4799);
+  assert.equal(t.spend, 114.57);
+  assert.ok(!('reach' in t));
+  assert.ok(t.costPerProfileVisit !== null);
+  assert.equal(t.costPerProfileVisit!.toFixed(4), '0.0239');
+});
+
+test('a total nobody has entered is unknown rather than zero', () => {
+  // The import fills spend and leaves cash to be entered by hand. Summing the
+  // blanks to zero turned that into "net -115, 0.0x return" - a loss nobody
+  // made, on a page that had only just been imported into.
+  const [t] = summariseReels([
+    { ...blank, spendCurrency: 'CAD', spend: '57.70', impressions: 126860 },
+    { ...blank, spendCurrency: 'CAD', spend: '56.87', impressions: 148274 },
+  ]);
+  assert.equal(t.spend, 114.57);
+  assert.equal(t.cash, null);
+  assert.equal(t.net, null);
+  assert.equal(t.roas, null);
+  assert.equal(t.calls, null);
+  assert.equal(t.costPerCall, null);
+});
+
+test('one reel with the number is enough for a total; the blanks add nothing', () => {
+  const [t] = summariseReels([
+    { ...blank, spendCurrency: 'CAD', spend: '100.00', cashCollected: '400.00' },
+    { ...blank, spendCurrency: 'CAD', spend: '100.00' },
+  ]);
+  assert.equal(t.cash, 400);
+  assert.equal(t.net, 200);
+  assert.equal(t.roas, 2);
 });

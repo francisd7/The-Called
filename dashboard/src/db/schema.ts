@@ -575,6 +575,8 @@ export const boostedReels = pgTable('boosted_reels', {
   shares: integer('shares'),
   saves: integer('saves'),
   profileVisits: integer('profile_visits'),
+  /** Taps through to the profile or link, as Ads Manager counts them. */
+  linkClicks: integer('link_clicks'),
   followsGained: integer('follows_gained'),
 
   // --- what it turned into ---
