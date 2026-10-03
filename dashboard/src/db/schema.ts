@@ -540,6 +540,13 @@ export const boostedReels = pgTable('boosted_reels', {
   /** The opening line, so the pattern behind a winner is visible next to it. */
   hook: text('hook'),
   /**
+   * What gets sent to somebody who answers the hook - the guide, the training,
+   * whatever the reel promised. Lives next to the reel because each hook
+   * promises a different thing, and the setter needs it in the DM rather than
+   * in a pinned message somewhere.
+   */
+  resourceUrl: text('resource_url'),
+  /**
    * What this reel is called in Meta Ads Manager, so a CSV export of the ad
    * performance lands on the right reel every time it is imported rather than
    * being matched on a title somebody might rename.

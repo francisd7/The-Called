@@ -50,6 +50,7 @@ function fieldsFrom(formData: FormData) {
   return {
     reelUrl: url,
     adName: str(formData, 'adName'),
+    resourceUrl: str(formData, 'resourceUrl'),
     // Worked out once on save rather than on every render, so a preview can
     // never disagree with the link beside it.
     shortcode: shortcodeFromUrl(url),

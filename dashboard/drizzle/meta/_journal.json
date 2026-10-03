@@ -197,6 +197,13 @@
       "when": 1791059885931,
       "tag": "0027_reel_link_clicks",
       "breakpoints": true
+    },
+    {
+      "idx": 28,
+      "version": "7",
+      "when": 1791060739843,
+      "tag": "0028_reel_resource_link",
+      "breakpoints": true
     }
   ]
 }

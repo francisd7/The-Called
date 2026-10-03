@@ -717,6 +717,15 @@ export default async function HelpPage() {
             alone.
           </p>
           <p>
+            Each tile carries two links under its numbers. <strong>Post</strong>{' '}
+            opens the reel on Instagram. <strong>Send them</strong> is whatever
+            that hook promised — the guide or the training that goes out once
+            somebody answers the question — with a <strong>Copy</strong> button,
+            so it can go straight into the DM without hunting for it. Both are
+            set under <strong>Edit this reel</strong>, and everyone can copy
+            them even though only Francis can change them.
+          </p>
+          <p>
             The tiles and the table show the figures the export actually
             carries, so a column only appears once something is in it. Cost per
             profile visit, CPM and CTR are worked out rather than entered.

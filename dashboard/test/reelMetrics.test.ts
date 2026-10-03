@@ -1,6 +1,6 @@
 import { strict as assert } from 'node:assert';
 import { test } from 'node:test';
-import { reelMetrics, shortcodeFromUrl } from '../src/lib/reelMetrics.ts';
+import { linkTail, reelMetrics, shortcodeFromUrl } from '../src/lib/reelMetrics.ts';
 
 const blank = {
   spend: null, views: null, impressions: null, reach: null, profileVisits: null,
@@ -232,4 +232,13 @@ test('one reel with the number is enough for a total; the blanks add nothing', (
   assert.equal(t.cash, 400);
   assert.equal(t.net, 200);
   assert.equal(t.roas, 2);
+});
+
+test('a link shows the end that tells it apart, not the start every link shares', () => {
+  assert.equal(linkTail('https://thecalled.com/hooks-guide'), 'hooks-guide');
+  assert.equal(linkTail('https://thecalled.com/r/brand/guide/'), 'guide');
+  assert.equal(linkTail('https://www.thecalled.com/'), 'thecalled.com');
+  // Whatever somebody typed in beats showing them nothing.
+  assert.equal(linkTail('thecalled.com/guide'), 'thecalled.com/guide');
+  assert.equal(linkTail('https://thecalled.com/a%20guide'), 'a guide');
 });

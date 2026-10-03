@@ -3,6 +3,7 @@ import { db } from '@/db';
 import { boostedReels } from '@/db/schema';
 import { currentUser } from '@/lib/session';
 import { ActionForm } from '@/components/ActionForm';
+import { CopyBox } from '@/components/CopyBox';
 import { addReel, deleteReel, importAdsExport, updateReel } from '@/lib/reelActions';
 import { embedUrl, permalink, reelMetrics, summariseReels, REEL_STATUSES } from '@/lib/reelMetrics';
 
@@ -62,7 +63,11 @@ function Preview({ reel }: { reel: Reel }) {
   if (!reel.shortcode) {
     return (
       <div className="reel-preview reel-preview-none">
-        <span>{reel.reelUrl ? 'Link not recognised' : 'No link yet'}</span>
+        <span>
+          {reel.reelUrl
+            ? 'Link not recognised'
+            : 'No Instagram link yet — add it under Edit this reel'}
+        </span>
       </div>
     );
   }
@@ -121,6 +126,15 @@ function ReelForm({ reel, canEdit }: { reel?: Reel; canEdit: boolean }) {
           name="reelUrl"
           defaultValue={d?.reelUrl ?? ''}
           placeholder="https://www.instagram.com/reel/…"
+        />
+      </div>
+      <div className="field">
+        <label htmlFor={`resourceUrl-${d?.id ?? 'new'}`}>Resource link sent to the lead</label>
+        <input
+          id={`resourceUrl-${d?.id ?? 'new'}`}
+          name="resourceUrl"
+          defaultValue={d?.resourceUrl ?? ''}
+          placeholder="What this hook promised them"
         />
       </div>
       <div className="field">
@@ -256,7 +270,10 @@ export default async function DataPage() {
   const reels = await db
     .select()
     .from(boostedReels)
-    .orderBy(asc(boostedReels.sortOrder), desc(boostedReels.createdAt));
+    // Id last as a tiebreaker: two reels made in the same moment - which the
+    // import can do - otherwise come back in whichever order Postgres feels
+    // like, and swap places between one page load and the next.
+    .orderBy(asc(boostedReels.sortOrder), desc(boostedReels.createdAt), asc(boostedReels.id));
 
   const totals = summariseReels(reels);
 
@@ -405,11 +422,35 @@ export default async function DataPage() {
                     </>
                   )}
 
+                  <div className="reel-links">
+                    <p className="reel-link-row">
+                      <span className="reel-link-l">Post</span>
+                      {reel.reelUrl ? (
+                        <a
+                          href={reel.shortcode ? permalink(reel.shortcode) : reel.reelUrl}
+                          target="_blank"
+                          rel="noreferrer"
+                        >
+                          Open on Instagram &rarr;
+                        </a>
+                      ) : (
+                        <span className="reel-link-missing">not added yet</span>
+                      )}
+                    </p>
+                    <p className="reel-link-row">
+                      <span className="reel-link-l">Send them</span>
+                      {!reel.resourceUrl && <span className="reel-link-missing">not added yet</span>}
+                    </p>
+                    {reel.resourceUrl && (
+                      <CopyBox url={reel.resourceUrl} label={`Resource link for ${reel.title}`} />
+                    )}
+                  </div>
+
                   {reel.notes && <p className="reel-notes">{reel.notes}</p>}
 
                   {canEdit && (
                     <details className="reel-edit">
-                      <summary>Edit numbers</summary>
+                      <summary>Edit this reel</summary>
                       <ActionForm action={updateReel} successMessage="Saved">
                         <input type="hidden" name="id" value={reel.id} />
                         <ReelForm reel={reel} canEdit={canEdit} />
@@ -502,7 +543,7 @@ export default async function DataPage() {
           {!anyOutcome && (
             <p className="sub">
               Nothing has been recorded yet for what these turned into. Open{' '}
-              <strong>Edit numbers</strong> on a reel and fill in conversations
+              <strong>Edit this reel</strong> and fill in conversations
               started, calls booked, closes and cash collected — the export
               cannot know those, and cost per call and return on spend appear
               once they are there.

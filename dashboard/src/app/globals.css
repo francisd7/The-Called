@@ -1563,6 +1563,63 @@ th {
   flex: 0 1 14rem;
 }
 
+/* A link the team pastes into a DM, with the button that copies it. The input
+   is readonly and selects itself on click, so the keyboard route works too. */
+.copybox {
+  display: flex;
+  gap: 0.35rem;
+  margin-top: 0.3rem;
+}
+.copybox-url {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-size: 0.78rem;
+  padding: 0.3rem 0.45rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg);
+  /* One line, cut with an ellipsis rather than wrapping the tile taller. */
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.copybox-btn {
+  flex: 0 0 auto;
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 0.3rem 0.6rem;
+  white-space: nowrap;
+}
+
+/* The two links a reel carries: the post itself and what gets sent to anyone
+   who answers it. */
+.reel-links {
+  margin-top: 0.7rem;
+  padding-top: 0.6rem;
+  border-top: 1px solid var(--border);
+}
+.reel-link-row {
+  display: flex;
+  align-items: baseline;
+  gap: 0.4rem;
+  font-size: 0.78rem;
+}
+.reel-link-row + .reel-link-row,
+.copybox + .reel-link-row {
+  margin-top: 0.5rem;
+}
+.reel-link-l {
+  color: var(--muted);
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.reel-link-missing {
+  color: var(--muted);
+  font-style: italic;
+}
+
 /* Says which tab a row of numbers answers to. Two rows of tiles that look the
    same but mean different things need one word each more than they need
    anything else. */
@@ -1743,7 +1800,10 @@ main.has-viewas {
    shrinking past the point the preview can render. */
 .reel-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  /* 200px was too narrow once the tiles carried two groups of figures and a
+     pair of links: the link under each one had room for "https://thecalled.c"
+     and nothing that told them apart. */
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
   gap: 0.9rem;
   margin-top: 0.9rem;
 }

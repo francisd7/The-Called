@@ -34,6 +34,25 @@ export function embedUrl(shortcode: string): string {
   return `https://www.instagram.com/reel/${encodeURIComponent(shortcode)}/embed/`;
 }
 
+/**
+ * The readable end of a link, for a button that is only a couple of hundred
+ * pixels wide.
+ *
+ * The start of a URL is the part every link shares: "https://thecalled.c"
+ * tells nobody which resource they are about to send a lead, where
+ * "hooks-guide" does. Falls back to the host, and then to whatever was typed
+ * in - something unparseable is still better shown than blanked out.
+ */
+export function linkTail(url: string): string {
+  try {
+    const u = new URL(url);
+    const tail = u.pathname.split('/').filter(Boolean).pop();
+    return tail ? decodeURIComponent(tail) : u.host.replace(/^www\./, '');
+  } catch {
+    return url;
+  }
+}
+
 /** Where a click should take you - the post itself, not the embed. */
 export function permalink(shortcode: string): string {
   return `https://www.instagram.com/reel/${encodeURIComponent(shortcode)}/`;
